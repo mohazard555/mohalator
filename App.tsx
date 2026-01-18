@@ -1,8 +1,6 @@
 
-
-
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, LogOut, Calendar, Clock, UserCircle, Moon, Sun, Settings as SettingsIcon, Archive, FileOutput } from 'lucide-react';
+import { Moon, Sun, Settings as SettingsIcon, UserCircle, FileOutput } from 'lucide-react';
 import { AppView, AppSettings } from './types';
 import Dashboard from './components/Dashboard';
 import SalesInvoiceView from './components/SalesInvoiceView';
@@ -12,7 +10,6 @@ import CustomerBalancesView from './components/CustomerBalancesView';
 import DailyBalancesView from './components/DailyBalancesView';
 import ProfitLossReportView from './components/ProfitLossReportView';
 import StockEntriesView from './components/StockEntriesView';
-import ItemMovementView from './components/ItemMovementView';
 import DetailedItemMovementView from './components/DetailedItemMovementView';
 import SalesReturnView from './components/SalesReturnView';
 import PurchaseReturnView from './components/PurchaseReturnView';
@@ -74,7 +71,6 @@ const App: React.FC = () => {
       case AppView.INVENTORY: return <InventoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
       case AppView.CASH_JOURNAL: return <CashJournalView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
       case AppView.CUSTOMER_BALANCES: return <CustomerBalancesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
-      // Fixed: Removed undefined CashFileView and used DailyBalancesView directly to resolve duplicate identifier and syntax errors
       case AppView.CASH_FILE: return <DailyBalancesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
       case AppView.REPORTS: return <ProfitLossReportView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
       case AppView.STOCK_ENTRIES: return <StockEntriesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
@@ -88,6 +84,7 @@ const App: React.FC = () => {
       case AppView.PARTY_MANAGEMENT: return <PartyManagementView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
       case AppView.SETTINGS: return <SettingsView onBack={() => setCurrentView(AppView.DASHBOARD)} settings={settings} setSettings={setSettings} />;
       case AppView.WAREHOUSE_ANALYTICS: return <WarehouseAnalyticsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+      case AppView.WAREHOUSE_MANAGEMENT: return <WarehouseManagementView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
       case AppView.ARCHIVES: return <ArchivesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
       default: return <Dashboard setView={setCurrentView} />;
     }
@@ -99,7 +96,7 @@ const App: React.FC = () => {
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${settings.darkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'}>
-      <header className={`${settings.darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'} border-b px-6 py-3 flex items-center justify-between sticky top-0 z-50`}>
+      <header className={`${settings.darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'} border-b px-6 py-3 flex items-center justify-between sticky top-0 z-50 no-print`}>
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setCurrentView(AppView.DASHBOARD)}>
             {settings.logoUrl ? (

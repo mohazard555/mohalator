@@ -24,7 +24,7 @@ export const MENU_GROUPS = [
       { label: 'تصدير فاتورة احترافي', view: AppView.PROFESSIONAL_INVOICE },
       { label: 'كشف حساب زبون', view: AppView.DETAILED_SALES_REPORT },
       { label: 'الدفعات المستحقة', view: AppView.CUSTOMER_BALANCES },
-      { label: 'إدارة العملاء', view: AppView.PARTY_MANAGEMENT },
+      { label: 'إدارة ملفات العملاء', view: AppView.PARTY_MANAGEMENT },
     ]
   },
   {
@@ -33,7 +33,7 @@ export const MENU_GROUPS = [
     items: [
       { label: 'فاتورة مشتريات', view: AppView.PURCHASE_INVOICE },
       { label: 'مرتجع مشتريات', view: AppView.PURCHASE_RETURN },
-      { label: 'إدارة الموردين', view: AppView.PARTY_MANAGEMENT },
+      { label: 'إدارة ملفات الموردين', view: AppView.PARTY_MANAGEMENT },
     ]
   },
   {
@@ -44,6 +44,7 @@ export const MENU_GROUPS = [
       { label: 'إدخالات وصرف المواد', view: AppView.STOCK_ENTRIES },
       { label: 'حركة مادة مفصلة', view: AppView.DETAILED_ITEM_MOVEMENT },
       { label: 'تحليلات المستودع', view: AppView.WAREHOUSE_ANALYTICS },
+      { label: 'إدارة المستودعات', view: AppView.WAREHOUSE_MANAGEMENT },
     ]
   },
   {
