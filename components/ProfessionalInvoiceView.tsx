@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowRight, Printer, Search, FileDown } from 'lucide-react';
+import { ArrowRight, Printer, Search, FileDown, CheckCircle } from 'lucide-react';
 import { SalesInvoice, AppSettings } from '../types';
 
 interface ProfessionalInvoiceViewProps {
@@ -24,7 +24,6 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto" dir="rtl">
-      {/* Tool Bar */}
       <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col md:flex-row items-center justify-between no-print gap-4 shadow-xl">
          <div className="flex items-center gap-4">
             <button onClick={onBack} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl text-readable transition-all">
@@ -47,23 +46,22 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
          </div>
       </div>
 
-      {/* Realistic Invoice Paper Container */}
       <div className="flex justify-center p-4 md:p-10 bg-zinc-200 dark:bg-zinc-800/50 rounded-3xl overflow-hidden min-h-screen">
          <div className="bg-white text-zinc-900 w-full max-w-[210mm] min-h-[297mm] shadow-[0_0_50px_rgba(0,0,0,0.15)] flex flex-col relative overflow-hidden print:shadow-none print:m-0" id="professional-invoice-document">
             
-            {/* Background Watermark */}
             <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none select-none -rotate-45">
                <span className="text-[120px] font-black uppercase">{settings.companyName}</span>
             </div>
 
-            {/* Document Header */}
             <div className="p-10 relative z-10 border-b-8 border-rose-900">
                <div className="flex justify-between items-start">
                   <div className="space-y-4">
                      {settings.logoUrl ? (
                         <img src={settings.logoUrl} className="w-24 h-24 object-contain" alt="Company Logo" />
                      ) : (
-                        <div className="w-20 h-20 bg-rose-900 rounded-3xl flex items-center justify-center text-white text-3xl font-black shadow-xl">SH</div>
+                        <div className="w-20 h-20 bg-rose-900 rounded-3xl flex items-center justify-center text-white text-3xl font-black shadow-xl">
+                          {settings.companyName.substring(0, 2).toUpperCase()}
+                        </div>
                      )}
                      <div>
                         <h1 className="text-3xl font-black text-rose-900">{settings.companyName}</h1>
@@ -87,7 +85,6 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                </div>
             </div>
 
-            {/* Customer & Info Grid */}
             <div className="px-10 py-8 grid grid-cols-2 gap-10 relative z-10">
                <div className="space-y-4">
                   <div className="flex flex-col">
@@ -107,7 +104,6 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                </div>
             </div>
 
-            {/* Realistic Table */}
             <div className="px-10 flex-1 relative z-10">
                <table className="w-full border-collapse">
                   <thead>
@@ -121,7 +117,15 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                   <tbody className="text-sm">
                      {invoice ? invoice.items.map((item, idx) => (
                         <tr key={idx} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
-                           <td className="p-5 font-bold text-zinc-800">{item.name}</td>
+                           <td className="p-5 font-bold text-zinc-800">
+                              <div className="flex items-center gap-3">
+                                 {item.image && <img src={item.image} className="w-10 h-10 object-cover rounded-md shadow-sm border border-zinc-100" />}
+                                 <div className="flex flex-col">
+                                    <span>{item.name}</span>
+                                    <span className="text-[9px] text-zinc-400 font-mono">SN: {item.serialNumber || '-'}</span>
+                                 </div>
+                              </div>
+                           </td>
                            <td className="p-5 text-center font-mono font-bold">{item.quantity}</td>
                            <td className="p-5 text-center font-mono font-bold">{item.price.toLocaleString()}</td>
                            <td className="p-5 text-center font-mono font-black text-lg">{item.total.toLocaleString()}</td>
@@ -135,7 +139,6 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                </table>
             </div>
 
-            {/* Total Section */}
             <div className="p-10 bg-zinc-900 text-white relative z-10">
                <div className="flex justify-between items-center">
                   <div className="space-y-2">
@@ -152,7 +155,6 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                </div>
             </div>
 
-            {/* Signature Area */}
             <div className="p-10 flex justify-between items-end relative z-10">
                <div className="text-center space-y-20">
                   <div className="text-[10px] font-black text-zinc-400 uppercase">الختم والتوقيع / STAMP & SIGN</div>
@@ -165,19 +167,12 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                   <div className="text-rose-900 font-black mt-4">WWW.SHENO.PRO</div>
                </div>
             </div>
-
-            {/* Floating Document Decoration */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-rose-900/5 -translate-y-1/2 translate-x-1/2 rounded-full"></div>
          </div>
       </div>
 
-      {/* Action FAB */}
       <div className="fixed bottom-10 left-10 flex flex-col gap-3 no-print animate-in slide-in-from-bottom-10">
          <button onClick={() => window.print()} className="bg-rose-900 text-white w-20 h-20 rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-90 transition-all">
             <Printer className="w-8 h-8" />
-         </button>
-         <button className="bg-zinc-800 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-90 transition-all">
-            <FileDown className="w-6 h-6" />
          </button>
       </div>
     </div>

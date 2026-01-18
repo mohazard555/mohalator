@@ -34,105 +34,112 @@ const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onB
   }, { in: 0, out: 0, ret: 0 });
 
   return (
-    <div className="space-y-6">
-      {/* Header matching provided photo styles */}
-      <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4 flex flex-col md:flex-row items-center gap-6 shadow-2xl">
-         <button onClick={onBack} className="bg-rose-900 text-white px-6 py-2 rounded font-black shadow-lg flex items-center gap-2 border border-white/10">
-            <LayoutPanelLeft className="w-5 h-5" /> EXIT
-         </button>
-         
-         <div className="flex-1 flex flex-col items-center">
-            <span className="bg-rose-900/50 px-4 py-1 rounded-t-lg text-white font-bold text-xs">ادخل اسم المادة أو الكود</span>
-            <input 
-              type="text" 
-              value={itemSearch} 
-              onChange={e => setItemSearch(e.target.value)}
-              className="bg-white text-zinc-900 border-2 border-rose-900 text-center font-black text-xl w-full max-w-md py-2 rounded-b-lg outline-none"
-              placeholder="البحث في الحركات..."
-            />
-         </div>
-
-         <div className="bg-rose-900 px-8 py-3 rounded text-white font-black text-xl shadow-lg border border-white/20">
+    <div className="space-y-6" dir="rtl">
+      {/* Header matching provided photo styles exactly */}
+      <div className="bg-zinc-900 border-b border-zinc-800 p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl rounded-3xl">
+         <div className="bg-rose-900 px-8 py-3 rounded-lg text-white font-black text-xl shadow-lg border border-white/10 uppercase tracking-tight">
            تقرير حركة مادة مفصلة
          </div>
+         
+         <div className="flex-1 flex flex-col items-center">
+            <span className="bg-rose-900/40 px-4 py-1 rounded-t-lg text-white font-bold text-[10px] uppercase tracking-widest border-x border-t border-rose-900/50">ادخل اسم المادة أو الكود</span>
+            <div className="relative w-full max-w-2xl group">
+               <input 
+                 type="text" 
+                 value={itemSearch} 
+                 onChange={e => setItemSearch(e.target.value)}
+                 className="bg-white text-zinc-900 border-2 border-rose-900 text-center font-black text-2xl w-full py-3 rounded-xl outline-none shadow-[0_0_20px_rgba(225,29,72,0.1)] focus:shadow-[0_0_30px_rgba(225,29,72,0.2)] transition-all"
+                 placeholder="البحث في الحركات..."
+               />
+               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-300 w-6 h-6 group-focus-within:text-rose-900 transition-colors" />
+            </div>
+         </div>
+
+         <button onClick={onBack} className="bg-rose-900 text-white px-8 py-3 rounded-xl font-black shadow-lg flex items-center gap-3 border border-white/10 hover:brightness-110 active:scale-95 transition-all">
+            EXIT <span className="font-mono text-xl">[]</span>
+         </button>
       </div>
 
-      {/* Control Bar - Filters */}
-      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center justify-center gap-6 shadow-md">
-         <div className="flex items-center gap-2">
-            <span className="text-xs font-black text-zinc-500">نوع الحركة</span>
-            <select value={moveType} onChange={e => setMoveType(e.target.value)} className="bg-zinc-50 dark:bg-zinc-800 border p-2 rounded-xl font-bold text-sm outline-none">
-               <option value="الكل">جميع الحركات</option>
-               <option value="إدخال">إدخال فقط</option>
-               <option value="صرف">صرف فقط</option>
-               <option value="مرتجع">مرتجع فقط</option>
-            </select>
-         </div>
-         <div className="flex items-center gap-3">
-            <div className="flex flex-col">
-               <span className="text-[10px] text-zinc-400 font-bold">من تاريخ</span>
-               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-zinc-50 dark:bg-zinc-800 border p-2 rounded-xl text-xs font-mono" />
+      {/* Control Bar - Filters & Totals */}
+      <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 flex flex-wrap items-center justify-between gap-8 shadow-xl">
+         <div className="flex items-center gap-6">
+            <div className="flex flex-col gap-1">
+               <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">نوع الحركة</span>
+               <select value={moveType} onChange={e => setMoveType(e.target.value)} className="bg-zinc-800 border border-zinc-700 text-white p-3 rounded-2xl font-black text-sm outline-none focus:border-rose-900 transition-colors min-w-[200px] appearance-none text-center">
+                  <option value="الكل">جميع الحركات</option>
+                  <option value="إدخال">إدخال فقط</option>
+                  <option value="صرف">صرف فقط</option>
+                  <option value="مرتجع">مرتجع فقط</option>
+               </select>
             </div>
-            <span className="text-zinc-300">←</span>
-            <div className="flex flex-col">
-               <span className="text-[10px] text-zinc-400 font-bold">إلى تاريخ</span>
-               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-zinc-50 dark:bg-zinc-800 border p-2 rounded-xl text-xs font-mono" />
+
+            <div className="flex items-center gap-3">
+               <div className="flex flex-col gap-1">
+                  <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">من تاريخ</span>
+                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-zinc-800 border border-zinc-700 text-white p-3 rounded-2xl text-xs font-mono outline-none focus:border-rose-900" />
+               </div>
+               <span className="text-zinc-700 mt-5">←</span>
+               <div className="flex flex-col gap-1">
+                  <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">إلى تاريخ</span>
+                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-zinc-800 border border-zinc-700 text-white p-3 rounded-2xl text-xs font-mono outline-none focus:border-rose-900" />
+               </div>
             </div>
          </div>
+
          <div className="flex gap-4">
-            <div className="bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl flex flex-col items-center">
-               <span className="text-[10px] font-black text-emerald-600 uppercase">إجمالي الإدخال</span>
-               <span className="font-mono font-black text-emerald-500">{totals.in.toLocaleString()}</span>
+            <div className="bg-emerald-500/5 border border-emerald-500/20 px-8 py-3 rounded-2xl flex flex-col items-center min-w-[140px] shadow-inner">
+               <span className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-1">إجمالي الإدخال</span>
+               <span className="font-mono font-black text-2xl text-emerald-400">{totals.in.toLocaleString()}</span>
             </div>
-            <div className="bg-rose-500/10 border border-rose-500/20 px-4 py-2 rounded-xl flex flex-col items-center">
-               <span className="text-[10px] font-black text-rose-600 uppercase">إجمالي الصرف</span>
-               <span className="font-mono font-black text-rose-500">{totals.out.toLocaleString()}</span>
+            <div className="bg-rose-500/5 border border-rose-500/20 px-8 py-3 rounded-2xl flex flex-col items-center min-w-[140px] shadow-inner">
+               <span className="text-[9px] font-black text-rose-500 uppercase tracking-[0.2em] mb-1">إجمالي الصرف</span>
+               <span className="font-mono font-black text-2xl text-rose-400">{totals.out.toLocaleString()}</span>
             </div>
          </div>
       </div>
 
       {/* Main Data Table */}
-      <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl">
+      <div className="bg-zinc-950 rounded-3xl border border-zinc-800 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
          <div className="overflow-x-auto">
             <table className="w-full text-right border-collapse text-xs">
                <thead>
-                  <tr className="bg-rose-900 text-white font-black h-12 text-center">
-                     <th className="p-2 border border-rose-800">التاريخ</th>
-                     <th className="p-2 border border-rose-800">الصنف</th>
-                     <th className="p-2 border border-rose-800">الوحدة</th>
-                     <th className="p-2 border border-rose-800">السعر</th>
-                     <th className="p-2 border border-rose-800">نوع الحركة</th>
-                     <th className="p-2 border border-rose-800">الكمية</th>
-                     <th className="p-2 border border-rose-800">المستودع</th>
-                     <th className="p-2 border border-rose-800">البيان / الملاحظات</th>
+                  <tr className="bg-rose-900 text-white font-black h-14 text-center border-b border-rose-800">
+                     <th className="p-2 border-l border-rose-800/50 w-32">التاريخ</th>
+                     <th className="p-2 border-l border-rose-800/50">الصنف / المادة</th>
+                     <th className="p-2 border-l border-rose-800/50 w-20">الوحدة</th>
+                     <th className="p-2 border-l border-rose-800/50 w-28">السعر</th>
+                     <th className="p-2 border-l border-rose-800/50 w-32">نوع الحركة</th>
+                     <th className="p-2 border-l border-rose-800/50 w-24">الكمية</th>
+                     <th className="p-2 border-l border-rose-800/50 w-40">المستودع</th>
+                     <th className="p-2">البيان / الملاحظات</th>
                   </tr>
                </thead>
-               <tbody className="font-bold text-center">
+               <tbody className="font-bold text-center divide-y divide-zinc-900">
                   {filtered.length === 0 ? (
-                    Array.from({ length: 10 }).map((_, i) => (
-                      <tr key={i} className="h-10 border-b border-zinc-100 dark:border-zinc-800">
-                         {Array.from({ length: 8 }).map((__, j) => <td key={j} className="border-x border-zinc-100 dark:border-zinc-800"></td>)}
+                    Array.from({ length: 12 }).map((_, i) => (
+                      <tr key={i} className="h-12 bg-zinc-900/20 group">
+                         {Array.from({ length: 8 }).map((__, j) => <td key={j} className="border-x border-zinc-900/50 group-hover:bg-zinc-900/40 transition-colors"></td>)}
                       </tr>
                     ))
                   ) : (
                     filtered.map(e => (
-                      <tr key={e.id} className="h-11 hover:bg-rose-50 dark:hover:bg-rose-900/10 border-b border-zinc-100 dark:border-zinc-800 transition-colors">
-                         <td className="p-2 font-mono text-zinc-400">{e.date}</td>
-                         <td className="p-2 text-right pr-4">{e.itemName}</td>
-                         <td className="p-2 text-zinc-500">{e.unit}</td>
-                         <td className="p-2 font-mono">{e.price.toLocaleString()}</td>
-                         <td className="p-2">
-                            <span className={`px-3 py-1 rounded-full text-[9px] font-black ${
-                              e.movementType === 'إدخال' ? 'bg-emerald-500/10 text-emerald-600' : 
-                              e.movementType === 'صرف' ? 'bg-rose-500/10 text-rose-600' : 
-                              'bg-amber-500/10 text-amber-600'
+                      <tr key={e.id} className="h-14 hover:bg-rose-900/10 transition-colors group">
+                         <td className="p-2 font-mono text-zinc-500 border-l border-zinc-900/50">{e.date}</td>
+                         <td className="p-2 text-right pr-6 border-l border-zinc-900/50 text-zinc-100">{e.itemName}</td>
+                         <td className="p-2 text-zinc-500 border-l border-zinc-900/50">{e.unit}</td>
+                         <td className="p-2 font-mono text-zinc-300 border-l border-zinc-900/50">{e.price.toLocaleString()}</td>
+                         <td className="p-2 border-l border-zinc-900/50">
+                            <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest ${
+                              e.movementType === 'إدخال' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 
+                              e.movementType === 'صرف' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' : 
+                              'bg-amber-500/10 text-amber-500 border border-amber-500/20'
                             }`}>
                                {e.movementType}
                             </span>
                          </td>
-                         <td className="p-2 font-mono text-lg text-primary">{e.quantity.toLocaleString()}</td>
-                         <td className="p-2 text-[10px] text-zinc-400">{e.warehouse}</td>
-                         <td className="p-2 text-right pr-4 text-zinc-500 font-normal">{e.statement}</td>
+                         <td className="p-2 font-mono text-xl text-rose-500 border-l border-zinc-900/50">{e.quantity.toLocaleString()}</td>
+                         <td className="p-2 text-[10px] text-zinc-400 border-l border-zinc-900/50 uppercase">{e.warehouse}</td>
+                         <td className="p-2 text-right pr-6 text-zinc-500 font-normal italic">{e.statement || '-'}</td>
                       </tr>
                     ))
                   )}
@@ -141,8 +148,8 @@ const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onB
          </div>
       </div>
       
-      <div className="flex justify-end no-print pt-4">
-         <button onClick={() => window.print()} className="bg-rose-900 text-white px-12 py-3 rounded-2xl font-black shadow-xl flex items-center gap-3 hover:bg-rose-800">
+      <div className="flex justify-end no-print pt-6 pb-12">
+         <button onClick={() => window.print()} className="bg-rose-900 text-white px-16 py-4 rounded-2xl font-black shadow-2xl flex items-center gap-4 hover:bg-rose-800 hover:-translate-y-1 transition-all active:scale-95">
             <Printer className="w-6 h-6" /> طباعة تقرير الحركة المفصلة
          </button>
       </div>

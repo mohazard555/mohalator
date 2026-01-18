@@ -21,11 +21,32 @@
       .text-primary { color: var(--primary-color); }
       .border-primary { border-color: var(--primary-color); }
       
-      /* Print Styles */
+      /* Print Styles Overrides */
       @media print {
         .no-print { display: none !important; }
-        body { background: white !important; color: black !important; }
+        body, #root, main, div, table, tr, td, th, section, header {
+          background-color: white !important;
+          background: white !important;
+          color: black !important;
+          border-color: #d1d5db !important;
+          box-shadow: none !important;
+          text-shadow: none !important;
+        }
+        .bg-primary { background-color: transparent !important; border: 1px solid black !important; }
+        .text-primary { color: black !important; font-weight: bold !important; }
         .print-only { display: block !important; }
+        
+        /* Force remove dark utility backgrounds */
+        .dark { background-color: white !important; }
+        [class*="bg-zinc-"], [class*="bg-rose-"], [class*="bg-emerald-"], [class*="bg-amber-"] {
+           background-color: transparent !important;
+           border: 1px solid #eee !important;
+           color: black !important;
+        }
+        table thead tr {
+           background-color: #f3f4f6 !important;
+           color: black !important;
+        }
       }
     </style>
   <script type="importmap">
@@ -43,7 +64,6 @@
 </head>
   <body>
     <div id="root"></div>
-    <!-- Entry point script is CRITICAL for Vite/React to load -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>

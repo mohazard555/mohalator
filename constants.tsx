@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ShoppingCart, Warehouse, Wallet, Settings, Truck, RotateCcw, FileText, ClipboardList, Users } from 'lucide-react';
+import { ShoppingCart, Warehouse, Wallet, Settings, Truck, RotateCcw, FileText, ClipboardList, Users, History } from 'lucide-react';
 import { AppView } from './types';
 
 export const MENU_GROUPS = [
@@ -20,37 +20,32 @@ export const MENU_GROUPS = [
     icon: <ShoppingCart className="w-5 h-5" />,
     items: [
       { label: 'فاتورة مبيعات ذكية', view: AppView.SALES_INVOICE },
-      { label: 'مرتجع مبيعات', view: AppView.SALES_RETURN },
+      { label: 'سجل المبيعات العام', view: AppView.SALES_HISTORY },
+      { label: 'سجل مرتجع مبيعات', view: AppView.SALES_RETURN_HISTORY },
+      { label: 'مرتجع مبيعات (جديد)', view: AppView.SALES_RETURN },
       { label: 'تصدير فاتورة احترافي', view: AppView.PROFESSIONAL_INVOICE },
-      { label: 'كشف حساب زبون', view: AppView.DETAILED_SALES_REPORT },
-      { label: 'الدفعات المستحقة', view: AppView.CUSTOMER_BALANCES },
-      { label: 'إدارة ملفات العملاء', view: AppView.PARTY_MANAGEMENT },
+      { label: 'كشف حساب زبون مفصل', view: AppView.DETAILED_SALES_REPORT },
+      { label: 'أرصدة العملاء والموردين', view: AppView.CUSTOMER_BALANCES },
     ]
   },
   {
-    title: 'المشتريات والموردين',
-    icon: <Truck className="w-5 h-5" />,
-    items: [
-      { label: 'فاتورة مشتريات', view: AppView.PURCHASE_INVOICE },
-      { label: 'مرتجع مشتريات', view: AppView.PURCHASE_RETURN },
-      { label: 'إدارة ملفات الموردين', view: AppView.PARTY_MANAGEMENT },
-    ]
-  },
-  {
-    title: 'المستودعات والمواد',
+    title: 'المشتريات والمستودعات',
     icon: <Warehouse className="w-5 h-5" />,
     items: [
-      { label: 'قائمة المواد', view: AppView.INVENTORY },
-      { label: 'إدخالات وصرف المواد', view: AppView.STOCK_ENTRIES },
+      { label: 'فاتورة مشتريات', view: AppView.PURCHASE_INVOICE },
+      { label: 'سجل المشتريات', view: AppView.PURCHASE_HISTORY },
+      { label: 'سجل مرتجع مشتريات', view: AppView.PURCHASE_RETURN_HISTORY },
       { label: 'حركة مادة مفصلة', view: AppView.DETAILED_ITEM_MOVEMENT },
-      { label: 'تحليلات المستودع', view: AppView.WAREHOUSE_ANALYTICS },
-      { label: 'إدارة المستودعات', view: AppView.WAREHOUSE_MANAGEMENT },
+      { label: 'قائمة المواد والجرد', view: AppView.INVENTORY },
+      { label: 'إدخالات وصرف المواد', view: AppView.STOCK_ENTRIES },
+      { label: 'إدارة الحسابات (جهات)', view: AppView.PARTY_MANAGEMENT },
     ]
   },
   {
     title: 'أدوات النظام',
     icon: <Settings className="w-5 h-5" />,
     items: [
+      { label: 'تحليلات المستودع', view: AppView.WAREHOUSE_ANALYTICS },
       { label: 'الأرشفة والتدوير', view: AppView.ARCHIVES },
       { label: 'إعدادات النظام', view: AppView.SETTINGS },
     ]

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Search, Printer, Calendar, ArrowLeft } from 'lucide-react';
-import { CashEntry } from '../types';
+import { ArrowRight, Printer, Calendar, ArrowLeft, Search } from 'lucide-react';
+import { CashEntry, AppSettings } from '../types';
 
 interface DailyBalancesViewProps {
   onBack: () => void;
@@ -18,29 +18,34 @@ interface DayAggregate {
 }
 
 const DailyBalancesView: React.FC<DailyBalancesViewProps> = ({ onBack }) => {
-  const [searchDate, setSearchDate] = useState('');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [aggregates, setAggregates] = useState<DayAggregate[]>([]);
-  const [selectedDayTotals, setSelectedDayTotals] = useState<DayAggregate | null>(null);
+  const [rangeTotals, setRangeTotals] = useState<DayAggregate | null>(null);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
 
   useEffect(() => {
+    // Load Settings for Logo and Currency
+    const savedSettings = localStorage.getItem('sheno_settings');
+    if (savedSettings) setSettings(JSON.parse(savedSettings));
+
     const saved = localStorage.getItem('sheno_cash_journal');
     if (saved) {
       try {
         const entries: CashEntry[] = JSON.parse(saved);
         
         // Group and aggregate by date
-        // Fix: Explicitly typing reduce callback to avoid property access on unknown
         const grouped = entries.reduce((acc: Record<string, DayAggregate>, entry: CashEntry) => {
           const date = entry.date;
           if (!acc[date]) {
             acc[date] = { date, receivedSYP: 0, paidSYP: 0, receivedUSD: 0, paidUSD: 0, balanceSYP: 0, balanceUSD: 0 };
           }
-          acc[date].receivedSYP += entry.receivedSYP;
-          acc[date].paidSYP += entry.paidSYP;
-          acc[date].receivedUSD += entry.receivedUSD;
-          acc[date].paidUSD += entry.paidUSD;
-          acc[date].balanceSYP += (entry.receivedSYP - entry.paidSYP);
-          acc[date].balanceUSD += (entry.receivedUSD - entry.paidUSD);
+          acc[date].receivedSYP += (entry.receivedSYP || 0);
+          acc[date].paidSYP += (entry.paidSYP || 0);
+          acc[date].receivedUSD += (entry.receivedUSD || 0);
+          acc[date].paidUSD += (entry.paidUSD || 0);
+          acc[date].balanceSYP += ((entry.receivedSYP || 0) - (entry.paidSYP || 0));
+          acc[date].balanceUSD += ((entry.receivedUSD || 0) - (entry.paidUSD || 0));
           return acc;
         }, {} as Record<string, DayAggregate>);
 
@@ -54,77 +59,130 @@ const DailyBalancesView: React.FC<DailyBalancesViewProps> = ({ onBack }) => {
   }, []);
 
   useEffect(() => {
-    if (searchDate) {
-      const match = aggregates.find(a => a.date === searchDate);
-      setSelectedDayTotals(match || null);
+    // Calculate totals for the selected range
+    const filtered = aggregates.filter(a => a.date >= startDate && a.date <= endDate);
+    if (filtered.length > 0) {
+      const totals = filtered.reduce((acc, curr) => ({
+        date: 'range',
+        receivedSYP: acc.receivedSYP + curr.receivedSYP,
+        paidSYP: acc.paidSYP + curr.paidSYP,
+        receivedUSD: acc.receivedUSD + curr.receivedUSD,
+        paidUSD: acc.paidUSD + curr.paidUSD,
+        balanceSYP: acc.balanceSYP + curr.balanceSYP,
+        balanceUSD: acc.balanceUSD + curr.balanceUSD
+      }), { date: 'range', receivedSYP: 0, paidSYP: 0, receivedUSD: 0, paidUSD: 0, balanceSYP: 0, balanceUSD: 0 });
+      setRangeTotals(totals);
     } else {
-      setSelectedDayTotals(null);
+      setRangeTotals(null);
     }
-  }, [searchDate, aggregates]);
+  }, [startDate, endDate, aggregates]);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-400">
+          <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors">
             <ArrowRight className="w-6 h-6" />
           </button>
-          <h2 className="text-2xl font-bold">إجمالي أرصدة الصندوق اليومية</h2>
+          <h2 className="text-2xl font-black text-readable">إجمالي أرصدة الصندوق اليومية</h2>
         </div>
-        <button className="bg-zinc-800 text-zinc-300 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-zinc-700">
+        <button onClick={() => window.print()} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 hover:bg-zinc-700 transition-all shadow-lg">
           <Printer className="w-5 h-5" /> طباعة التقرير
         </button>
       </div>
 
-      {/* Stats Summary Area - Matching the red header style in the photo */}
-      <div className="bg-rose-900 border border-rose-800 rounded-lg overflow-hidden shadow-xl text-white">
+      {/* Stats Summary Area - Enhanced with Range Filter and Detail */}
+      <div className="bg-rose-900 border border-rose-800 rounded-2xl overflow-hidden shadow-2xl text-white">
         <div className="flex flex-col md:flex-row border-b border-rose-800">
-          {/* Logo Section */}
-          <div className="p-4 bg-white flex flex-col items-center justify-center min-w-[150px]">
-            <div className="text-zinc-900 font-black text-2xl tracking-tighter">SHENO</div>
-            <div className="text-zinc-700 text-[8px] tracking-[0.2em] font-bold">SHENO FOR PRINT</div>
+          {/* Dynamic Logo Section */}
+          <div className="p-4 bg-white flex flex-col items-center justify-center min-w-[180px] border-l-2 border-rose-800">
+            {settings?.logoUrl ? (
+              <img src={settings.logoUrl} alt="Logo" className="h-14 w-auto object-contain mb-1" />
+            ) : (
+              <div className="text-zinc-900 font-black text-3xl tracking-tighter">SHENO</div>
+            )}
+            <div className="text-zinc-400 text-[9px] tracking-[0.3em] font-black uppercase">
+              {settings?.companyName || 'Sheno Accounting'}
+            </div>
           </div>
 
-          <div className="flex-1 grid grid-cols-2 md:grid-cols-4 divide-x divide-x-reverse divide-rose-800">
-            {/* Column 1: Date Input */}
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x md:divide-x-reverse divide-rose-800">
+            {/* Column 1: Date Range Selection */}
             <div className="flex flex-col h-full">
-              <div className="bg-rose-800/50 p-2 text-center text-sm font-bold border-b border-rose-800">ادخل التاريخ</div>
-              <div className="flex-1 p-2 flex items-center justify-center">
-                <input 
-                  type="date" 
-                  value={searchDate}
-                  onChange={(e) => setSearchDate(e.target.value)}
-                  className="bg-transparent border-none text-white text-lg font-mono outline-none text-center" 
-                />
+              <div className="bg-rose-800/60 p-2 text-center text-[10px] font-black uppercase tracking-widest border-b border-rose-800 flex items-center justify-center gap-2">
+                <Calendar className="w-3 h-3" /> فلترة التاريخ (من - إلى)
               </div>
-            </div>
-
-            {/* Column 2: Total Receipts */}
-            <div className="flex flex-col h-full">
-              <div className="bg-rose-800/50 p-2 text-center text-sm font-bold border-b border-rose-800">المقبوضات</div>
-              <div className="flex-1 p-2 flex flex-col items-center justify-center">
-                <div className="text-xl font-mono font-bold">{selectedDayTotals?.receivedSYP.toLocaleString() || '0'}</div>
-                <div className="text-xs text-rose-200 mt-1">المقبوضات $ : <span className="font-mono">{selectedDayTotals?.receivedUSD.toLocaleString() || '0'}</span></div>
-              </div>
-            </div>
-
-            {/* Column 3: Total Payments */}
-            <div className="flex flex-col h-full">
-              <div className="bg-rose-800/50 p-2 text-center text-sm font-bold border-b border-rose-800">المدفوعات</div>
-              <div className="flex-1 p-2 flex flex-col items-center justify-center">
-                <div className="text-xl font-mono font-bold">{selectedDayTotals?.paidSYP.toLocaleString() || '0'}</div>
-                <div className="text-xs text-rose-200 mt-1">المدفوعات $ : <span className="font-mono">{selectedDayTotals?.paidUSD.toLocaleString() || '0'}</span></div>
-              </div>
-            </div>
-
-            {/* Column 4: Final Balance */}
-            <div className="flex flex-col h-full">
-              <div className="bg-rose-800/50 p-2 text-center text-sm font-bold border-b border-rose-800">رصيد الخزينة اليومي</div>
-              <div className="flex-1 p-2 flex flex-col items-center justify-center">
-                <div className={`text-xl font-mono font-bold ${selectedDayTotals && selectedDayTotals.balanceSYP < 0 ? 'text-zinc-900 bg-white px-2 rounded' : ''}`}>
-                  {selectedDayTotals?.balanceSYP.toLocaleString() || '0'}
+              <div className="flex-1 p-3 flex flex-col items-center justify-center gap-2 bg-rose-900/30">
+                <div className="flex items-center gap-2 w-full">
+                  <span className="text-[10px] font-bold opacity-60 w-6">من</span>
+                  <input 
+                    type="date" 
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="bg-rose-950/50 border border-rose-700/50 rounded-lg px-2 py-1 text-sm font-mono outline-none flex-1 focus:border-white transition-all" 
+                  />
                 </div>
-                <div className="text-xs text-rose-200 mt-1">رصيد الخزينة اليومي $ : <span className="font-mono">{selectedDayTotals?.balanceUSD.toLocaleString() || '0'}</span></div>
+                <div className="flex items-center gap-2 w-full">
+                  <span className="text-[10px] font-bold opacity-60 w-6">إلى</span>
+                  <input 
+                    type="date" 
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="bg-rose-950/50 border border-rose-700/50 rounded-lg px-2 py-1 text-sm font-mono outline-none flex-1 focus:border-white transition-all" 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Column 2: Detailed Receipts */}
+            <div className="flex flex-col h-full">
+              <div className="bg-rose-800/60 p-2 text-center text-[10px] font-black uppercase tracking-widest border-b border-rose-800">إجمالي المقبوضات</div>
+              <div className="flex-1 p-3 flex flex-col items-center justify-center gap-1">
+                <div className="flex flex-col items-center">
+                  <span className="text-xs font-bold opacity-60">{settings?.currency || 'ل.س'}</span>
+                  <div className="text-2xl font-mono font-black">{rangeTotals?.receivedSYP.toLocaleString() || '0'}</div>
+                </div>
+                <div className="w-full h-px bg-rose-800/50 my-1"></div>
+                <div className="flex flex-col items-center">
+                  <span className="text-xs font-bold opacity-60">$ دولار</span>
+                  <div className="text-xl font-mono font-black text-emerald-400">{rangeTotals?.receivedUSD.toLocaleString() || '0'}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Column 3: Detailed Payments */}
+            <div className="flex flex-col h-full">
+              <div className="bg-rose-800/60 p-2 text-center text-[10px] font-black uppercase tracking-widest border-b border-rose-800">إجمالي المدفوعات</div>
+              <div className="flex-1 p-3 flex flex-col items-center justify-center gap-1">
+                <div className="flex flex-col items-center">
+                  <span className="text-xs font-bold opacity-60">{settings?.currency || 'ل.س'}</span>
+                  <div className="text-2xl font-mono font-black">{rangeTotals?.paidSYP.toLocaleString() || '0'}</div>
+                </div>
+                <div className="w-full h-px bg-rose-800/50 my-1"></div>
+                <div className="flex flex-col items-center">
+                  <span className="text-xs font-bold opacity-60">$ دولار</span>
+                  <div className="text-xl font-mono font-black text-rose-300">{rangeTotals?.paidUSD.toLocaleString() || '0'}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Column 4: Detailed Net Balance */}
+            <div className="flex flex-col h-full bg-rose-950/20">
+              <div className="bg-rose-800/80 p-2 text-center text-[10px] font-black uppercase tracking-widest border-b border-rose-800">صافي رصيد الصندوق</div>
+              <div className="flex-1 p-3 flex flex-col items-center justify-center gap-1">
+                <div className="flex flex-col items-center">
+                  <span className="text-xs font-bold opacity-60">{settings?.currency || 'ل.س'}</span>
+                  <div className={`text-2xl font-mono font-black ${rangeTotals && rangeTotals.balanceSYP < 0 ? 'text-zinc-100 bg-rose-600 px-3 py-0.5 rounded-full' : 'text-white'}`}>
+                    {rangeTotals?.balanceSYP.toLocaleString() || '0'}
+                  </div>
+                </div>
+                <div className="w-full h-px bg-rose-800/50 my-1"></div>
+                <div className="flex flex-col items-center">
+                  <span className="text-xs font-bold opacity-60">$ دولار</span>
+                  <div className={`text-xl font-mono font-black ${rangeTotals && rangeTotals.balanceUSD < 0 ? 'text-rose-300' : 'text-emerald-400'}`}>
+                    {rangeTotals?.balanceUSD.toLocaleString() || '0'}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -132,39 +190,39 @@ const DailyBalancesView: React.FC<DailyBalancesViewProps> = ({ onBack }) => {
       </div>
 
       {/* Main Grid Table */}
-      <div className="bg-zinc-800 rounded-xl border border-zinc-700 overflow-hidden">
+      <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-right border-collapse">
+          <table className="w-full text-right border-collapse text-sm">
             <thead>
-              <tr className="bg-rose-800 text-white text-xs">
-                <th className="p-3 border border-rose-700">التاريخ</th>
-                <th className="p-3 border border-rose-700">المقبوضات</th>
-                <th className="p-3 border border-rose-700">المدفوعات</th>
-                <th className="p-3 border border-rose-700">المقبوضات $</th>
-                <th className="p-3 border border-rose-700">المدفوعات $</th>
-                <th className="p-3 border border-rose-700">رصيد الخزينة السوري</th>
-                <th className="p-3 border border-rose-700">رصيد الخزينة $</th>
+              <tr className="bg-rose-900 text-white text-[10px] font-black uppercase tracking-widest border-b border-rose-800">
+                <th className="p-4 border-l border-rose-800/30">التاريخ</th>
+                <th className="p-4 border-l border-rose-800/30 text-center">المقبوضات ({settings?.currency || 'ل.س'})</th>
+                <th className="p-4 border-l border-rose-800/30 text-center">المدفوعات ({settings?.currency || 'ل.س'})</th>
+                <th className="p-4 border-l border-rose-800/30 text-center font-black">رصيد {settings?.currency || 'ل.س'}</th>
+                <th className="p-4 border-l border-rose-800/30 text-center">المقبوضات ($)</th>
+                <th className="p-4 border-l border-rose-800/30 text-center">المدفوعات ($)</th>
+                <th className="p-4 text-center font-black bg-rose-950/20">رصيد الدولار ($)</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-700">
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 font-bold">
               {aggregates.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-10 text-center text-zinc-500">لا يوجد حركات مسجلة حالياً في دفتر اليومية.</td>
+                  <td colSpan={7} className="p-20 text-center text-zinc-400 italic font-bold">لا يوجد حركات مسجلة حالياً في النظام.</td>
                 </tr>
               ) : (
                 aggregates
-                  .filter(a => !searchDate || a.date === searchDate)
+                  .filter(a => a.date >= startDate && a.date <= endDate)
                   .map((day, idx) => (
-                  <tr key={idx} className={`hover:bg-rose-900/10 transition-colors ${idx % 2 === 0 ? 'bg-zinc-800' : 'bg-zinc-800/50'}`}>
-                    <td className="p-3 font-mono font-bold text-zinc-300">{day.date}</td>
-                    <td className="p-3 font-mono text-zinc-100">{day.receivedSYP.toLocaleString()}</td>
-                    <td className="p-3 font-mono text-zinc-100">{day.paidSYP.toLocaleString()}</td>
-                    <td className="p-3 font-mono text-zinc-100">{day.receivedUSD.toLocaleString()}</td>
-                    <td className="p-3 font-mono text-zinc-100">{day.paidUSD.toLocaleString()}</td>
-                    <td className={`p-3 font-mono font-bold ${day.balanceSYP < 0 ? 'text-rose-500' : 'text-emerald-400'}`}>
+                  <tr key={idx} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors ${idx % 2 === 0 ? '' : 'bg-zinc-50/50 dark:bg-zinc-800/10'}`}>
+                    <td className="p-4 font-mono font-black text-zinc-500">{day.date}</td>
+                    <td className="p-4 text-center font-mono text-zinc-800 dark:text-zinc-200">{day.receivedSYP.toLocaleString()}</td>
+                    <td className="p-4 text-center font-mono text-zinc-800 dark:text-zinc-200">{day.paidSYP.toLocaleString()}</td>
+                    <td className={`p-4 text-center font-mono font-black ${day.balanceSYP < 0 ? 'text-rose-600 bg-rose-50 dark:bg-rose-900/10' : 'text-readable'}`}>
                       {day.balanceSYP.toLocaleString()}
                     </td>
-                    <td className={`p-3 font-mono font-bold ${day.balanceUSD < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                    <td className="p-4 text-center font-mono text-emerald-600">{day.receivedUSD.toLocaleString()}</td>
+                    <td className="p-4 text-center font-mono text-rose-500">{day.paidUSD.toLocaleString()}</td>
+                    <td className={`p-4 text-center font-mono font-black bg-zinc-50 dark:bg-zinc-800/50 ${day.balanceUSD < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
                       {day.balanceUSD.toLocaleString()}
                     </td>
                   </tr>
@@ -175,12 +233,22 @@ const DailyBalancesView: React.FC<DailyBalancesViewProps> = ({ onBack }) => {
         </div>
       </div>
 
-      {/* Footer Info */}
-      <div className="flex justify-between items-center text-xs text-zinc-500 px-2">
-        <div>المجموع الكلي للصفحة: {aggregates.length} أيام</div>
-        <div className="flex gap-4">
-          <span>مجموع المقبوضات ل.س: {aggregates.reduce((s,c) => s + c.receivedSYP, 0).toLocaleString()}</span>
-          <span>مجموع المدفوعات ل.س: {aggregates.reduce((s,c) => s + c.paidSYP, 0).toLocaleString()}</span>
+      {/* Footer Info Area */}
+      <div className="flex flex-col md:flex-row justify-between items-center text-[10px] font-black text-zinc-400 uppercase tracking-widest px-4 gap-4 no-print">
+        <div className="flex items-center gap-2">
+          <ArrowLeft className="w-3 h-3" /> المجموع الكلي: {aggregates.filter(a => a.date >= startDate && a.date <= endDate).length} أيام مختارة
+        </div>
+        <div className="flex flex-wrap gap-6 justify-center">
+          <div className="flex gap-2 items-center">
+            <span className="opacity-60">إجمالي المقبوضات:</span>
+            <span className="text-zinc-600 dark:text-zinc-300 font-mono font-black">{rangeTotals?.receivedSYP.toLocaleString()} ل.س</span>
+            <span className="text-emerald-500 font-mono font-black">/ {rangeTotals?.receivedUSD.toLocaleString()} $</span>
+          </div>
+          <div className="flex gap-2 items-center">
+            <span className="opacity-60">إجمالي المدفوعات:</span>
+            <span className="text-zinc-600 dark:text-zinc-300 font-mono font-black">{rangeTotals?.paidSYP.toLocaleString()} ل.س</span>
+            <span className="text-rose-500 font-mono font-black">/ {rangeTotals?.paidUSD.toLocaleString()} $</span>
+          </div>
         </div>
       </div>
     </div>

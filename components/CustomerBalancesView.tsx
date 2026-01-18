@@ -21,17 +21,11 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
     // Load data for calculation
     const savedInvoices = localStorage.getItem('sheno_sales_invoices');
     const savedCash = localStorage.getItem('sheno_cash_journal');
+    const savedParties = localStorage.getItem('sheno_parties');
     
     if (savedInvoices) setInvoices(JSON.parse(savedInvoices));
     if (savedCash) setCashEntries(JSON.parse(savedCash));
-
-    // Mock parties if empty (normally would come from a party list)
-    setParties([
-      { id: '1', code: '1', name: 'وسيم الشطة', phone: '093', address: 'دمشق', type: PartyType.CUSTOMER, openingBalance: 0 },
-      { id: '2', code: '2', name: 'JF', phone: '094', address: 'حلب', type: PartyType.CUSTOMER, openingBalance: 0 },
-      { id: '3', code: '3', name: 'بشارة', phone: '095', address: 'دمشق', type: PartyType.CUSTOMER, openingBalance: 0 },
-      { id: '4', code: '4', name: 'شركة التوريدات', phone: '011', address: 'حمص', type: PartyType.SUPPLIER, openingBalance: 150000 },
-    ]);
+    if (savedParties) setParties(JSON.parse(savedParties));
   }, []);
 
   const calculateBalance = (party: Party) => {
@@ -50,40 +44,38 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
 
     const totalSales = partyInvoices.reduce((s, i) => s + i.totalAmount, 0);
     const totalPayments = partyPayments.reduce((s, p) => {
-       // For customers: Received is payment. For suppliers: Paid is payment.
        if (party.type === PartyType.CUSTOMER) return s + p.receivedSYP;
        else return s + p.paidSYP;
     }, 0);
 
-    const balance = party.type === PartyType.CUSTOMER 
-      ? (party.openingBalance + totalSales - totalPayments) 
-      : (party.openingBalance + totalSales - totalPayments); // Simplified logic
+    // Balance for Customers: Opening + Sales - Paid
+    // Balance for Suppliers: Opening + Purchases - Paid
+    const balance = party.openingBalance + totalSales - totalPayments;
 
     return { totalSales, totalPayments, balance };
   };
 
   const filteredParties = parties.filter(p => 
     p.type === partyType && 
-    (p.name.includes(searchTerm) || p.code.includes(searchTerm))
+    (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.code.includes(searchTerm))
   );
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-400">
+          <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors">
             <ArrowRight className="w-6 h-6" />
           </button>
-          <h2 className="text-2xl font-bold">أرصدة {partyType === PartyType.CUSTOMER ? 'العملاء' : 'الموردين'}</h2>
+          <h2 className="text-2xl font-black text-readable">أرصدة {partyType === PartyType.CUSTOMER ? 'العملاء' : 'الموردين'}</h2>
         </div>
       </div>
 
-      <div className="bg-zinc-800 p-4 rounded-xl border border-zinc-700 flex flex-wrap gap-4 items-center">
-        {/* Type Filter */}
-        <div className="flex items-center gap-2 bg-zinc-900 px-3 py-2 rounded-lg border border-zinc-700">
+      <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-wrap gap-4 items-center shadow-sm">
+        <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800 px-4 py-2 rounded-2xl border border-zinc-200 dark:border-zinc-700">
            <Filter className="w-4 h-4 text-zinc-500" />
            <select 
-             className="bg-transparent text-sm outline-none font-bold"
+             className="bg-transparent text-sm outline-none font-black"
              value={partyType}
              onChange={e => setPartyType(e.target.value as PartyType)}
            >
@@ -92,61 +84,60 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
            </select>
         </div>
 
-        {/* Name Search */}
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 w-5 h-5" />
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
           <input 
             type="text" 
             placeholder="البحث بالاسم أو الكود..."
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg py-2 pr-10 outline-none text-sm"
+            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-2.5 pr-12 pl-4 outline-none focus:ring-2 focus:ring-primary transition-all font-bold"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
 
-        {/* Date Filter */}
-        <div className="flex items-center gap-2 bg-zinc-900 px-3 py-2 rounded-lg border border-zinc-700">
-           <Calendar className="w-4 h-4 text-zinc-500" />
-           <span className="text-xs text-zinc-500">من</span>
+        <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 px-4 py-2 rounded-2xl border border-zinc-200 dark:border-zinc-700">
+           <Calendar className="w-4 h-4 text-zinc-400" />
+           <span className="text-[10px] font-black text-zinc-500 uppercase">من</span>
            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs outline-none font-mono" />
-           <span className="text-xs text-zinc-500">إلى</span>
+           <span className="text-[10px] font-black text-zinc-500 uppercase">إلى</span>
            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs outline-none font-mono" />
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-700 bg-zinc-800 shadow-2xl">
-        <table className="w-full text-right border-collapse">
+      <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl">
+        <table className="w-full text-right border-collapse text-sm">
           <thead>
-            <tr className="bg-rose-900/20 text-rose-200">
-              <th className="p-4 border-b border-zinc-700">كود</th>
-              <th className="p-4 border-b border-zinc-700">الاسم</th>
-              <th className="p-4 border-b border-zinc-700">إجمالي {partyType === PartyType.CUSTOMER ? 'المبيعات' : 'المشتريات'}</th>
-              <th className="p-4 border-b border-zinc-700">إجمالي الدفعات</th>
-              <th className="p-4 border-b border-zinc-700">الرصيد المتبقي</th>
-              <th className="p-4 border-b border-zinc-700">الحالة</th>
+            <tr className="bg-zinc-50 dark:bg-zinc-800/50 text-[10px] text-zinc-500 font-black uppercase tracking-widest border-b border-zinc-200 dark:border-zinc-800">
+              <th className="p-4">كود</th>
+              <th className="p-4">الاسم</th>
+              <th className="p-4">إجمالي {partyType === PartyType.CUSTOMER ? 'المبيعات' : 'المشتريات'}</th>
+              <th className="p-4">إجمالي الدفعات</th>
+              <th className="p-4">الرصيد المتبقي</th>
+              <th className="p-4">الحالة</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-700">
-            {filteredParties.map((party) => {
+          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold">
+            {filteredParties.length === 0 ? (
+              <tr><td colSpan={6} className="p-20 text-center text-zinc-400 italic">لا يوجد حسابات تطابق البحث.</td></tr>
+            ) : filteredParties.map((party) => {
               const { totalSales, totalPayments, balance } = calculateBalance(party);
               return (
-                <tr key={party.id} className="hover:bg-zinc-700/30 transition-colors">
-                  <td className="p-4 font-mono text-zinc-500">{party.code}</td>
-                  <td className="p-4 font-bold text-lg">{party.name}</td>
+                <tr key={party.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                  <td className="p-4 font-mono text-zinc-400">{party.code}</td>
+                  <td className="p-4 text-readable">{party.name}</td>
                   <td className="p-4 font-mono">{totalSales.toLocaleString()}</td>
-                  <td className="p-4 font-mono text-emerald-400">{totalPayments.toLocaleString()}</td>
-                  <td className={`p-4 font-mono font-bold bg-zinc-900/30 text-xl ${balance > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  <td className="p-4 font-mono text-emerald-600">{totalPayments.toLocaleString()}</td>
+                  <td className={`p-4 font-mono font-black text-lg bg-zinc-50/50 dark:bg-zinc-800/20 ${balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                     {balance.toLocaleString()}
                   </td>
                   <td className="p-4">
                     {balance !== 0 ? (
-                      <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full w-fit ${balance > 0 ? 'text-amber-500 bg-amber-500/10' : 'text-emerald-500 bg-emerald-500/10'}`}>
-                        {balance > 0 ? <AlertCircle className="w-3 h-3" /> : <UserCheck className="w-3 h-3" />}
-                        {balance > 0 ? (partyType === PartyType.CUSTOMER ? 'مدين' : 'دائن') : 'مسدد'}
+                      <span className={`flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-full w-fit uppercase ${balance > 0 ? 'text-rose-500 bg-rose-500/10 border border-rose-500/20' : 'text-emerald-500 bg-emerald-500/10 border border-emerald-500/20'}`}>
+                        {balance > 0 ? (partyType === PartyType.CUSTOMER ? 'مدين' : 'دائن') : (partyType === PartyType.CUSTOMER ? 'له رصيد' : 'سدد زيادة')}
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-emerald-500 text-xs bg-emerald-500/10 px-2 py-1 rounded-full w-fit">
-                        <UserCheck className="w-3 h-3" /> مسدد
+                      <span className="flex items-center gap-1 text-emerald-500 text-[9px] font-black bg-emerald-500/10 px-2 py-1 rounded-full w-fit uppercase border border-emerald-500/20">
+                        <UserCheck className="w-3 h-3" /> مسدد بالكامل
                       </span>
                     )}
                   </td>
@@ -157,14 +148,14 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
         </table>
       </div>
 
-      <div className="bg-zinc-900 border border-zinc-700 p-4 rounded-xl flex items-center justify-between shadow-inner">
-         <div className="text-zinc-500 text-sm">
-           يتم احتساب الأرصدة تلقائياً بناءً على فواتير {partyType} والمقبوضات/المدفوعات المسجلة.
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between shadow-xl gap-4">
+         <div className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">
+           تحليل أرصدة ال{partyType} بناءً على حركة الفواتير واليومية
          </div>
-         <div className="flex gap-4">
-            <div className="flex flex-col items-end">
-               <span className="text-xs text-zinc-500">إجمالي الأرصدة المتبقية</span>
-               <span className="text-2xl font-mono text-rose-500 font-bold">
+         <div className="flex gap-10">
+            <div className="flex flex-col items-center">
+               <span className="text-[10px] text-zinc-400 font-black uppercase">إجمالي المطلوب من {partyType}</span>
+               <span className="text-2xl font-mono text-rose-600 font-black">
                  {filteredParties.reduce((sum, p) => sum + calculateBalance(p).balance, 0).toLocaleString()}
                </span>
             </div>

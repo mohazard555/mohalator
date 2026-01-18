@@ -4,6 +4,10 @@ import { Moon, Sun, Settings as SettingsIcon, UserCircle, FileOutput } from 'luc
 import { AppView, AppSettings } from './types';
 import Dashboard from './components/Dashboard';
 import SalesInvoiceView from './components/SalesInvoiceView';
+import SalesHistoryView from './components/SalesHistoryView';
+import SalesReturnHistoryView from './components/SalesReturnHistoryView'; // جديد
+import PurchaseHistoryView from './components/PurchaseHistoryView';
+import PurchaseReturnHistoryView from './components/PurchaseReturnHistoryView'; // جديد
 import InventoryView from './components/InventoryView';
 import CashJournalView from './components/CashJournalView';
 import CustomerBalancesView from './components/CustomerBalancesView';
@@ -67,6 +71,10 @@ const App: React.FC = () => {
     switch (currentView) {
       case AppView.DASHBOARD: return <Dashboard setView={setCurrentView} />;
       case AppView.SALES_INVOICE: return <SalesInvoiceView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+      case AppView.SALES_HISTORY: return <SalesHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+      case AppView.SALES_RETURN_HISTORY: return <SalesReturnHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+      case AppView.PURCHASE_HISTORY: return <PurchaseHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+      case AppView.PURCHASE_RETURN_HISTORY: return <PurchaseReturnHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
       case AppView.PROFESSIONAL_INVOICE: return <ProfessionalInvoiceView onBack={() => setCurrentView(AppView.DASHBOARD)} settings={settings} />;
       case AppView.INVENTORY: return <InventoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
       case AppView.CASH_JOURNAL: return <CashJournalView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
@@ -102,7 +110,9 @@ const App: React.FC = () => {
             {settings.logoUrl ? (
               <img src={settings.logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded" />
             ) : (
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-black shadow-lg">SH</div>
+              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-black shadow-lg">
+                {settings.companyName.substring(0, 2).toUpperCase()}
+              </div>
             )}
             <span className="font-bold text-xl tracking-tight">{settings.companyName}</span>
           </div>

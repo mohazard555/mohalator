@@ -1,13 +1,20 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { MENU_GROUPS } from '../constants';
-import { AppView } from '../types';
+import { AppView, AppSettings } from '../types';
 
 interface DashboardProps {
   setView: (view: AppView) => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('sheno_settings');
+    if (saved) setSettings(JSON.parse(saved));
+  }, []);
+
   return (
     <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-500">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -37,7 +44,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
         ))}
       </div>
 
-      {/* Modern Quick Stats Bar */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
           { label: 'إجمالي المبيعات (ل.س)', val: '245,600,000', color: 'text-emerald-500', bg: 'bg-emerald-500/5' },

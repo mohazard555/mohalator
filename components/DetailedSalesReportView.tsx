@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Printer, Search, FileOutput, X, Users } from 'lucide-react';
-import { SalesInvoice, InvoiceItem, CashEntry, Party, PartyType } from '../types';
+import { SalesInvoice, InvoiceItem, CashEntry, Party, PartyType, AppSettings } from '../types';
 
 const tafqeet = (n: number, prefix: string = ""): string => {
   if (n === 0) return "صفر";
@@ -17,17 +17,20 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
   const [cashEntries, setCashEntries] = useState<CashEntry[]>([]);
   const [customerFilter, setCustomerFilter] = useState('');
   const [parties, setParties] = useState<Party[]>([]);
-  const [startDate, setStartDate] = useState('2024-12-01');
-  const [endDate, setEndDate] = useState('2026-01-08');
+  const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
 
   useEffect(() => {
     const savedInvoices = localStorage.getItem('sheno_sales_invoices');
     const savedCash = localStorage.getItem('sheno_cash_journal');
     const savedParties = localStorage.getItem('sheno_parties');
+    const savedSettings = localStorage.getItem('sheno_settings');
     
     if (savedInvoices) setInvoices(JSON.parse(savedInvoices));
     if (savedCash) setCashEntries(JSON.parse(savedCash));
     if (savedParties) setParties(JSON.parse(savedParties).filter((p: Party) => p.type === PartyType.CUSTOMER));
+    if (savedSettings) setSettings(JSON.parse(savedSettings));
   }, []);
 
   const filteredInvoices = invoices.filter(inv => {
@@ -54,21 +57,25 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
 
   return (
     <div className="space-y-4 text-right bg-[#f2f2f2] p-8 rounded-lg shadow-2xl min-h-screen text-zinc-900 border-2 border-zinc-300" dir="rtl">
-      {/* Header Bar */}
       <div className="flex items-center justify-between border-b-2 border-zinc-400 pb-4 mb-4">
-         <div className="flex items-center gap-2">
-            <div className="bg-white p-2 rounded shadow-sm border border-zinc-300">
-               <div className="text-[#1e3a8a] font-black text-2xl leading-none">SHENO</div>
-               <div className="text-[#94a3b8] text-[7px] tracking-widest font-black uppercase">Sheno for Print</div>
+         <div className="flex items-center gap-3">
+            {settings?.logoUrl ? (
+              <img src={settings.logoUrl} alt="Logo" className="w-14 h-14 object-contain rounded" />
+            ) : (
+               <div className="bg-rose-900 p-2 rounded shadow-sm border border-zinc-300 w-12 h-12 flex items-center justify-center text-white font-black">
+                  {settings?.companyName.substring(0,2).toUpperCase() || 'SH'}
+               </div>
+            )}
+            <div className="flex flex-col">
+              <span className="text-zinc-800 font-black text-xl leading-none">{settings?.companyName || 'شينو للمحاسبة'}</span>
+              <span className="text-zinc-400 text-[8px] font-bold uppercase tracking-widest">{settings?.address || 'Accounting System'}</span>
             </div>
          </div>
          <h1 className="text-3xl font-black flex-1 text-center tracking-tight text-zinc-800">كشف مبيعات الزبون المفصل</h1>
-         <div className="text-xs font-mono text-zinc-400 bg-white px-3 py-1 rounded border border-zinc-200">#107884</div>
+         <div className="text-xs font-mono text-zinc-400 bg-white px-3 py-1 rounded border border-zinc-200">#{new Date().getTime().toString().slice(-6)}</div>
       </div>
 
-      {/* Filter and Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border-2 border-zinc-500 bg-white overflow-hidden rounded-sm">
-         {/* Totals Section */}
          <div className="col-span-1 border-l-2 border-zinc-500 flex flex-col">
             <div className="flex border-b-2 border-zinc-500 flex-1">
                <div className="bg-[#e2e8f0] flex-1 p-2 text-xs font-bold text-center border-l border-zinc-300 flex items-center justify-center">اجمالي عدد القطع</div>
@@ -80,7 +87,6 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
             </div>
          </div>
 
-         {/* Dates Section */}
          <div className="col-span-1 border-l-2 border-zinc-500 flex flex-col">
             <div className="flex border-b-2 border-zinc-500 flex-1">
                <div className="bg-[#e2e8f0] w-32 p-2 text-xs font-bold text-center border-l border-zinc-300 flex items-center justify-center">بداية التاريخ</div>
@@ -92,7 +98,6 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
             </div>
          </div>
 
-         {/* Customer Selection Section (Dropdown) */}
          <div className="col-span-1 flex flex-col bg-zinc-50">
             <div className="bg-[#e2e8f0] p-2 text-xs font-bold text-center border-b border-zinc-300 flex items-center justify-center gap-2">
                <Users className="w-3 h-3"/> اختيار الزبون من القائمة
@@ -108,9 +113,7 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
          </div>
       </div>
 
-      {/* Main Content Table */}
       <div className="relative overflow-x-auto border-2 border-zinc-500 bg-white shadow-lg">
-        <div className="absolute inset-0 flex items-center justify-center opacity-[0.04] pointer-events-none text-[180px] font-black -rotate-12 select-none">SHENO</div>
         <table className="w-full text-center border-collapse text-xs">
           <thead>
             <tr className="bg-[#cbd5e1] text-zinc-900 font-black border-b-2 border-zinc-500 h-10">
@@ -135,7 +138,12 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
                 <tr key={idx} className="h-9 border-b border-zinc-200 font-bold hover:bg-zinc-50 transition-colors">
                   <td className="p-1 border border-zinc-200 font-mono text-rose-700">{row.invoiceNumber}</td>
                   <td className="p-1 border border-zinc-200 font-mono">{row.invoiceDate}</td>
-                  <td className="p-1 border border-zinc-200 text-right pr-6">{row.name}</td>
+                  <td className="p-1 border border-zinc-200 text-right pr-6">
+                    <div className="flex items-center gap-2 justify-end">
+                       {row.name}
+                       {row.image && <img src={row.image} className="w-5 h-5 object-cover rounded shadow-sm" />}
+                    </div>
+                  </td>
                   <td className="p-1 border border-zinc-200 font-mono text-lg">{row.quantity}</td>
                   <td className="p-1 border border-zinc-200 font-mono">{row.price.toLocaleString()}</td>
                   <td className="p-1 border border-zinc-200 font-mono font-black text-lg text-emerald-700">{ (row.quantity * row.price).toLocaleString()}</td>
@@ -146,7 +154,6 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
           </tbody>
         </table>
 
-        {/* Footer Statistics Bar */}
         <div className="border-t-4 border-[#1e3a8a]">
           <div className="flex border-b border-zinc-300 h-12 items-center hover:bg-zinc-50 transition-all">
              <div className="bg-[#cbd5e1] w-64 border-l border-zinc-400 p-3 font-black text-center text-sm">اجمالي المبيعات</div>
@@ -163,7 +170,6 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
         </div>
       </div>
 
-      {/* Tafqeet / Literal Section */}
       <div className="grid grid-cols-4 border-2 border-zinc-500 bg-white rounded-sm overflow-hidden shadow-md">
          <div className="col-span-3 flex flex-col divide-y divide-zinc-200 text-xs font-bold bg-white">
             <div className="p-2.5 px-8 text-zinc-800 underline underline-offset-4 decoration-zinc-300">{tafqeet(totalSales)}</div>
@@ -179,14 +185,9 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
       
       <div className="flex justify-between items-center no-print pt-6">
          <button onClick={onBack} className="bg-zinc-800 text-white px-8 py-3 rounded-xl font-bold shadow-xl hover:bg-zinc-700 transition-all active:scale-95">العودة للرئيسية</button>
-         <div className="flex gap-4">
-            <button onClick={() => window.print()} className="bg-rose-900 text-white px-12 py-3 rounded-xl flex items-center gap-2 font-black shadow-xl hover:bg-rose-800 transition-all active:scale-95">
-               <Printer className="w-6 h-6" /> طباعة الكشف الكامل
-            </button>
-            <button className="bg-[#1e3a8a] text-white px-12 py-3 rounded-xl flex items-center gap-2 font-black shadow-xl hover:bg-[#1d4ed8] transition-all active:scale-95">
-               <FileOutput className="w-6 h-6" /> تصدير نسخة PDF
-            </button>
-         </div>
+         <button onClick={() => window.print()} className="bg-rose-900 text-white px-12 py-3 rounded-xl flex items-center gap-2 font-black shadow-xl hover:bg-rose-800 transition-all active:scale-95">
+            <Printer className="w-6 h-6" /> طباعة الكشف الكامل
+         </button>
       </div>
     </div>
   );

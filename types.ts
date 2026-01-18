@@ -1,8 +1,11 @@
 
-
 export enum AppView {
   DASHBOARD = 'DASHBOARD',
   SALES_INVOICE = 'SALES_INVOICE',
+  SALES_HISTORY = 'SALES_HISTORY',
+  PURCHASE_HISTORY = 'PURCHASE_HISTORY',
+  SALES_RETURN_HISTORY = 'SALES_RETURN_HISTORY', // جديد
+  PURCHASE_RETURN_HISTORY = 'PURCHASE_RETURN_HISTORY', // جديد
   PROFESSIONAL_INVOICE = 'PROFESSIONAL_INVOICE',
   INVENTORY = 'INVENTORY',
   CASH_JOURNAL = 'CASH_JOURNAL',
@@ -58,6 +61,8 @@ export interface InvoiceItem {
   total: number;
   date: string;
   notes: string;
+  image?: string;
+  serialNumber?: string;
 }
 
 export interface SalesInvoice {
@@ -72,6 +77,7 @@ export interface SalesInvoice {
   notes: string;
   usedMaterials?: any[];
   paidAmount?: number;
+  paymentType: 'نقداً' | 'آجل';
 }
 
 export interface PurchaseInvoice {
@@ -154,7 +160,6 @@ export interface ArchiveEntry {
   data: string;
 }
 
-// Added WarehouseEntity interface to solve missing exported member errors
 export interface WarehouseEntity {
   id: string;
   name: string;
