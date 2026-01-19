@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Search, Printer, Plus, Trash2, Edit2, Save, X, FileDown, CheckCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowRight, Search, Printer, Plus, Trash2, Edit2, Save, X, FileDown, CheckCircle, Calendar as CalendarIcon, Coins, CreditCard } from 'lucide-react';
 import { CashEntry, Party, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
-const tafqeet = (n: number): string => {
+const tafqeet = (n: number, currencyName: string): string => {
   if (n === 0) return "صفر";
-  return `${n.toLocaleString()} ليرة سورية فقط لا غير`;
+  return `${n.toLocaleString()} ${currencyName} فقط لا غير`;
 };
 
 interface VoucherListViewProps {
@@ -22,6 +22,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [printingVoucher, setPrintingVoucher] = useState<CashEntry | null>(null);
+  const [selectedCurrencyType, setSelectedCurrencyType] = useState<'primary' | 'secondary'>('primary');
   
   const [formData, setFormData] = useState<Partial<CashEntry>>({
     voucherNumber: '',
@@ -52,15 +53,23 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
   const handleSave = () => {
     if (!formData.amount || !formData.partyName) return;
     
+    const currencyName = selectedCurrencyType === 'primary' 
+      ? (settings?.currency || 'ليرة سورية') 
+      : (settings?.secondaryCurrency || 'دولار');
+
+    const isPrimary = selectedCurrencyType === 'primary';
+    const amountValue = formData.amount || 0;
+
     const entry: CashEntry = {
       ...(editingId ? vouchers.find(v => v.id === editingId) : {}),
       ...formData as CashEntry,
       id: editingId || crypto.randomUUID(),
       type: type,
-      amountLiteral: tafqeet(formData.amount || 0),
-      receivedSYP: type === 'قبض' ? formData.amount || 0 : 0,
-      paidSYP: type === 'دفع' ? formData.amount || 0 : 0,
-      receivedUSD: 0, paidUSD: 0
+      amountLiteral: tafqeet(amountValue, currencyName),
+      receivedSYP: type === 'قبض' && isPrimary ? amountValue : 0,
+      paidSYP: type === 'دفع' && isPrimary ? amountValue : 0,
+      receivedUSD: type === 'قبض' && !isPrimary ? amountValue : 0,
+      paidUSD: type === 'دفع' && !isPrimary ? amountValue : 0,
     };
 
     const savedAll = localStorage.getItem('sheno_cash_journal');
@@ -93,6 +102,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
       amount: 0,
       notes: ''
     });
+    setSelectedCurrencyType('primary');
   };
 
   const handleDelete = (id: string) => {
@@ -112,6 +122,11 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
   );
 
   if (printingVoucher) {
+    const isVoucherPrimary = printingVoucher.receivedSYP > 0 || printingVoucher.paidSYP > 0;
+    const displayAmount = isVoucherPrimary ? (printingVoucher.receivedSYP || printingVoucher.paidSYP) : (printingVoucher.receivedUSD || printingVoucher.paidUSD);
+    const displayCurrencySymbol = isVoucherPrimary ? (settings?.currencySymbol || 'ل.س') : (settings?.secondaryCurrencySymbol || '$');
+    const displayCurrencyName = isVoucherPrimary ? (settings?.currency || 'ليرة سورية') : (settings?.secondaryCurrency || 'دولار');
+
     return (
       <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950 p-10 animate-in fade-in duration-500" dir="rtl">
         <div className="max-w-4xl mx-auto space-y-6 no-print">
@@ -146,7 +161,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                 <div className="flex items-center gap-3">
                    <div className="text-right">
                       <h1 className="text-3xl font-black text-primary leading-none mb-1">{settings?.companyName || 'SHENO'}</h1>
-                      <div className="text-zinc-500 text-[8px] tracking-[0.2em] font-black text-left">ACCOUNTING SYSTEM</div>
+                      <div className="text-zinc-500 text-[8px] tracking-[0.2em] font-black text-left">{settings?.companyType || 'ACCOUNTING SYSTEM'}</div>
                    </div>
                    {settings?.logoUrl ? (
                      <img src={settings.logoUrl} alt="Logo" className="w-12 h-12 object-contain" />
@@ -171,7 +186,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
              <div className="flex items-baseline gap-4 border-b border-zinc-200 pb-2">
                 <span className="text-primary font-black text-lg whitespace-nowrap">مبلغاً وقدره:</span>
                 <span className="flex-1 text-2xl font-black border-zinc-300 px-2 text-primary">
-                   {printingVoucher.amountLiteral}
+                   {tafqeet(displayAmount || 0, displayCurrencyName)}
                 </span>
              </div>
 
@@ -187,9 +202,9 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                    <div className="bg-white border-4 border-primary rounded-xl px-12 py-4 flex flex-col items-center min-w-[300px]">
                       <span className="text-[10px] font-black text-primary mb-1 uppercase">Amount | المبلغ</span>
                       <span className="text-4xl font-black font-mono tracking-tighter">
-                         {printingVoucher.amount?.toLocaleString()}
+                         {displayAmount?.toLocaleString()}
                       </span>
-                      <span className="text-[10px] text-zinc-400 font-bold mt-1 uppercase">{settings?.currency || 'SYP'} | {settings?.currency === 'ل.س' ? 'ليرة سورية' : 'العملة'}</span>
+                      <span className="text-[10px] text-zinc-400 font-bold mt-1 uppercase">{displayCurrencySymbol} | {displayCurrencyName}</span>
                    </div>
                 </div>
              </div>
@@ -202,8 +217,10 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                 <div className="w-40 border-b-2 border-zinc-200"></div>
              </div>
              <div className="flex flex-col items-center">
-                <span className="text-zinc-400 font-bold text-[10px] mb-12 uppercase">المحاسب | ACCOUNTANT</span>
-                <div className="w-40 border-b-2 border-zinc-200 font-black text-center text-zinc-900">أحمد شينو</div>
+                <span className="text-zinc-400 font-bold text-[10px] mb-12 uppercase">المحاسب المعتمد | ACCOUNTANT</span>
+                <div className="flex flex-col items-center gap-1">
+                   <div className="w-40 border-b-2 border-zinc-200 font-black text-center text-zinc-900">{settings?.accountantName || 'المحاسب الرئيسي'}</div>
+                </div>
              </div>
           </div>
         </div>
@@ -232,7 +249,23 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
 
       {(isAdding || editingId) && (
         <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl space-y-6 animate-in zoom-in-95 no-print">
-           <h3 className="text-lg font-black text-primary border-b border-zinc-100 dark:border-zinc-800 pb-3">إدخال بيانات السند المالي</h3>
+           <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <h3 className="text-lg font-black text-primary">إدخال بيانات السند المالي</h3>
+              <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-2xl border">
+                 <button 
+                   onClick={() => setSelectedCurrencyType('primary')}
+                   className={`px-4 py-1.5 rounded-xl text-[10px] font-black transition-all ${selectedCurrencyType === 'primary' ? 'bg-primary text-white shadow-md' : 'text-zinc-400'}`}
+                 >
+                   {settings?.currencySymbol || 'أساسية'}
+                 </button>
+                 <button 
+                   onClick={() => setSelectedCurrencyType('secondary')}
+                   className={`px-4 py-1.5 rounded-xl text-[10px] font-black transition-all ${selectedCurrencyType === 'secondary' ? 'bg-zinc-700 text-white shadow-md' : 'text-zinc-400'}`}
+                 >
+                   {settings?.secondaryCurrencySymbol || 'ثانوية'}
+                 </button>
+              </div>
+           </div>
            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="flex flex-col gap-1">
                  <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">رقم السند المرجعي</label>
@@ -250,7 +283,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  </select>
               </div>
               <div className="flex flex-col gap-1">
-                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">قيمة السند (ل.س)</label>
+                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">قيمة السند ({selectedCurrencyType === 'primary' ? settings?.currencySymbol : settings?.secondaryCurrencySymbol})</label>
                  <input type="number" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-black text-xl text-primary outline-none" value={formData.amount} onChange={e => setFormData({...formData, amount: Number(e.target.value)})} />
               </div>
               <div className="flex flex-col gap-1 md:col-span-3">
@@ -288,33 +321,43 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                 <th className="p-4">رقم السند</th>
                 <th className="p-4">التاريخ</th>
                 <th className="p-4">الطرف</th>
-                <th className="p-4">البيان</th>
                 <th className="p-4 text-center">المبلغ</th>
+                <th className="p-4 text-center">العملة</th>
+                <th className="p-4">البيان</th>
                 <th className="p-4 text-center no-print">إجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold">
               {filteredVouchers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-16 text-center text-zinc-400 font-bold italic">لا توجد سندات مسجلة حالياً.</td>
+                  <td colSpan={7} className="p-16 text-center text-zinc-400 font-bold italic">لا توجد سندات مسجلة حالياً.</td>
                 </tr>
               ) : (
-                filteredVouchers.map(v => (
-                  <tr key={v.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">
-                    <td className="p-4 font-mono text-primary">#{v.voucherNumber || v.id.slice(0, 4)}</td>
-                    <td className="p-4 font-mono text-zinc-400">{v.date}</td>
-                    <td className="p-4 text-readable">{v.partyName}</td>
-                    <td className="p-4 text-zinc-500 font-normal">{v.statement}</td>
-                    <td className="p-4 text-center font-mono text-lg text-emerald-600">{v.amount?.toLocaleString()}</td>
-                    <td className="p-4 no-print">
-                       <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => setPrintingVoucher(v)} className="p-2 text-zinc-400 hover:text-emerald-500 transition-all" title="طباعة القسيمة"><Printer className="w-4 h-4" /></button>
-                          <button onClick={() => { setEditingId(v.id); setFormData(v); setIsAdding(true); }} className="p-2 text-zinc-400 hover:text-primary transition-all" title="تعديل"><Edit2 className="w-4 h-4" /></button>
-                          <button onClick={() => handleDelete(v.id)} className="p-2 text-zinc-400 hover:text-rose-500 transition-all" title="حذف"><Trash2 className="w-4 h-4" /></button>
-                       </div>
-                    </td>
-                  </tr>
-                ))
+                filteredVouchers.map(v => {
+                   const isPrimary = (v.receivedSYP || 0) > 0 || (v.paidSYP || 0) > 0;
+                   const amountValue = isPrimary ? (v.receivedSYP || v.paidSYP) : (v.receivedUSD || v.paidUSD);
+                   return (
+                    <tr key={v.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">
+                      <td className="p-4 font-mono text-primary">#{v.voucherNumber || v.id.slice(0, 4)}</td>
+                      <td className="p-4 font-mono text-zinc-400">{v.date}</td>
+                      <td className="p-4 text-readable">{v.partyName}</td>
+                      <td className={`p-4 text-center font-mono text-lg ${isPrimary ? 'text-emerald-600' : 'text-amber-600'}`}>{amountValue?.toLocaleString()}</td>
+                      <td className="p-4 text-center">
+                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${isPrimary ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                            {isPrimary ? settings?.currencySymbol : settings?.secondaryCurrencySymbol}
+                         </span>
+                      </td>
+                      <td className="p-4 text-zinc-500 font-normal">{v.statement}</td>
+                      <td className="p-4 no-print">
+                         <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => setPrintingVoucher(v)} className="p-2 text-zinc-400 hover:text-emerald-500 transition-all" title="طباعة القسيمة"><Printer className="w-4 h-4" /></button>
+                            <button onClick={() => { setEditingId(v.id); setFormData({...v, amount: amountValue}); setIsAdding(true); setSelectedCurrencyType(isPrimary ? 'primary' : 'secondary'); }} className="p-2 text-zinc-400 hover:text-primary transition-all" title="تعديل"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => handleDelete(v.id)} className="p-2 text-zinc-400 hover:text-rose-500 transition-all" title="حذف"><Trash2 className="w-4 h-4" /></button>
+                         </div>
+                      </td>
+                    </tr>
+                   );
+                })
               )}
             </tbody>
           </table>

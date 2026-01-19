@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Search, UserCheck, AlertCircle, Filter, Calendar } from 'lucide-react';
-import { Party, PartyType, SalesInvoice, CashEntry } from '../types';
+import { ArrowRight, Search, UserCheck, AlertCircle, Filter, Calendar, Coins, CreditCard } from 'lucide-react';
+import { Party, PartyType, SalesInvoice, CashEntry, AppSettings } from '../types';
 
 interface CustomerBalancesViewProps {
   onBack: () => void;
@@ -9,6 +9,7 @@ interface CustomerBalancesViewProps {
 
 const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) => {
   const [partyType, setPartyType] = useState<PartyType>(PartyType.CUSTOMER);
+  const [currencyFilter, setCurrencyFilter] = useState<'primary' | 'secondary'>('primary');
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -16,41 +17,52 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
   const [parties, setParties] = useState<Party[]>([]);
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [cashEntries, setCashEntries] = useState<CashEntry[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
 
   useEffect(() => {
-    // Load data for calculation
     const savedInvoices = localStorage.getItem('sheno_sales_invoices');
     const savedCash = localStorage.getItem('sheno_cash_journal');
     const savedParties = localStorage.getItem('sheno_parties');
+    const savedSettings = localStorage.getItem('sheno_settings');
     
     if (savedInvoices) setInvoices(JSON.parse(savedInvoices));
     if (savedCash) setCashEntries(JSON.parse(savedCash));
     if (savedParties) setParties(JSON.parse(savedParties));
+    if (savedSettings) setSettings(JSON.parse(savedSettings));
   }, []);
 
-  const calculateBalance = (party: Party) => {
-    // Filter transactions by party name and date range
+  const calculateBalance = (party: Party, targetCurrency: 'primary' | 'secondary') => {
+    const isPrimary = targetCurrency === 'primary';
+    const currencySymbol = isPrimary ? (settings?.currencySymbol || 'ل.س') : (settings?.secondaryCurrencySymbol || '$');
+
+    // Filter invoices by currency and party
     const partyInvoices = invoices.filter(inv => {
       const matchName = inv.customerName === party.name;
+      const matchCurrency = inv.currencySymbol === currencySymbol;
       const matchDate = (!startDate || inv.date >= startDate) && (!endDate || inv.date <= endDate);
-      return matchName && matchDate;
+      return matchName && matchCurrency && matchDate;
     });
 
     const partyPayments = cashEntries.filter(entry => {
       const matchName = entry.statement.includes(party.name) || entry.partyName === party.name;
       const matchDate = (!startDate || entry.date >= startDate) && (!endDate || entry.date <= endDate);
-      return matchName && matchDate;
+      
+      if (isPrimary) {
+        return matchName && matchDate && (entry.receivedSYP > 0 || entry.paidSYP > 0);
+      } else {
+        return matchName && matchDate && (entry.receivedUSD > 0 || entry.paidUSD > 0);
+      }
     });
 
     const totalSales = partyInvoices.reduce((s, i) => s + i.totalAmount, 0);
     const totalPayments = partyPayments.reduce((s, p) => {
-       if (party.type === PartyType.CUSTOMER) return s + p.receivedSYP;
-       else return s + p.paidSYP;
+       if (party.type === PartyType.CUSTOMER) return s + (isPrimary ? p.receivedSYP : p.receivedUSD);
+       else return s + (isPrimary ? p.paidSYP : p.paidUSD);
     }, 0);
 
-    // Balance for Customers: Opening + Sales - Paid
-    // Balance for Suppliers: Opening + Purchases - Paid
-    const balance = party.openingBalance + totalSales - totalPayments;
+    // Initial balance only applies to primary currency for simplicity in this model
+    const opening = isPrimary ? party.openingBalance : 0;
+    const balance = opening + totalSales - totalPayments;
 
     return { totalSales, totalPayments, balance };
   };
@@ -59,6 +71,13 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
     p.type === partyType && 
     (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.code.includes(searchTerm))
   );
+
+  const getGlobalTotals = () => {
+    return filteredParties.reduce((acc, p) => {
+      const pData = calculateBalance(p, currencyFilter);
+      return acc + pData.balance;
+    }, 0);
+  };
 
   return (
     <div className="space-y-6">
@@ -82,6 +101,21 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
               <option value={PartyType.CUSTOMER}>العملاء</option>
               <option value={PartyType.SUPPLIER}>الموردين</option>
            </select>
+        </div>
+
+        <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800 p-1 rounded-2xl border">
+           <button 
+             onClick={() => setCurrencyFilter('primary')}
+             className={`px-4 py-1.5 rounded-xl text-[10px] font-black transition-all flex items-center gap-2 ${currencyFilter === 'primary' ? 'bg-primary text-white shadow-md' : 'text-zinc-500'}`}
+           >
+             <Coins className="w-3 h-3" /> {settings?.currency || 'الأساسية'}
+           </button>
+           <button 
+             onClick={() => setCurrencyFilter('secondary')}
+             className={`px-4 py-1.5 rounded-xl text-[10px] font-black transition-all flex items-center gap-2 ${currencyFilter === 'secondary' ? 'bg-zinc-700 text-white shadow-md' : 'text-zinc-500'}`}
+           >
+             <CreditCard className="w-3 h-3" /> {settings?.secondaryCurrency || 'الثانوية'}
+           </button>
         </div>
 
         <div className="relative flex-1 min-w-[200px]">
@@ -112,7 +146,7 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
               <th className="p-4">الاسم</th>
               <th className="p-4">إجمالي {partyType === PartyType.CUSTOMER ? 'المبيعات' : 'المشتريات'}</th>
               <th className="p-4">إجمالي الدفعات</th>
-              <th className="p-4">الرصيد المتبقي</th>
+              <th className="p-4">الرصيد بالـ {currencyFilter === 'primary' ? (settings?.currencySymbol) : (settings?.secondaryCurrencySymbol)}</th>
               <th className="p-4">الحالة</th>
             </tr>
           </thead>
@@ -120,7 +154,7 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
             {filteredParties.length === 0 ? (
               <tr><td colSpan={6} className="p-20 text-center text-zinc-400 italic">لا يوجد حسابات تطابق البحث.</td></tr>
             ) : filteredParties.map((party) => {
-              const { totalSales, totalPayments, balance } = calculateBalance(party);
+              const { totalSales, totalPayments, balance } = calculateBalance(party, currencyFilter);
               return (
                 <tr key={party.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
                   <td className="p-4 font-mono text-zinc-400">{party.code}</td>
@@ -128,7 +162,7 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
                   <td className="p-4 font-mono">{totalSales.toLocaleString()}</td>
                   <td className="p-4 font-mono text-emerald-600">{totalPayments.toLocaleString()}</td>
                   <td className={`p-4 font-mono font-black text-lg bg-zinc-50/50 dark:bg-zinc-800/20 ${balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                    {balance.toLocaleString()}
+                    {balance.toLocaleString()} {currencyFilter === 'primary' ? settings?.currencySymbol : settings?.secondaryCurrencySymbol}
                   </td>
                   <td className="p-4">
                     {balance !== 0 ? (
@@ -148,17 +182,18 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
         </table>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between shadow-xl gap-4">
-         <div className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">
-           تحليل أرصدة ال{partyType} بناءً على حركة الفواتير واليومية
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-3xl flex flex-col items-center justify-center shadow-xl gap-2 border-l-4 border-l-rose-500">
+            <span className="text-[10px] text-zinc-400 font-black uppercase tracking-widest">إجمالي الذمم بالـ {settings?.currency}</span>
+            <span className="text-3xl font-mono text-rose-600 font-black">
+              {filteredParties.reduce((sum, p) => sum + calculateBalance(p, 'primary').balance, 0).toLocaleString()} <span className="text-sm opacity-50">{settings?.currencySymbol}</span>
+            </span>
          </div>
-         <div className="flex gap-10">
-            <div className="flex flex-col items-center">
-               <span className="text-[10px] text-zinc-400 font-black uppercase">إجمالي المطلوب من {partyType}</span>
-               <span className="text-2xl font-mono text-rose-600 font-black">
-                 {filteredParties.reduce((sum, p) => sum + calculateBalance(p).balance, 0).toLocaleString()}
-               </span>
-            </div>
+         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-3xl flex flex-col items-center justify-center shadow-xl gap-2 border-l-4 border-l-amber-500">
+            <span className="text-[10px] text-zinc-400 font-black uppercase tracking-widest">إجمالي الذمم بالـ {settings?.secondaryCurrency}</span>
+            <span className="text-3xl font-mono text-amber-600 font-black">
+              {filteredParties.reduce((sum, p) => sum + calculateBalance(p, 'secondary').balance, 0).toLocaleString()} <span className="text-sm opacity-50">{settings?.secondaryCurrencySymbol}</span>
+            </span>
          </div>
       </div>
     </div>

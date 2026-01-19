@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowRight, Printer, Search, FileDown, CheckCircle } from 'lucide-react';
+import { ArrowRight, Printer, Search, FileDown, CheckCircle, Globe } from 'lucide-react';
 import { SalesInvoice, AppSettings } from '../types';
 
 interface ProfessionalInvoiceViewProps {
@@ -65,7 +65,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                      )}
                      <div>
                         <h1 className="text-3xl font-black text-rose-900">{settings.companyName}</h1>
-                        <p className="text-zinc-500 font-bold text-sm tracking-wide">للطباعة والإعلان والحلول البرمجية</p>
+                        <p className="text-zinc-500 font-bold text-sm tracking-wide">{settings.companyType}</p>
                      </div>
                   </div>
 
@@ -150,28 +150,41 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                      <div className="text-5xl font-black font-mono tracking-tighter text-white">
                         {invoice?.totalAmount.toLocaleString() || '0,000,000'}
                      </div>
-                     <span className="text-xs font-bold opacity-60">SYRIAN POUNDS | ليرة سورية</span>
+                     <span className="text-xs font-bold opacity-60 uppercase">{settings.currency}</span>
                   </div>
                </div>
             </div>
 
             <div className="p-10 flex justify-between items-end relative z-10">
-               <div className="text-center space-y-20">
-                  <div className="text-[10px] font-black text-zinc-400 uppercase">الختم والتوقيع / STAMP & SIGN</div>
-                  <div className="w-48 border-b-2 border-zinc-200"></div>
+               <div className="text-center space-y-16">
+                  <div className="text-[10px] font-black text-zinc-400 uppercase">المحاسب المعتمد / ACCOUNTANT</div>
+                  <div className="flex flex-col items-center gap-1">
+                     <div className="w-40 border-b-2 border-zinc-200"></div>
+                     <span className="text-xs font-black">{settings.accountantName}</span>
+                  </div>
+               </div>
+
+               <div className="text-center space-y-16">
+                  <div className="text-[10px] font-black text-zinc-400 uppercase">المدير العام / GENERAL MANAGER</div>
+                  <div className="flex flex-col items-center gap-1">
+                     <div className="w-40 border-b-2 border-zinc-200"></div>
+                     <span className="text-xs font-black">{settings.managerName}</span>
+                  </div>
                </div>
                
                <div className="flex flex-col items-end gap-2 text-[10px] font-bold text-zinc-400">
                   <div className="flex gap-2"><span>{settings.address}</span> <span>ADDRESS</span></div>
                   <div className="flex gap-2"><span>{settings.phone}</span> <span>PHONE</span></div>
-                  <div className="text-rose-900 font-black mt-4">WWW.SHENO.PRO</div>
+                  <div className="flex items-center gap-1 text-rose-900 font-black mt-2">
+                     <Globe className="w-3 h-3" /> {settings.website.toUpperCase()}
+                  </div>
                </div>
             </div>
          </div>
       </div>
 
       <div className="fixed bottom-10 left-10 flex flex-col gap-3 no-print animate-in slide-in-from-bottom-10">
-         <button onClick={() => window.print()} className="bg-rose-900 text-white w-20 h-20 rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-90 transition-all">
+         <button onClick={() => window.print()} className="bg-rose-900 text-white w-20 h-20 rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-90 transition-all border-4 border-white/20">
             <Printer className="w-8 h-8" />
          </button>
       </div>

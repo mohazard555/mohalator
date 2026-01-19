@@ -37,6 +37,10 @@ export enum PartyType {
 
 export interface AppSettings {
   companyName: string;
+  companyType: string; // نوع الشركة / النشاط
+  website: string; // الموقع الإلكتروني
+  managerName: string; // اسم المدير العام
+  accountantName: string; // اسم المحاسب
   logoUrl?: string;
   phone: string;
   address: string;
@@ -44,10 +48,10 @@ export interface AppSettings {
   secondaryColor: string;
   darkMode: boolean;
   language: 'ar' | 'en';
-  currency: string; // العملة الأساسية
-  currencySymbol: string; // رمز العملة الأساسية
-  secondaryCurrency: string; // العملة الثانوية
-  secondaryCurrencySymbol: string; // رمز العملة الثانوية
+  currency: string;
+  currencySymbol: string;
+  secondaryCurrency: string;
+  secondaryCurrencySymbol: string;
   isLoginEnabled: boolean;
   username: string;
   password?: string;
@@ -81,7 +85,7 @@ export interface SalesInvoice {
   usedMaterials?: any[];
   paidAmount?: number;
   paymentType: 'نقداً' | 'آجل';
-  currencySymbol?: string; // الرمز المستخدم في هذه الفاتورة
+  currencySymbol?: string;
 }
 
 export interface PurchaseInvoice {
@@ -145,9 +149,9 @@ export interface CashEntry {
   date: string;
   time?: string;
   statement: string;
-  receivedSYP: number; // تعتبر الآن العملة الأساسية
+  receivedSYP: number;
   paidSYP: number;
-  receivedUSD: number; // تعتبر الآن العملة الثانوية
+  receivedUSD: number;
   paidUSD: number;
   notes: string;
   type?: 'قبض' | 'دفع' | 'بيع' | 'شراء' | 'مرتجع';
