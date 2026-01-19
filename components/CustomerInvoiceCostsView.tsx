@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Search, Printer, FileDown } from 'lucide-react';
+import { ArrowRight, Search, Printer, FileDown, ChevronDown } from 'lucide-react';
 import { StockEntry } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -12,21 +12,31 @@ const CustomerInvoiceCostsView: React.FC<CustomerInvoiceCostsViewProps> = ({ onB
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [entries, setEntries] = useState<StockEntry[]>([]);
   const [filteredData, setFilteredData] = useState<StockEntry[]>([]);
+  const [availableInvoiceNumbers, setAvailableInvoiceNumbers] = useState<string[]>([]);
 
   useEffect(() => {
     const saved = localStorage.getItem('sheno_stock_entries');
     if (saved) {
       try {
-        setEntries(JSON.parse(saved));
+        const parsed: StockEntry[] = JSON.parse(saved);
+        setEntries(parsed);
+        // Extract unique invoice numbers
+        const uniqueInvoices = Array.from(new Set(parsed.map(e => e.invoiceNumber).filter(n => n && n !== ''))).sort();
+        setAvailableInvoiceNumbers(uniqueInvoices);
+        
+        if (uniqueInvoices.length > 0 && !invoiceNumber) {
+          handleSearch(uniqueInvoices[0]);
+        }
       } catch (e) {
         console.error("Failed to load entries data");
       }
     }
   }, []);
 
-  const handleSearch = () => {
-    if (invoiceNumber) {
-      const match = entries.filter(e => e.invoiceNumber === invoiceNumber || e.statement.includes(invoiceNumber));
+  const handleSearch = (number: string) => {
+    setInvoiceNumber(number);
+    if (number) {
+      const match = entries.filter(e => e.invoiceNumber === number);
       setFilteredData(match);
     } else {
       setFilteredData([]);
@@ -43,7 +53,7 @@ const CustomerInvoiceCostsView: React.FC<CustomerInvoiceCostsViewProps> = ({ onB
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500" dir="rtl">
-      {/* Top Header Section matching the image color scheme and layout */}
+      {/* Top Header Section */}
       <div className="bg-[#9ca3af] p-1 border-2 border-zinc-600 shadow-xl no-print">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
           {/* Left: Back Button */}
@@ -51,24 +61,26 @@ const CustomerInvoiceCostsView: React.FC<CustomerInvoiceCostsViewProps> = ({ onB
             onClick={onBack}
             className="bg-[#d1a7a7] hover:brightness-105 text-white h-16 flex items-center justify-center font-bold text-xl border-2 border-white/20 transition-all shadow-inner"
           >
-            عودة الى الصفحة الرئيسية
+            عودة الى الرئيسية
           </button>
 
-          {/* Center: Search Field */}
-          <div className="flex flex-col bg-[#d1a7a7] border-2 border-white/20 h-16">
-            <label className="text-[11px] text-white/90 font-black text-center pt-1 uppercase">ادخل رقم الفاتورة</label>
-            <div className="flex px-4 pb-1">
-              <input 
-                type="text" 
+          {/* Center: Search Field - Changed to Select */}
+          <div className="flex flex-col bg-[#d1a7a7] border-2 border-white/20 h-16 px-4">
+            <label className="text-[11px] text-white/90 font-black text-center pt-1 uppercase">اختر رقم الفاتورة</label>
+            <div className="relative pb-1">
+              <select 
                 value={invoiceNumber}
-                onChange={(e) => setInvoiceNumber(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                className="bg-white border-2 border-zinc-400 text-zinc-900 text-center font-black text-2xl w-full h-8 outline-none focus:border-rose-900 transition-colors shadow-inner"
-                placeholder="2726"
-              />
-              <button onClick={handleSearch} className="mr-1 bg-white border-2 border-zinc-400 px-2 flex items-center justify-center hover:bg-zinc-100">
-                <Search className="w-5 h-5 text-zinc-600" />
-              </button>
+                onChange={(e) => handleSearch(e.target.value)}
+                className="bg-white border-2 border-zinc-400 text-zinc-900 text-center font-black text-xl w-full h-9 outline-none focus:border-rose-900 transition-colors shadow-inner appearance-none cursor-pointer"
+              >
+                <option value="">-- اختر من الفواتير المرحلة --</option>
+                {availableInvoiceNumbers.map(num => (
+                  <option key={num} value={num}>فاتورة رقم: {num}</option>
+                ))}
+              </select>
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
+                <ChevronDown className="w-4 h-4" />
+              </div>
             </div>
           </div>
 
@@ -79,12 +91,12 @@ const CustomerInvoiceCostsView: React.FC<CustomerInvoiceCostsViewProps> = ({ onB
         </div>
       </div>
 
-      {/* Large Invoice ID display below header */}
+      {/* Large Invoice ID display */}
       <div className="text-center py-2 bg-zinc-900/5 dark:bg-white/5 border-b-2 border-zinc-300 no-print">
          <span className="text-4xl font-mono font-black text-readable tracking-[0.2em]">{invoiceNumber || '----'}</span>
       </div>
 
-      {/* Spreadsheet Table matching the provided model image */}
+      {/* Spreadsheet Table */}
       <div className="bg-white rounded-sm border-2 border-zinc-600 overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-center border-collapse text-[13px]">
@@ -107,13 +119,7 @@ const CustomerInvoiceCostsView: React.FC<CustomerInvoiceCostsViewProps> = ({ onB
               {filteredData.length === 0 ? (
                 Array.from({ length: 15 }).map((_, i) => (
                   <tr key={`empty-${i}`} className="h-10 bg-white even:bg-[#f3f4f6]">
-                    {Array.from({ length: 11 }).map((__, j) => (
-                      <td key={j} className="border-l border-zinc-300">
-                        {i === 0 && j === 4 && invoiceNumber && (
-                           <span className="text-zinc-400 font-normal italic">لم يتم العثور على حركات مستودعية لهذه الفاتورة</span>
-                        )}
-                      </td>
-                    ))}
+                    {Array.from({ length: 11 }).map((__, j) => <td key={j} className="border-l border-zinc-300"></td>)}
                   </tr>
                 ))
               ) : (
@@ -137,7 +143,6 @@ const CustomerInvoiceCostsView: React.FC<CustomerInvoiceCostsViewProps> = ({ onB
                       <td className="p-2 text-zinc-400 font-normal italic">0</td>
                     </tr>
                   ))}
-                  {/* Padding rows to maintain spreadsheet feel if few results */}
                   {Array.from({ length: Math.max(0, 15 - filteredData.length) }).map((_, i) => (
                     <tr key={`pad-${i}`} className="h-10 bg-white even:bg-[#f3f4f6]">
                       {Array.from({ length: 11 }).map((__, j) => <td key={j} className="border-l border-zinc-300"></td>)}
@@ -150,7 +155,6 @@ const CustomerInvoiceCostsView: React.FC<CustomerInvoiceCostsViewProps> = ({ onB
         </div>
       </div>
 
-      {/* Footer Controls & Stats */}
       <div className="flex flex-col md:flex-row justify-between items-center bg-[#9ca3af]/10 p-6 rounded-3xl border-2 border-zinc-400/50 shadow-inner no-print gap-6">
          <div className="flex gap-12 items-center">
             <div className="flex flex-col items-center">
@@ -177,15 +181,9 @@ const CustomerInvoiceCostsView: React.FC<CustomerInvoiceCostsViewProps> = ({ onB
               onClick={handlePrint}
               className="bg-rose-900 text-white px-12 py-3 rounded-xl font-black shadow-2xl flex items-center gap-3 hover:bg-rose-800 transition-all active:scale-95 border-b-4 border-rose-950 active:border-b-0"
             >
-              <Printer className="w-6 h-6" /> طباعة التقرير النهائي
+              <Printer className="w-6 h-6" /> طباعة التقرير
             </button>
          </div>
-      </div>
-
-      <div className="text-center pb-20 no-print">
-         <p className="text-zinc-400 text-xs font-bold italic tracking-wide">
-           نظام شينو المحاسبي - وحدة تحليل التكاليف المستودعية الدقيقة بناءً على مستندات الصرف والإدخال.
-         </p>
       </div>
     </div>
   );

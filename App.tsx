@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, Settings as SettingsIcon, UserCircle, FileOutput, Heart } from 'lucide-react';
+import { Moon, Sun, Settings as SettingsIcon, LogOut, FileOutput, Heart } from 'lucide-react';
 import { AppView, AppSettings } from './types';
 import Dashboard from './components/Dashboard';
 import SalesInvoiceView from './components/SalesInvoiceView';
@@ -60,12 +60,10 @@ const App: React.FC = () => {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (parsed.companyName === 'شينو للمحاسبة' || !parsed.companyName) parsed.companyName = 'SAMLATOR2026';
-      // If user had an empty password in old settings but now needs 123
       if (parsed.password === '' || parsed.password === undefined) parsed.password = '123';
       setSettings(parsed);
       if (!parsed.isLoginEnabled) setIsAuthenticated(true);
     } else {
-      // First run or no settings
       if (!settings.isLoginEnabled) setIsAuthenticated(true);
     }
   }, []);
@@ -76,6 +74,11 @@ const App: React.FC = () => {
     document.documentElement.lang = settings.language;
     document.documentElement.style.setProperty('--primary-color', settings.primaryColor);
   }, [settings]);
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentView(AppView.DASHBOARD);
+  };
 
   if (settings.isLoginEnabled && !isAuthenticated) {
     return <LoginView settings={settings} onLogin={() => setIsAuthenticated(true)} />;
@@ -98,18 +101,18 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {settings.isLoginEnabled && (
-            <button onClick={() => setIsAuthenticated(false)} className="p-2 text-zinc-400 hover:text-rose-500 transition-colors" title="قفل النظام">
-              <UserCircle className="w-5 h-5" />
-            </button>
-          )}
           <button onClick={() => setCurrentView(AppView.PROFESSIONAL_INVOICE)} className="bg-zinc-800 text-zinc-400 p-2 rounded-xl hover:bg-primary hover:text-white transition-all" title="تصدير فاتورة">
              <FileOutput className="w-5 h-5" />
           </button>
           <button onClick={() => setSettings({...settings, darkMode: !settings.darkMode})} className={`p-2 rounded-xl ${settings.darkMode ? 'text-amber-400 hover:bg-zinc-800' : 'text-zinc-600 hover:bg-zinc-100'}`}>
             {settings.darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
-          <button onClick={() => setCurrentView(AppView.SETTINGS)} className="p-2 hover:bg-zinc-800 rounded-xl"><SettingsIcon className="w-5 h-5" /></button>
+          <button onClick={() => setCurrentView(AppView.SETTINGS)} className="p-2 hover:bg-zinc-800 rounded-xl" title="الإعدادات"><SettingsIcon className="w-5 h-5" /></button>
+          {settings.isLoginEnabled && (
+            <button onClick={handleLogout} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all" title="خروج من النظام">
+              <LogOut className="w-5 h-5" />
+            </button>
+          )}
           <div className="flex items-center gap-3 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">
             <span className="text-sm font-bold">{settings.managerName}</span>
           </div>

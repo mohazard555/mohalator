@@ -133,6 +133,7 @@ export interface InventoryItem {
   added: number;
   issued: number;
   returned: number;
+  warehouse?: string;
 }
 
 export interface Party {
