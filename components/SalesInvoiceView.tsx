@@ -19,6 +19,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
   const [parties, setParties] = useState<Party[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   
   const [selectedCurrencyType, setSelectedCurrencyType] = useState<'primary' | 'secondary'>('primary');
@@ -101,7 +102,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
     }
     
     const total = (newInvoice.items || []).reduce((sum, item) => sum + item.total, 0);
-    const time = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+    const time = newInvoice.time || new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
     const invNum = newInvoice.invoiceNumber || (invoices.length + 3000).toString();
 
     const currencyName = selectedCurrencyType === 'primary' 
@@ -114,7 +115,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
 
     const invoice: SalesInvoice = {
       ...newInvoice as SalesInvoice,
-      id: crypto.randomUUID(),
+      id: editingId || crypto.randomUUID(),
       invoiceNumber: invNum,
       time,
       totalAmount: total,
@@ -122,7 +123,18 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
       totalAmountLiteral: tafqeet(total, currencyName)
     };
 
-    const updated = [invoice, ...invoices];
+    // Clean up old entries if editing
+    if (editingId) {
+      const oldInv = invoices.find(i => i.id === editingId);
+      if (oldInv) {
+        removeAssociatedEntries(oldInv.invoiceNumber);
+      }
+    }
+
+    const updated = editingId 
+      ? invoices.map(i => i.id === editingId ? invoice : i)
+      : [invoice, ...invoices];
+
     setInvoices(updated);
     localStorage.setItem('sheno_sales_invoices', JSON.stringify(updated));
 
@@ -171,8 +183,44 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
     }
 
     setIsAdding(false);
+    setEditingId(null);
     setNewInvoice({ invoiceNumber: '', customerName: '', date: new Date().toISOString().split('T')[0], items: [], usedMaterials: [], notes: '', paidAmount: 0, paymentType: 'نقداً' });
     alert('تم حفظ الفاتورة بنجاح وتحديث سجلات المستودع والصندوق.');
+  };
+
+  const removeAssociatedEntries = (invNum: string) => {
+    // Remove stock entries
+    const savedStock = localStorage.getItem('sheno_stock_entries');
+    if (savedStock) {
+      const stock: StockEntry[] = JSON.parse(savedStock);
+      const filteredStock = stock.filter(s => s.invoiceNumber !== invNum);
+      localStorage.setItem('sheno_stock_entries', JSON.stringify(filteredStock));
+    }
+
+    // Remove cash entries (matching statement by invoice number)
+    const savedCash = localStorage.getItem('sheno_cash_journal');
+    if (savedCash) {
+      const cash: CashEntry[] = JSON.parse(savedCash);
+      const filteredCash = cash.filter(c => !c.statement.includes(`مبيعات ${invNum}`));
+      localStorage.setItem('sheno_cash_journal', JSON.stringify(filteredCash));
+    }
+  };
+
+  const handleEdit = (inv: SalesInvoice) => {
+    setNewInvoice(inv);
+    setEditingId(inv.id);
+    setIsAdding(true);
+    setSelectedCurrencyType(inv.currencySymbol === '$' ? 'secondary' : 'primary');
+  };
+
+  const handleDelete = (id: string, invNum: string) => {
+    if (window.confirm('هل أنت متأكد من حذف هذه الفاتورة نهائياً؟ سيتم مسح قيود المخزون والصندوق المرتبطة بها.')) {
+      const updated = invoices.filter(i => i.id !== id);
+      setInvoices(updated);
+      localStorage.setItem('sheno_sales_invoices', JSON.stringify(updated));
+      removeAssociatedEntries(invNum);
+      alert('تم حذف الفاتورة وتصحيح السجلات.');
+    }
   };
 
   return (
@@ -182,12 +230,14 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
           <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors">
             <ArrowRight className="w-6 h-6" />
           </button>
-          <h2 className="text-2xl font-black text-readable">فواتير المبيعات المتطورة</h2>
+          <h2 className="text-2xl font-black text-readable">{editingId ? 'تعديل فاتورة مبيعات' : 'فواتير المبيعات المتطورة'}</h2>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setIsAdding(true)} className="bg-primary text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-primary/20 transition-all active:scale-95">
-            <Plus className="w-5 h-5" /> فاتورة مبيعات جديدة
-          </button>
+          {!isAdding && (
+            <button onClick={() => { setIsAdding(true); setEditingId(null); }} className="bg-primary text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-primary/20 transition-all active:scale-95">
+              <Plus className="w-5 h-5" /> فاتورة مبيعات جديدة
+            </button>
+          )}
           <button onClick={() => exportToCSV(invoices, 'detailed_sales_report')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">
              <FileDown className="w-5 h-5" /> تصدير XLSX
           </button>
@@ -347,9 +397,9 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
              </div>
              <div className="flex gap-3 w-full md:w-auto">
                <button onClick={handleSaveInvoice} className="flex-1 md:flex-none bg-primary text-white px-12 py-3 rounded-2xl font-black shadow-xl hover:brightness-110 transition-all active:scale-95 flex items-center justify-center gap-2">
-                 <Save className="w-5 h-5" /> حفظ الفاتورة وتحديث السجلات
+                 <Save className="w-5 h-5" /> {editingId ? 'تحديث الفاتورة' : 'حفظ الفاتورة وتحديث السجلات'}
                </button>
-               <button onClick={() => setIsAdding(false)} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-10 py-3 rounded-2xl font-bold">إلغاء</button>
+               <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-10 py-3 rounded-2xl font-bold">إلغاء</button>
              </div>
           </div>
         </div>
@@ -373,7 +423,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                 <th className="p-3 border-l border-zinc-800 text-right w-64">التفقيط (كتابة)</th>
                 <th className="p-3 border-l border-zinc-800 text-right">ملاحظات</th>
                 <th className="p-3 border-l border-zinc-800 text-center">وقت</th>
-                <th className="p-3 border-l border-zinc-800 text-center no-print">تصدير</th>
+                <th className="p-3 border-l border-zinc-800 text-center no-print">إجراءات</th>
                 <th className="p-3 text-center">المدفوع</th>
               </tr>
             </thead>
@@ -423,7 +473,11 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                       {inv.time}
                     </td>
                     <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center no-print">
-                      <button onClick={() => window.print()} className="p-1 text-zinc-300 hover:text-primary transition-all"><Printer className="w-4 h-4" /></button>
+                      <div className="flex items-center justify-center gap-1">
+                        <button onClick={() => window.print()} className="p-1 text-zinc-400 hover:text-primary transition-all"><Printer className="w-4 h-4" /></button>
+                        <button onClick={() => handleEdit(inv)} className="p-1 text-zinc-400 hover:text-amber-500 transition-all"><Edit2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleDelete(inv.id, inv.invoiceNumber)} className="p-1 text-zinc-400 hover:text-rose-500 transition-all"><Trash2 className="w-4 h-4" /></button>
+                      </div>
                     </td>
                     <td className="p-3 text-center text-emerald-600 font-mono">
                       {inv.paidAmount?.toLocaleString() || '0'} {inv.currencySymbol}

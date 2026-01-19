@@ -118,10 +118,10 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                      {invoice ? invoice.items.map((item, idx) => (
                         <tr key={idx} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
                            <td className="p-5 font-bold text-zinc-800">
-                              <div className="flex items-center gap-3">
-                                 {item.image && <img src={item.image} className="w-10 h-10 object-cover rounded-md shadow-sm border border-zinc-100" />}
+                              <div className="flex items-center gap-4">
+                                 {item.image && <img src={item.image} className="w-20 h-20 object-contain rounded-md shadow-md border border-zinc-100 bg-zinc-50" />}
                                  <div className="flex flex-col">
-                                    <span>{item.name}</span>
+                                    <span className="text-lg">{item.name}</span>
                                     <span className="text-[9px] text-zinc-400 font-mono">SN: {item.serialNumber || '-'}</span>
                                  </div>
                               </div>

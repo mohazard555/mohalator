@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, Settings as SettingsIcon, UserCircle, FileOutput } from 'lucide-react';
+import { Moon, Sun, Settings as SettingsIcon, UserCircle, FileOutput, Heart } from 'lucide-react';
 import { AppView, AppSettings } from './types';
 import Dashboard from './components/Dashboard';
 import SalesInvoiceView from './components/SalesInvoiceView';
@@ -25,22 +25,22 @@ import SettingsView from './components/SettingsView';
 import WarehouseAnalyticsView from './components/WarehouseAnalyticsView';
 import WarehouseManagementView from './components/WarehouseManagementView';
 import ArchivesView from './components/ArchivesView';
-import LoginView from './components/LoginView';
 import ProfessionalInvoiceView from './components/ProfessionalInvoiceView';
 import CustomerInvoiceCostsView from './components/CustomerInvoiceCostsView';
 import InvestmentReportsView from './components/InvestmentReportsView';
+import LoginView from './components/LoginView';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [settings, setSettings] = useState<AppSettings>({
-    companyName: 'شينو للمحاسبة',
-    companyType: 'للطباعة والإعلان والحلول البرمجية',
-    website: 'www.sheno.pro',
-    managerName: 'أحمد شينو',
+    companyName: 'SAMLATOR2026',
+    companyType: 'نظام إدارة محاسبية متطور',
+    website: 'www.samlator.pro',
+    managerName: 'مهند أحمد',
     accountantName: 'المحاسب الرئيسي',
     phone: '093XXXXXXX',
-    address: 'دمشق، سوريا',
+    address: 'سوريا',
     primaryColor: '#e11d48',
     secondaryColor: '#881337',
     darkMode: true,
@@ -49,24 +49,24 @@ const App: React.FC = () => {
     currencySymbol: 'ل.س',
     secondaryCurrency: 'دولار أمريكي',
     secondaryCurrencySymbol: '$',
-    isLoginEnabled: false,
+    isLoginEnabled: true,
     username: 'admin',
-    password: '',
-    passwordHint: 'لا يوجد تلميح'
+    password: '123',
+    passwordHint: 'كلمة المرور الافتراضية هي 123'
   });
 
   useEffect(() => {
     const saved = localStorage.getItem('sheno_settings');
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (!parsed.companyType) parsed.companyType = 'للطباعة والإعلان والحلول البرمجية';
-      if (!parsed.website) parsed.website = 'www.sheno.pro';
-      if (!parsed.managerName) parsed.managerName = 'أحمد شينو';
-      if (!parsed.accountantName) parsed.accountantName = 'المحاسب الرئيسي';
+      if (parsed.companyName === 'شينو للمحاسبة' || !parsed.companyName) parsed.companyName = 'SAMLATOR2026';
+      // If user had an empty password in old settings but now needs 123
+      if (parsed.password === '' || parsed.password === undefined) parsed.password = '123';
       setSettings(parsed);
       if (!parsed.isLoginEnabled) setIsAuthenticated(true);
     } else {
-      setIsAuthenticated(true);
+      // First run or no settings
+      if (!settings.isLoginEnabled) setIsAuthenticated(true);
     }
   }, []);
 
@@ -93,7 +93,7 @@ const App: React.FC = () => {
                 {settings.companyName.substring(0, 2).toUpperCase()}
               </div>
             )}
-            <span className="font-bold text-xl tracking-tight">{settings.companyName}</span>
+            <span className="font-black text-xl tracking-tight text-primary">{settings.companyName}</span>
           </div>
         </div>
 
@@ -115,7 +115,8 @@ const App: React.FC = () => {
           </div>
         </div>
       </header>
-      <main className="flex-1 p-4 md:p-8 overflow-auto">
+
+      <main className="flex-1 p-4 md:p-8 overflow-auto pb-24">
         {(() => {
           switch (currentView) {
             case AppView.DASHBOARD: return <Dashboard setView={setCurrentView} />;
@@ -149,6 +150,22 @@ const App: React.FC = () => {
           }
         })()}
       </main>
+
+      <footer className="no-print mt-auto py-6 px-8 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-2 text-zinc-500 font-bold text-xs">
+            <span>© 2025</span>
+            <span className="text-primary">{settings.companyName}</span>
+            <span>جميع الحقوق محفوظة</span>
+          </div>
+          <div className="flex items-center gap-2 bg-zinc-200/50 dark:bg-zinc-800/50 px-4 py-2 rounded-full border border-zinc-200 dark:border-zinc-700">
+            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Developer</span>
+            <div className="w-px h-3 bg-zinc-400/30 mx-1"></div>
+            <span className="text-xs font-black text-zinc-600 dark:text-zinc-300">BY: MOHANNAD AHMAD - SYRIA</span>
+            <Heart className="w-3 h-3 text-primary fill-primary animate-pulse" />
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
