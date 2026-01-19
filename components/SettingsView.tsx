@@ -129,26 +129,52 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
                  </div>
                  
                  <div className="bg-primary/5 p-4 rounded-2xl border border-primary/20 space-y-4">
-                    <h4 className="text-xs font-black text-primary flex items-center gap-2 uppercase"><Coins className="w-4 h-4"/> إعدادات العملة الرئيسية</h4>
+                    <h4 className="text-xs font-black text-primary flex items-center gap-2 uppercase"><Coins className="w-4 h-4"/> إعدادات العملات</h4>
+                    
+                    {/* Primary Currency */}
                     <div className="grid grid-cols-2 gap-4">
                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">اسم العملة (للتفقيط)</label>
+                          <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">العملة الأساسية</label>
                           <input 
                             type="text" 
-                            placeholder="مثلاً: ريال سعودي"
+                            placeholder="مثلاً: ليرة سورية"
                             className="bg-white dark:bg-zinc-800 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-sm"
                             value={localSettings.currency}
                             onChange={e => setLocalSettings({...localSettings, currency: e.target.value})}
                           />
                        </div>
                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">رمز العملة (للعرض)</label>
+                          <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">رمز الأساسية</label>
                           <input 
                             type="text" 
-                            placeholder="مثلاً: ر.س"
+                            placeholder="مثلاً: ل.س"
                             className="bg-white dark:bg-zinc-800 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 outline-none font-black text-center text-primary"
                             value={localSettings.currencySymbol}
                             onChange={e => setLocalSettings({...localSettings, currencySymbol: e.target.value})}
+                          />
+                       </div>
+                    </div>
+
+                    {/* Secondary Currency */}
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-primary/10">
+                       <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-zinc-400 font-black uppercase mr-1">العملة الثانوية</label>
+                          <input 
+                            type="text" 
+                            placeholder="مثلاً: دولار أمريكي"
+                            className="bg-white dark:bg-zinc-800 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-sm"
+                            value={localSettings.secondaryCurrency}
+                            onChange={e => setLocalSettings({...localSettings, secondaryCurrency: e.target.value})}
+                          />
+                       </div>
+                       <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-zinc-400 font-black uppercase mr-1">رمز الثانوية</label>
+                          <input 
+                            type="text" 
+                            placeholder="مثلاً: $"
+                            className="bg-white dark:bg-zinc-800 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 outline-none font-black text-center text-zinc-500"
+                            value={localSettings.secondaryCurrencySymbol}
+                            onChange={e => setLocalSettings({...localSettings, secondaryCurrencySymbol: e.target.value})}
                           />
                        </div>
                     </div>

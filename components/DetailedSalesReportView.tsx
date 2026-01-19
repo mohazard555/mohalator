@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Printer, Search, FileOutput, X, Users } from 'lucide-react';
+import { ArrowRight, Printer, Search, FileOutput, X, Users, Box, HardDrive } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, CashEntry, Party, PartyType, AppSettings } from '../types';
 
-const tafqeet = (n: number, prefix: string = ""): string => {
+const tafqeet = (n: number, currencyName: string): string => {
   if (n === 0) return "صفر";
-  return `${prefix} ${n.toLocaleString()} ليرة سورية فقط لا غير`;
+  return `${n.toLocaleString()} ${currencyName} فقط لا غير`;
 };
 
 interface DetailedSalesReportViewProps {
@@ -39,43 +39,62 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
     return matchesCustomer && matchesDate;
   });
 
+  // تسطيح البيانات لتظهر كل مادة في سطر مع بيانات فاتورتها والمواد المستخدمة فيها
   const reportRows = filteredInvoices.flatMap(inv => 
     inv.items.map(item => ({
       ...item,
       invoiceNumber: inv.invoiceNumber,
-      invoiceDate: inv.date
+      invoiceDate: inv.date,
+      usedMaterials: inv.usedMaterials || [],
+      currencySymbol: inv.currencySymbol || settings?.currencySymbol || 'ل.س'
     }))
   );
 
   const totalSales = filteredInvoices.reduce((s, c) => s + c.totalAmount, 0);
+  
+  // حساب المقبوضات بناءً على اسم الزبون المختار
   const totalPaid = cashEntries
-    .filter(e => (!customerFilter || e.partyName === customerFilter || e.statement.includes(customerFilter)) && (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate))
-    .reduce((s, c) => s + c.receivedSYP, 0);
+    .filter(e => {
+      const isSelectedCustomer = !customerFilter || e.partyName === customerFilter || e.statement.includes(customerFilter);
+      const isWithinDate = (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate);
+      return isSelectedCustomer && isWithinDate;
+    })
+    .reduce((s, c) => {
+      // نجمع المبالغ سواء كانت بالعملة الأساسية أو الثانوية (للتبسيط في الكشف العام)
+      return s + (c.receivedSYP + c.receivedUSD); 
+    }, 0);
+
   const totalRemaining = totalSales - totalPaid;
   const totalItemsCount = reportRows.reduce((s, c) => s + c.quantity, 0);
   const totalInvoicesCount = filteredInvoices.length;
 
   return (
     <div className="space-y-4 text-right bg-[#f2f2f2] p-8 rounded-lg shadow-2xl min-h-screen text-zinc-900 border-2 border-zinc-300" dir="rtl">
-      <div className="flex items-center justify-between border-b-2 border-zinc-400 pb-4 mb-4">
-         <div className="flex items-center gap-3">
-            {settings?.logoUrl ? (
-              <img src={settings.logoUrl} alt="Logo" className="w-14 h-14 object-contain rounded" />
-            ) : (
-               <div className="bg-rose-900 p-2 rounded shadow-sm border border-zinc-300 w-12 h-12 flex items-center justify-center text-white font-black">
-                  {settings?.companyName.substring(0,2).toUpperCase() || 'SH'}
+      <div className="flex items-center justify-between border-b-2 border-zinc-400 pb-4 mb-4 no-print">
+         <div className="flex items-center gap-4">
+            <button onClick={onBack} className="p-2 bg-white hover:bg-zinc-100 rounded-xl border border-zinc-300 transition-all">
+               <ArrowRight className="w-6 h-6" />
+            </button>
+            <div className="flex items-center gap-3">
+               {settings?.logoUrl ? (
+                 <img src={settings.logoUrl} alt="Logo" className="w-14 h-14 object-contain rounded" />
+               ) : (
+                  <div className="bg-rose-900 p-2 rounded shadow-sm border border-zinc-300 w-12 h-12 flex items-center justify-center text-white font-black">
+                     {settings?.companyName.substring(0,2).toUpperCase() || 'SH'}
+                  </div>
+               )}
+               <div className="flex flex-col">
+                 <span className="text-zinc-800 font-black text-xl leading-none">{settings?.companyName || 'شينو للمحاسبة'}</span>
+                 <span className="text-zinc-400 text-[8px] font-bold uppercase tracking-widest">{settings?.address || 'Accounting System'}</span>
                </div>
-            )}
-            <div className="flex flex-col">
-              <span className="text-zinc-800 font-black text-xl leading-none">{settings?.companyName || 'شينو للمحاسبة'}</span>
-              <span className="text-zinc-400 text-[8px] font-bold uppercase tracking-widest">{settings?.address || 'Accounting System'}</span>
             </div>
          </div>
-         <h1 className="text-3xl font-black flex-1 text-center tracking-tight text-zinc-800">كشف مبيعات الزبون المفصل</h1>
+         <h1 className="text-3xl font-black flex-1 text-center tracking-tight text-zinc-800">كشف حساب زبون مفصل</h1>
          <div className="text-xs font-mono text-zinc-400 bg-white px-3 py-1 rounded border border-zinc-200">#{new Date().getTime().toString().slice(-6)}</div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border-2 border-zinc-500 bg-white overflow-hidden rounded-sm">
+      {/* شاشة العرض والفلترة */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border-2 border-zinc-500 bg-white overflow-hidden rounded-sm no-print">
          <div className="col-span-1 border-l-2 border-zinc-500 flex flex-col">
             <div className="flex border-b-2 border-zinc-500 flex-1">
                <div className="bg-[#e2e8f0] flex-1 p-2 text-xs font-bold text-center border-l border-zinc-300 flex items-center justify-center">اجمالي عدد القطع</div>
@@ -113,17 +132,18 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
          </div>
       </div>
 
+      {/* جدول البيانات الرئيسي */}
       <div className="relative overflow-x-auto border-2 border-zinc-500 bg-white shadow-lg">
-        <table className="w-full text-center border-collapse text-xs">
+        <table className="w-full text-right border-collapse text-[10px]">
           <thead>
             <tr className="bg-[#cbd5e1] text-zinc-900 font-black border-b-2 border-zinc-500 h-10">
-              <th className="p-1 border border-zinc-300 w-16">رقم الف</th>
-              <th className="p-1 border border-zinc-300 w-24">تاريخ</th>
-              <th className="p-1 border border-zinc-300">تفاصيل الاصناف</th>
-              <th className="p-1 border border-zinc-300 w-16">العدد</th>
-              <th className="p-1 border border-zinc-300 w-24">السعر</th>
-              <th className="p-1 border border-zinc-300 w-24">المجموع</th>
-              <th className="p-1 border border-zinc-300 w-32">ملاحظات</th>
+              <th className="p-1 border border-zinc-300 w-12 text-center">فاتورة</th>
+              <th className="p-1 border border-zinc-300 w-20 text-center">التاريخ</th>
+              <th className="p-1 border border-zinc-300 text-right pr-4">الصنف وتفاصيله</th>
+              <th className="p-1 border border-zinc-300 text-right pr-4">المواد المستخدمة</th>
+              <th className="p-1 border border-zinc-300 w-12 text-center">العدد</th>
+              <th className="p-1 border border-zinc-300 w-24 text-center">السعر</th>
+              <th className="p-1 border border-zinc-300 w-24 text-center">المجموع</th>
             </tr>
           </thead>
           <tbody>
@@ -135,56 +155,82 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
               ))
             ) : (
               reportRows.map((row, idx) => (
-                <tr key={idx} className="h-9 border-b border-zinc-200 font-bold hover:bg-zinc-50 transition-colors">
-                  <td className="p-1 border border-zinc-200 font-mono text-rose-700">{row.invoiceNumber}</td>
-                  <td className="p-1 border border-zinc-200 font-mono">{row.invoiceDate}</td>
-                  <td className="p-1 border border-zinc-200 text-right pr-6">
-                    <div className="flex items-center gap-2 justify-end">
-                       {row.name}
-                       {row.image && <img src={row.image} className="w-5 h-5 object-cover rounded shadow-sm" />}
+                <tr key={idx} className="h-10 border-b border-zinc-200 font-bold hover:bg-zinc-50 transition-colors">
+                  <td className="p-1 border border-zinc-200 font-mono text-rose-700 text-center">#{row.invoiceNumber}</td>
+                  <td className="p-1 border border-zinc-200 font-mono text-center text-zinc-500">{row.invoiceDate}</td>
+                  <td className="p-1 border border-zinc-200 text-right pr-4">
+                    <div className="flex items-center gap-2">
+                       {row.image && <img src={row.image} className="w-6 h-6 object-cover rounded shadow-sm border border-zinc-200" />}
+                       <div className="flex flex-col">
+                          <span className="text-zinc-900">{row.name}</span>
+                          {row.serialNumber && <span className="text-[8px] text-zinc-400 font-mono uppercase">SN: {row.serialNumber}</span>}
+                       </div>
                     </div>
                   </td>
-                  <td className="p-1 border border-zinc-200 font-mono text-lg">{row.quantity}</td>
-                  <td className="p-1 border border-zinc-200 font-mono">{row.price.toLocaleString()}</td>
-                  <td className="p-1 border border-zinc-200 font-mono font-black text-lg text-emerald-700">{ (row.quantity * row.price).toLocaleString()}</td>
-                  <td className="p-1 border border-zinc-200 text-[9px] text-zinc-400 font-normal italic">{row.notes || '---'}</td>
+                  <td className="p-1 border border-zinc-200 text-right pr-4 bg-zinc-50/50">
+                     <div className="flex flex-wrap gap-1">
+                        {row.usedMaterials.length > 0 ? (
+                          row.usedMaterials.map((m: any, i: number) => (
+                            <span key={i} className="bg-rose-500/5 text-rose-600 px-1.5 py-0.5 rounded-sm border border-rose-200 text-[8px] flex items-center gap-1">
+                               <HardDrive className="w-2 h-2 opacity-50"/> {m.name} ({m.quantity})
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-zinc-300 font-normal italic">لا يوجد مواد</span>
+                        )}
+                     </div>
+                  </td>
+                  <td className="p-1 border border-zinc-200 font-mono text-center text-sm">{row.quantity}</td>
+                  <td className="p-1 border border-zinc-200 font-mono text-center">{row.price.toLocaleString()}</td>
+                  <td className="p-1 border border-zinc-200 font-mono font-black text-center text-emerald-700">{(row.quantity * row.price).toLocaleString()}</td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
 
+        {/* ملخص المبالغ الكلي */}
         <div className="border-t-4 border-[#1e3a8a]">
           <div className="flex border-b border-zinc-300 h-12 items-center hover:bg-zinc-50 transition-all">
              <div className="bg-[#cbd5e1] w-64 border-l border-zinc-400 p-3 font-black text-center text-sm">اجمالي المبيعات</div>
-             <div className="flex-1 p-2 font-mono font-black text-3xl px-8 text-[#1e3a8a]">{totalSales.toLocaleString()}</div>
+             <div className="flex-1 p-2 font-mono font-black text-3xl px-8 text-[#1e3a8a]">
+               {totalSales.toLocaleString()} <span className="text-sm font-bold opacity-60">{settings?.currencySymbol}</span>
+             </div>
           </div>
           <div className="flex border-b border-zinc-300 h-12 items-center hover:bg-zinc-50 transition-all">
              <div className="bg-[#f1f5f9] w-64 border-l border-zinc-400 p-3 font-black text-center text-sm">الرصيد المدفوع</div>
-             <div className="flex-1 p-2 font-mono font-black text-3xl px-8 text-emerald-700">{totalPaid.toLocaleString()}</div>
+             <div className="flex-1 p-2 font-mono font-black text-3xl px-8 text-emerald-700">
+               {totalPaid.toLocaleString()} <span className="text-sm font-bold opacity-60">{settings?.currencySymbol}</span>
+             </div>
           </div>
           <div className="flex h-12 items-center bg-rose-50 hover:bg-rose-100 transition-all">
              <div className="bg-[#cbd5e1] w-64 border-l border-zinc-400 p-3 font-black text-center text-sm">الرصيد المتبقي</div>
-             <div className="flex-1 p-2 font-mono font-black text-3xl px-8 text-rose-700">{totalRemaining.toLocaleString()}</div>
+             <div className="flex-1 p-2 font-mono font-black text-3xl px-8 text-rose-700">
+               {totalRemaining.toLocaleString()} <span className="text-sm font-bold opacity-60">{settings?.currencySymbol}</span>
+             </div>
           </div>
         </div>
       </div>
 
+      {/* تفقيط المبالغ كتابةً */}
       <div className="grid grid-cols-4 border-2 border-zinc-500 bg-white rounded-sm overflow-hidden shadow-md">
-         <div className="col-span-3 flex flex-col divide-y divide-zinc-200 text-xs font-bold bg-white">
-            <div className="p-2.5 px-8 text-zinc-800 underline underline-offset-4 decoration-zinc-300">{tafqeet(totalSales)}</div>
-            <div className="p-2.5 px-8 text-zinc-800 underline underline-offset-4 decoration-zinc-300">{tafqeet(totalPaid)}</div>
-            <div className="p-2.5 px-8 text-rose-800 underline underline-offset-4 decoration-rose-300 font-black">{tafqeet(totalRemaining)}</div>
+         <div className="col-span-3 flex flex-col divide-y divide-zinc-200 text-[10px] font-bold bg-white">
+            <div className="p-2.5 px-8 text-zinc-800 underline underline-offset-4 decoration-zinc-300">{tafqeet(totalSales, settings?.currency || 'ليرة سورية')}</div>
+            <div className="p-2.5 px-8 text-zinc-800 underline underline-offset-4 decoration-zinc-300">{tafqeet(totalPaid, settings?.currency || 'ليرة سورية')}</div>
+            <div className="p-2.5 px-8 text-rose-800 underline underline-offset-4 decoration-rose-300 font-black">{tafqeet(totalRemaining, settings?.currency || 'ليرة سورية')}</div>
          </div>
-         <div className="col-span-1 border-r border-zinc-500 flex flex-col divide-y divide-zinc-200 font-black text-xs bg-[#f8fafc]">
-            <div className="p-2.5 pr-6 text-left border-l border-zinc-200">المبيع كتابتاً</div>
-            <div className="p-2.5 pr-6 text-left border-l border-zinc-200">المدفوع كتابتاً</div>
-            <div className="p-2.5 pr-6 text-left border-l border-zinc-200">المتبقي كتابتاً</div>
+         <div className="col-span-1 border-r border-zinc-500 flex flex-col divide-y divide-zinc-200 font-black text-[10px] bg-[#f8fafc]">
+            <div className="p-2.5 pr-6 text-left border-l border-zinc-200">المبيع كتابةً</div>
+            <div className="p-2.5 pr-6 text-left border-l border-zinc-200">المدفوع كتابةً</div>
+            <div className="p-2.5 pr-6 text-left border-l border-zinc-200">المتبقي كتابةً</div>
          </div>
       </div>
       
-      <div className="flex justify-between items-center no-print pt-6">
-         <button onClick={onBack} className="bg-zinc-800 text-white px-8 py-3 rounded-xl font-bold shadow-xl hover:bg-zinc-700 transition-all active:scale-95">العودة للرئيسية</button>
+      {/* أزرار التحكم */}
+      <div className="flex justify-between items-center no-print pt-6 pb-20">
+         <button onClick={onBack} className="bg-zinc-800 text-white px-8 py-3 rounded-xl font-bold shadow-xl hover:bg-zinc-700 transition-all active:scale-95 flex items-center gap-2">
+            العودة للرئيسية
+         </button>
          <button onClick={() => window.print()} className="bg-rose-900 text-white px-12 py-3 rounded-xl flex items-center gap-2 font-black shadow-xl hover:bg-rose-800 transition-all active:scale-95">
             <Printer className="w-6 h-6" /> طباعة الكشف الكامل
          </button>

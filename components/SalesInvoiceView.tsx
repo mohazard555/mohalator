@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, Box, Clock, FileDown, User, Hash, HardDrive, ScrollText, Image as ImageIcon, CreditCard } from 'lucide-react';
+import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, Box, Clock, FileDown, User, Hash, HardDrive, ScrollText, Image as ImageIcon, CreditCard, Coins } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, StockEntry, Party, PartyType, InventoryItem, CashEntry, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -21,6 +21,8 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   
+  const [selectedCurrencyType, setSelectedCurrencyType] = useState<'primary' | 'secondary'>('primary');
+
   const [newInvoice, setNewInvoice] = useState<Partial<SalesInvoice>>({
     invoiceNumber: '',
     customerName: '',
@@ -102,20 +104,29 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
     const time = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
     const invNum = newInvoice.invoiceNumber || (invoices.length + 3000).toString();
 
+    const currencyName = selectedCurrencyType === 'primary' 
+      ? (settings?.currency || 'ليرة سورية') 
+      : (settings?.secondaryCurrency || 'دولار');
+    
+    const currencySymbol = selectedCurrencyType === 'primary' 
+      ? (settings?.currencySymbol || 'ل.س') 
+      : (settings?.secondaryCurrencySymbol || '$');
+
     const invoice: SalesInvoice = {
       ...newInvoice as SalesInvoice,
       id: crypto.randomUUID(),
       invoiceNumber: invNum,
       time,
       totalAmount: total,
-      totalAmountLiteral: tafqeet(total, settings?.currency || 'ليرة سورية')
+      currencySymbol: currencySymbol,
+      totalAmountLiteral: tafqeet(total, currencyName)
     };
 
     const updated = [invoice, ...invoices];
     setInvoices(updated);
     localStorage.setItem('sheno_sales_invoices', JSON.stringify(updated));
 
-    // Stock deduction with automated fields
+    // Stock deduction
     if (invoice.usedMaterials && invoice.usedMaterials.length > 0) {
       const savedStock = localStorage.getItem('sheno_stock_entries');
       let stock: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
@@ -142,13 +153,16 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
     if (invoice.paidAmount! > 0) {
       const savedCash = localStorage.getItem('sheno_cash_journal');
       let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
+      
+      const isPrimary = selectedCurrencyType === 'primary';
+
       const cashMove: CashEntry = {
         id: crypto.randomUUID(),
         date: invoice.date,
         statement: `مقبوضات فاتورة مبيعات ${invNum} (${invoice.paymentType}) - العميل: ${invoice.customerName}`,
-        receivedSYP: invoice.paidAmount!,
+        receivedSYP: isPrimary ? invoice.paidAmount! : 0,
         paidSYP: 0,
-        receivedUSD: 0,
+        receivedUSD: !isPrimary ? invoice.paidAmount! : 0,
         paidUSD: 0,
         notes: invoice.notes,
         type: 'بيع'
@@ -158,7 +172,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
 
     setIsAdding(false);
     setNewInvoice({ invoiceNumber: '', customerName: '', date: new Date().toISOString().split('T')[0], items: [], usedMaterials: [], notes: '', paidAmount: 0, paymentType: 'نقداً' });
-    alert('تم حفظ الفاتورة بنجاح وتحديث سجلات المستودع.');
+    alert('تم حفظ الفاتورة بنجاح وتحديث سجلات المستودع والصندوق.');
   };
 
   return (
@@ -182,8 +196,8 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
 
       {isAdding && (
         <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl space-y-8 animate-in zoom-in-95 no-print">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-            <div className="flex flex-col gap-1">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
+            <div className="flex flex-col gap-1 md:col-span-1">
               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">العميل</label>
               <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={newInvoice.customerName} onChange={e => setNewInvoice({...newInvoice, customerName: e.target.value})}>
                 <option value="">-- اختر زبون --</option>
@@ -193,6 +207,23 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
             <div className="flex flex-col gap-1">
                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">رقم الفاتورة</label>
                <input type="text" placeholder="تلقائي" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold" value={newInvoice.invoiceNumber} onChange={e => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})} />
+            </div>
+            <div className="flex flex-col gap-1">
+               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">عملة الفاتورة</label>
+               <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800 p-1 rounded-2xl border border-zinc-200 dark:border-zinc-700 h-[52px]">
+                  <button 
+                    onClick={() => setSelectedCurrencyType('primary')}
+                    className={`flex-1 h-full rounded-xl text-[10px] font-black transition-all ${selectedCurrencyType === 'primary' ? 'bg-primary text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+                  >
+                    {settings?.currencySymbol || 'أساسية'}
+                  </button>
+                  <button 
+                    onClick={() => setSelectedCurrencyType('secondary')}
+                    className={`flex-1 h-full rounded-xl text-[10px] font-black transition-all ${selectedCurrencyType === 'secondary' ? 'bg-zinc-800 text-white shadow-lg dark:bg-zinc-600' : 'text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+                  >
+                    {settings?.secondaryCurrencySymbol || 'ثانوية'}
+                  </button>
+               </div>
             </div>
             <div className="flex flex-col gap-1">
                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">طريقة الدفع</label>
@@ -206,7 +237,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                <input type="date" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold" value={newInvoice.date} onChange={e => setNewInvoice({...newInvoice, date: e.target.value})} />
             </div>
             <div className="flex flex-col gap-1">
-               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المبلغ المدفوع ({settings?.currencySymbol || 'ل.س'})</label>
+               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المبلغ المدفوع ({selectedCurrencyType === 'primary' ? settings?.currencySymbol : settings?.secondaryCurrencySymbol})</label>
                <input type="number" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-black text-emerald-500" value={newInvoice.paidAmount} onChange={e => setNewInvoice({...newInvoice, paidAmount: Number(e.target.value)})} />
             </div>
           </div>
@@ -214,7 +245,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
              <div className="bg-zinc-50 dark:bg-zinc-800/50 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 space-y-4">
                 <h4 className="text-sm font-black text-primary flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-2 uppercase tracking-widest">
-                   <ScrollText className="w-4 h-4" /> تفاصيل الأصناف (صورة وسيريال)
+                   <ScrollText className="w-4 h-4" /> تفاصيل الأصناف ({selectedCurrencyType === 'primary' ? settings?.currencySymbol : settings?.secondaryCurrencySymbol})
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                    <input type="text" placeholder="اسم الصنف..." className="md:col-span-2 bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={manualItem.name} onChange={e => setManualItem({...manualItem, name: e.target.value})} />
@@ -312,7 +343,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
           <div className="flex flex-col md:flex-row justify-between items-center pt-6 border-t border-zinc-100 dark:border-zinc-800 gap-6">
              <div className="text-primary font-black text-xl bg-primary/5 px-8 py-3 rounded-2xl border border-primary/20 w-full md:w-auto text-center flex items-center gap-3">
                 <CreditCard className="w-6 h-6" />
-                <span>{tafqeet(newInvoice.items?.reduce((s,i) => s + i.total, 0) || 0, settings?.currency || 'ليرة سورية')}</span>
+                <span>{tafqeet(newInvoice.items?.reduce((s,i) => s + i.total, 0) || 0, selectedCurrencyType === 'primary' ? (settings?.currency || 'ليرة سورية') : (settings?.secondaryCurrency || 'دولار'))}</span>
              </div>
              <div className="flex gap-3 w-full md:w-auto">
                <button onClick={handleSaveInvoice} className="flex-1 md:flex-none bg-primary text-white px-12 py-3 rounded-2xl font-black shadow-xl hover:brightness-110 transition-all active:scale-95 flex items-center justify-center gap-2">
@@ -343,7 +374,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                 <th className="p-3 border-l border-zinc-800 text-right">ملاحظات</th>
                 <th className="p-3 border-l border-zinc-800 text-center">وقت</th>
                 <th className="p-3 border-l border-zinc-800 text-center no-print">تصدير</th>
-                <th className="p-3 text-center">المدفوع ({settings?.currencySymbol})</th>
+                <th className="p-3 text-center">المدفوع</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold">
@@ -380,7 +411,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                       {inv.items[0]?.price.toLocaleString()}
                     </td>
                     <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center font-black text-rose-600 font-mono">
-                      {inv.totalAmount.toLocaleString()}
+                      {inv.totalAmount.toLocaleString()} {inv.currencySymbol}
                     </td>
                     <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-xs font-normal text-zinc-500 leading-tight">
                       {inv.totalAmountLiteral}
@@ -395,7 +426,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                       <button onClick={() => window.print()} className="p-1 text-zinc-300 hover:text-primary transition-all"><Printer className="w-4 h-4" /></button>
                     </td>
                     <td className="p-3 text-center text-emerald-600 font-mono">
-                      {inv.paidAmount?.toLocaleString() || '0'}
+                      {inv.paidAmount?.toLocaleString() || '0'} {inv.currencySymbol}
                     </td>
                   </tr>
                 ))

@@ -42,6 +42,8 @@ const App: React.FC = () => {
     language: 'ar',
     currency: 'ليرة سورية',
     currencySymbol: 'ل.س',
+    secondaryCurrency: 'دولار أمريكي',
+    secondaryCurrencySymbol: '$',
     isLoginEnabled: false,
     username: 'admin',
     password: '',
@@ -52,8 +54,10 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('sheno_settings');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Migration for old settings missing currencySymbol
+      // Migration for old settings missing currency fields
       if (!parsed.currencySymbol) parsed.currencySymbol = 'ل.س';
+      if (!parsed.secondaryCurrency) parsed.secondaryCurrency = 'دولار أمريكي';
+      if (!parsed.secondaryCurrencySymbol) parsed.secondaryCurrencySymbol = '$';
       setSettings(parsed);
       if (!parsed.isLoginEnabled) setIsAuthenticated(true);
     } else {
