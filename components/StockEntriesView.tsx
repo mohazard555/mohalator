@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Save, X, Search, Filter, Warehouse as WarehouseIcon, FileDown, Printer, Users } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Edit2, Save, X, Search, Filter, Warehouse as WarehouseIcon, FileDown, Printer, Users, MessageSquare } from 'lucide-react';
 import { StockEntry, InventoryItem, WarehouseEntity, Party } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -28,7 +28,8 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
     quantity: 0,
     invoiceNumber: '',
     partyName: '',
-    statement: ''
+    statement: '',
+    notes: '' // تهيئة حقل الملاحظات
   });
 
   useEffect(() => {
@@ -89,7 +90,8 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
       quantity: 0,
       invoiceNumber: '',
       partyName: '',
-      statement: ''
+      statement: '',
+      notes: ''
     });
   };
 
@@ -185,9 +187,15 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
               </div>
            </div>
            
-           <div className="flex flex-col gap-1">
-              <label className="text-xs text-zinc-500 font-bold">البيان / تفاصيل إضافية</label>
-              <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 font-bold" value={formData.statement} onChange={e => setFormData({...formData, statement: e.target.value})} />
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1">
+                 <label className="text-xs text-zinc-500 font-bold">البيان / تفاصيل العملية</label>
+                 <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 font-bold" value={formData.statement} onChange={e => setFormData({...formData, statement: e.target.value})} />
+              </div>
+              <div className="flex flex-col gap-1">
+                 <label className="text-xs text-zinc-500 font-bold flex items-center gap-1"><MessageSquare className="w-3 h-3"/> ملاحظات إضافية</label>
+                 <input type="text" placeholder="اكتب ملاحظاتك هنا..." className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
+              </div>
            </div>
 
            <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
@@ -204,7 +212,7 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
           <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 w-5 h-5" />
           <input 
             type="text" 
-            placeholder="البحث باسم الصنف، كود، اسم العميل، أو رقم فاتورة..."
+            placeholder="البحث باسم الصنف، كود، ملاحظات، أو رقم فاتورة..."
             className="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl py-2.5 pr-12 pl-4 outline-none focus:ring-2 focus:ring-primary transition-all"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
@@ -221,6 +229,7 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
               <th className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-center">الكمية</th>
               <th className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-center">النوع</th>
               <th className="p-4 border-l border-zinc-100 dark:border-zinc-800">العميل / المورد</th>
+              <th className="p-4 border-l border-zinc-100 dark:border-zinc-800">ملاحظات</th>
               <th className="p-4 border-l border-zinc-100 dark:border-zinc-800">رقم الفاتورة</th>
               <th className="p-4 border-l border-zinc-100 dark:border-zinc-800">المستودع</th>
               <th className="p-4 text-center no-print">إجراءات</th>
@@ -247,6 +256,9 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
                    </span>
                 </td>
                 <td className="p-4 text-primary border-l border-zinc-100 dark:border-zinc-800">{e.partyName || '---'}</td>
+                <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-zinc-500 font-normal italic max-w-[150px] truncate" title={e.notes}>
+                   {e.notes || '---'}
+                </td>
                 <td className="p-4 font-mono text-zinc-500 border-l border-zinc-100 dark:border-zinc-800">#{e.invoiceNumber || '---'}</td>
                 <td className="p-4 text-zinc-600 border-l border-zinc-100 dark:border-zinc-800 flex items-center gap-2">
                    <WarehouseIcon className="w-4 h-4 text-emerald-500" /> {e.warehouse}

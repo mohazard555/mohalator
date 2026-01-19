@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Printer, Plus, Trash2, Save, X, Box, Clock, FileDown, User, Hash, HardDrive, ScrollText, Image as ImageIcon, CreditCard } from 'lucide-react';
-import { SalesInvoice, InvoiceItem, StockEntry, Party, PartyType, InventoryItem, CashEntry } from '../types';
+import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, Box, Clock, FileDown, User, Hash, HardDrive, ScrollText, Image as ImageIcon, CreditCard } from 'lucide-react';
+import { SalesInvoice, InvoiceItem, StockEntry, Party, PartyType, InventoryItem, CashEntry, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
-const tafqeet = (n: number): string => {
+// وظيفة التفقيط الديناميكية بناءً على العملة
+const tafqeet = (n: number, currencyName: string): string => {
   if (n === 0) return "صفر";
-  return `${n.toLocaleString()} ليرة سورية فقط لا غير`;
+  return `${n.toLocaleString()} ${currencyName} فقط لا غير`;
 };
 
 interface SalesInvoiceViewProps {
@@ -18,6 +19,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
   const [parties, setParties] = useState<Party[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isAdding, setIsAdding] = useState(false);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   
   const [newInvoice, setNewInvoice] = useState<Partial<SalesInvoice>>({
     invoiceNumber: '',
@@ -44,10 +46,12 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
     const savedInv = localStorage.getItem('sheno_sales_invoices');
     const savedParties = localStorage.getItem('sheno_parties');
     const savedInventory = localStorage.getItem('sheno_inventory_list');
+    const savedSettings = localStorage.getItem('sheno_settings');
 
     if (savedInv) setInvoices(JSON.parse(savedInv));
     if (savedParties) setParties(JSON.parse(savedParties).filter((p: Party) => p.type === PartyType.CUSTOMER));
     if (savedInventory) setInventory(JSON.parse(savedInventory));
+    if (savedSettings) setSettings(JSON.parse(savedSettings));
   }, []);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,7 +108,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
       invoiceNumber: invNum,
       time,
       totalAmount: total,
-      totalAmountLiteral: tafqeet(total)
+      totalAmountLiteral: tafqeet(total, settings?.currency || 'ليرة سورية')
     };
 
     const updated = [invoice, ...invoices];
@@ -128,7 +132,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
         movementType: 'صرف',
         quantity: m.quantity,
         invoiceNumber: invNum,
-        partyName: invoice.customerName, // ذكر اسم العميل كحقل مستقل
+        partyName: invoice.customerName,
         statement: `صرف مواد مستخدمة للفاتورة رقم ${invNum} - العميل: ${invoice.customerName}`
       }));
       localStorage.setItem('sheno_stock_entries', JSON.stringify([...deductions, ...stock]));
@@ -202,7 +206,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                <input type="date" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold" value={newInvoice.date} onChange={e => setNewInvoice({...newInvoice, date: e.target.value})} />
             </div>
             <div className="flex flex-col gap-1">
-               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المبلغ المدفوع</label>
+               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المبلغ المدفوع ({settings?.currencySymbol || 'ل.س'})</label>
                <input type="number" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-black text-emerald-500" value={newInvoice.paidAmount} onChange={e => setNewInvoice({...newInvoice, paidAmount: Number(e.target.value)})} />
             </div>
           </div>
@@ -308,7 +312,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
           <div className="flex flex-col md:flex-row justify-between items-center pt-6 border-t border-zinc-100 dark:border-zinc-800 gap-6">
              <div className="text-primary font-black text-xl bg-primary/5 px-8 py-3 rounded-2xl border border-primary/20 w-full md:w-auto text-center flex items-center gap-3">
                 <CreditCard className="w-6 h-6" />
-                <span>{tafqeet(newInvoice.items?.reduce((s,i) => s + i.total, 0) || 0)}</span>
+                <span>{tafqeet(newInvoice.items?.reduce((s,i) => s + i.total, 0) || 0, settings?.currency || 'ليرة سورية')}</span>
              </div>
              <div className="flex gap-3 w-full md:w-auto">
                <button onClick={handleSaveInvoice} className="flex-1 md:flex-none bg-primary text-white px-12 py-3 rounded-2xl font-black shadow-xl hover:brightness-110 transition-all active:scale-95 flex items-center justify-center gap-2">
@@ -320,7 +324,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
         </div>
       )}
 
-      {/* Re-designed Data Table matching user requirements */}
+      {/* Table Section */}
       <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse text-[11px]">
@@ -339,7 +343,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                 <th className="p-3 border-l border-zinc-800 text-right">ملاحظات</th>
                 <th className="p-3 border-l border-zinc-800 text-center">وقت</th>
                 <th className="p-3 border-l border-zinc-800 text-center no-print">تصدير</th>
-                <th className="p-3 text-center">المدفوع</th>
+                <th className="p-3 text-center">المدفوع ({settings?.currencySymbol})</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold">

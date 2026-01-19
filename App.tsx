@@ -5,9 +5,9 @@ import { AppView, AppSettings } from './types';
 import Dashboard from './components/Dashboard';
 import SalesInvoiceView from './components/SalesInvoiceView';
 import SalesHistoryView from './components/SalesHistoryView';
-import SalesReturnHistoryView from './components/SalesReturnHistoryView'; // جديد
+import SalesReturnHistoryView from './components/SalesReturnHistoryView';
 import PurchaseHistoryView from './components/PurchaseHistoryView';
-import PurchaseReturnHistoryView from './components/PurchaseReturnHistoryView'; // جديد
+import PurchaseReturnHistoryView from './components/PurchaseReturnHistoryView';
 import InventoryView from './components/InventoryView';
 import CashJournalView from './components/CashJournalView';
 import CustomerBalancesView from './components/CustomerBalancesView';
@@ -40,7 +40,8 @@ const App: React.FC = () => {
     secondaryColor: '#881337',
     darkMode: true,
     language: 'ar',
-    currency: 'ل.س',
+    currency: 'ليرة سورية',
+    currencySymbol: 'ل.س',
     isLoginEnabled: false,
     username: 'admin',
     password: '',
@@ -51,6 +52,8 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('sheno_settings');
     if (saved) {
       const parsed = JSON.parse(saved);
+      // Migration for old settings missing currencySymbol
+      if (!parsed.currencySymbol) parsed.currencySymbol = 'ل.س';
       setSettings(parsed);
       if (!parsed.isLoginEnabled) setIsAuthenticated(true);
     } else {

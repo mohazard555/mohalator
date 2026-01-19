@@ -4,8 +4,8 @@ export enum AppView {
   SALES_INVOICE = 'SALES_INVOICE',
   SALES_HISTORY = 'SALES_HISTORY',
   PURCHASE_HISTORY = 'PURCHASE_HISTORY',
-  SALES_RETURN_HISTORY = 'SALES_RETURN_HISTORY', // جديد
-  PURCHASE_RETURN_HISTORY = 'PURCHASE_RETURN_HISTORY', // جديد
+  SALES_RETURN_HISTORY = 'SALES_RETURN_HISTORY',
+  PURCHASE_RETURN_HISTORY = 'PURCHASE_RETURN_HISTORY',
   PROFESSIONAL_INVOICE = 'PROFESSIONAL_INVOICE',
   INVENTORY = 'INVENTORY',
   CASH_JOURNAL = 'CASH_JOURNAL',
@@ -44,7 +44,8 @@ export interface AppSettings {
   secondaryColor: string;
   darkMode: boolean;
   language: 'ar' | 'en';
-  currency: string;
+  currency: string; // سيستخدم كاسم العملة الكامل (مثلاً: ريال سعودي)
+  currencySymbol: string; // سيستخدم كرمز (مثلاً: ر.س)
   isLoginEnabled: boolean;
   username: string;
   password?: string;
@@ -106,8 +107,9 @@ export interface StockEntry {
   movementType: 'إدخال' | 'صرف' | 'مرتجع';
   quantity: number;
   invoiceNumber: string;
-  partyName?: string; // جديد: لربط الحركة بعميل أو مورد
+  partyName?: string;
   statement: string;
+  notes?: string; // حقل الملاحظات الجديد
   movementCode?: string;
 }
 

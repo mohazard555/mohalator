@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { 
   ArrowRight, Save, Image as ImageIcon, Palette, Building, 
-  ShieldCheck, Database, Download, Upload, Trash2, AlertTriangle, Eye, EyeOff, Lock, User, KeyRound 
+  ShieldCheck, Database, Download, Upload, Trash2, AlertTriangle, Eye, EyeOff, Lock, User, KeyRound, Coins 
 } from 'lucide-react';
 import { AppSettings } from '../types';
 
@@ -96,7 +96,80 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Security & Login - PROMINENT DISPLAY */}
+        {/* Company Info */}
+        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl space-y-6">
+          <h3 className="text-lg font-black flex items-center gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4 text-readable">
+            <Building className="w-5 h-5 text-primary" /> هوية المنشأة والعملة
+          </h3>
+          <div className="space-y-4">
+            <div className="flex items-center gap-6 mb-6">
+               <div className="relative w-20 h-20 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 flex items-center justify-center overflow-hidden group">
+                  {localSettings.logoUrl ? (
+                    <img src={localSettings.logoUrl} className="w-full h-full object-contain" alt="Logo Preview" />
+                  ) : (
+                    <ImageIcon className="w-8 h-8 text-zinc-400" />
+                  )}
+                  <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleLogoUpload} accept="image/*" />
+               </div>
+               <div className="flex flex-col gap-1">
+                  <span className="font-black text-readable">شعار الشركة</span>
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">يظهر في الفواتير والتقارير</span>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+                 <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">اسم الشركة</label>
+                    <input 
+                      type="text" 
+                      className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-readable"
+                      value={localSettings.companyName}
+                      onChange={e => setLocalSettings({...localSettings, companyName: e.target.value})}
+                    />
+                 </div>
+                 
+                 <div className="bg-primary/5 p-4 rounded-2xl border border-primary/20 space-y-4">
+                    <h4 className="text-xs font-black text-primary flex items-center gap-2 uppercase"><Coins className="w-4 h-4"/> إعدادات العملة الرئيسية</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">اسم العملة (للتفقيط)</label>
+                          <input 
+                            type="text" 
+                            placeholder="مثلاً: ريال سعودي"
+                            className="bg-white dark:bg-zinc-800 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-sm"
+                            value={localSettings.currency}
+                            onChange={e => setLocalSettings({...localSettings, currency: e.target.value})}
+                          />
+                       </div>
+                       <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">رمز العملة (للعرض)</label>
+                          <input 
+                            type="text" 
+                            placeholder="مثلاً: ر.س"
+                            className="bg-white dark:bg-zinc-800 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 outline-none font-black text-center text-primary"
+                            value={localSettings.currencySymbol}
+                            onChange={e => setLocalSettings({...localSettings, currencySymbol: e.target.value})}
+                          />
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">اللغة</label>
+                    <select 
+                      className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-readable"
+                      value={localSettings.language}
+                      onChange={e => setLocalSettings({...localSettings, language: e.target.value as any})}
+                    >
+                       <option value="ar">العربية</option>
+                       <option value="en">English</option>
+                    </select>
+                 </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Security & Login */}
         <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl space-y-6">
           <h3 className="text-lg font-black flex items-center gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4 text-readable">
             <ShieldCheck className="w-5 h-5 text-primary" /> الأمان وتسجيل الدخول
@@ -159,63 +232,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
                   />
                 </div>
              </div>
-          </div>
-        </div>
-
-        {/* Company Info */}
-        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl space-y-6">
-          <h3 className="text-lg font-black flex items-center gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4 text-readable">
-            <Building className="w-5 h-5 text-primary" /> هوية المنشأة
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center gap-6 mb-6">
-               <div className="relative w-20 h-20 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 flex items-center justify-center overflow-hidden group">
-                  {localSettings.logoUrl ? (
-                    <img src={localSettings.logoUrl} className="w-full h-full object-contain" alt="Logo Preview" />
-                  ) : (
-                    <ImageIcon className="w-8 h-8 text-zinc-400" />
-                  )}
-                  <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleLogoUpload} accept="image/*" />
-               </div>
-               <div className="flex flex-col gap-1">
-                  <span className="font-black text-readable">شعار الشركة</span>
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">يظهر في الفواتير والتقارير</span>
-               </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-                 <div className="flex flex-col gap-1">
-                    <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">اسم الشركة</label>
-                    <input 
-                      type="text" 
-                      className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-readable"
-                      value={localSettings.companyName}
-                      onChange={e => setLocalSettings({...localSettings, companyName: e.target.value})}
-                    />
-                 </div>
-                 <div className="grid grid-cols-2 gap-4">
-                   <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">العملة</label>
-                      <input 
-                        type="text" 
-                        className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-readable"
-                        value={localSettings.currency}
-                        onChange={e => setLocalSettings({...localSettings, currency: e.target.value})}
-                      />
-                   </div>
-                   <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">اللغة</label>
-                      <select 
-                        className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-readable"
-                        value={localSettings.language}
-                        onChange={e => setLocalSettings({...localSettings, language: e.target.value as any})}
-                      >
-                         <option value="ar">العربية</option>
-                         <option value="en">English</option>
-                      </select>
-                   </div>
-                 </div>
-            </div>
           </div>
         </div>
 
