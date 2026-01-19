@@ -27,6 +27,8 @@ import WarehouseManagementView from './components/WarehouseManagementView';
 import ArchivesView from './components/ArchivesView';
 import LoginView from './components/LoginView';
 import ProfessionalInvoiceView from './components/ProfessionalInvoiceView';
+import CustomerInvoiceCostsView from './components/CustomerInvoiceCostsView';
+import InvestmentReportsView from './components/InvestmentReportsView';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
@@ -57,17 +59,12 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('sheno_settings');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Migration and Defaults
       if (!parsed.companyType) parsed.companyType = 'للطباعة والإعلان والحلول البرمجية';
       if (!parsed.website) parsed.website = 'www.sheno.pro';
       if (!parsed.managerName) parsed.managerName = 'أحمد شينو';
       if (!parsed.accountantName) parsed.accountantName = 'المحاسب الرئيسي';
       setSettings(parsed);
-      
-      // Strict Check for Login Screen
-      if (!parsed.isLoginEnabled) {
-        setIsAuthenticated(true);
-      }
+      if (!parsed.isLoginEnabled) setIsAuthenticated(true);
     } else {
       setIsAuthenticated(true);
     }
@@ -102,11 +99,7 @@ const App: React.FC = () => {
 
         <div className="flex items-center gap-3">
           {settings.isLoginEnabled && (
-            <button 
-              onClick={() => setIsAuthenticated(false)} 
-              className="p-2 text-zinc-400 hover:text-rose-500 transition-colors"
-              title="قفل النظام"
-            >
+            <button onClick={() => setIsAuthenticated(false)} className="p-2 text-zinc-400 hover:text-rose-500 transition-colors" title="قفل النظام">
               <UserCircle className="w-5 h-5" />
             </button>
           )}
@@ -139,6 +132,7 @@ const App: React.FC = () => {
             case AppView.REPORTS: return <ProfitLossReportView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.STOCK_ENTRIES: return <StockEntriesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.DETAILED_ITEM_MOVEMENT: return <DetailedItemMovementView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.CUSTOMER_INVOICE_COSTS: return <CustomerInvoiceCostsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.SALES_RETURN: return <SalesReturnView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.PURCHASE_RETURN: return <PurchaseReturnView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.DETAILED_SALES_REPORT: return <DetailedSalesReportView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
@@ -150,6 +144,7 @@ const App: React.FC = () => {
             case AppView.WAREHOUSE_ANALYTICS: return <WarehouseAnalyticsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.WAREHOUSE_MANAGEMENT: return <WarehouseManagementView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.ARCHIVES: return <ArchivesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.INVESTMENT_REPORTS: return <InvestmentReportsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             default: return <Dashboard setView={setCurrentView} />;
           }
         })()}

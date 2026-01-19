@@ -27,7 +27,8 @@ export enum AppView {
   WAREHOUSE_ANALYTICS = 'WAREHOUSE_ANALYTICS',
   WAREHOUSE_MANAGEMENT = 'WAREHOUSE_MANAGEMENT',
   ARCHIVES = 'ARCHIVES',
-  CASH_FILE = 'CASH_FILE'
+  CASH_FILE = 'CASH_FILE',
+  INVESTMENT_REPORTS = 'INVESTMENT_REPORTS'
 }
 
 export enum PartyType {
@@ -37,10 +38,10 @@ export enum PartyType {
 
 export interface AppSettings {
   companyName: string;
-  companyType: string; // نوع الشركة / النشاط
-  website: string; // الموقع الإلكتروني
-  managerName: string; // اسم المدير العام
-  accountantName: string; // اسم المحاسب
+  companyType: string;
+  website: string;
+  managerName: string;
+  accountantName: string;
   logoUrl?: string;
   phone: string;
   address: string;

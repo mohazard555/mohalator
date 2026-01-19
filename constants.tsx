@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ShoppingCart, Warehouse, Wallet, Settings, Truck, RotateCcw, FileText, ClipboardList, Users, History } from 'lucide-react';
+import { ShoppingCart, Warehouse, Wallet, Settings, TrendingUp } from 'lucide-react';
 import { AppView } from './types';
 
 export const MENU_GROUPS = [
@@ -36,15 +36,17 @@ export const MENU_GROUPS = [
       { label: 'سجل المشتريات', view: AppView.PURCHASE_HISTORY },
       { label: 'سجل مرتجع مشتريات', view: AppView.PURCHASE_RETURN_HISTORY },
       { label: 'حركة مادة مفصلة', view: AppView.DETAILED_ITEM_MOVEMENT },
+      { label: 'تكاليف فاتورة محددة', view: AppView.CUSTOMER_INVOICE_COSTS },
       { label: 'قائمة المواد والجرد', view: AppView.INVENTORY },
       { label: 'إدخالات وصرف المواد', view: AppView.STOCK_ENTRIES },
       { label: 'إدارة الحسابات (جهات)', view: AppView.PARTY_MANAGEMENT },
     ]
   },
   {
-    title: 'أدوات النظام',
-    icon: <Settings className="w-5 h-5" />,
+    title: 'التقارير المتقدمة',
+    icon: <TrendingUp className="w-5 h-5" />,
     items: [
+      { label: 'تقارير استثمارية وشاملة', view: AppView.INVESTMENT_REPORTS },
       { label: 'تحليلات المستودع', view: AppView.WAREHOUSE_ANALYTICS },
       { label: 'الأرشفة والتدوير', view: AppView.ARCHIVES },
       { label: 'إعدادات النظام', view: AppView.SETTINGS },
