@@ -86,11 +86,11 @@ const App: React.FC = () => {
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${settings.darkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'}>
-      <header className={`${settings.darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'} border-b px-6 py-3 flex items-center justify-between sticky top-0 z-50 no-print`}>
+      <header className={`${settings.darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'} border-b px-6 py-3 flex items-center justify-between sticky top-0 z-50 no-print shadow-sm`}>
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setCurrentView(AppView.DASHBOARD)}>
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setCurrentView(AppView.DASHBOARD)}>
             {settings.logoUrl ? (
-              <img src={settings.logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded" />
+              <img src={settings.logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded transition-transform group-hover:scale-105" />
             ) : (
               <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-black shadow-lg">
                 {settings.companyName.substring(0, 2).toUpperCase()}
@@ -100,21 +100,45 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button onClick={() => setCurrentView(AppView.PROFESSIONAL_INVOICE)} className="bg-zinc-800 text-zinc-400 p-2 rounded-xl hover:bg-primary hover:text-white transition-all" title="تصدير فاتورة">
-             <FileOutput className="w-5 h-5" />
-          </button>
-          <button onClick={() => setSettings({...settings, darkMode: !settings.darkMode})} className={`p-2 rounded-xl ${settings.darkMode ? 'text-amber-400 hover:bg-zinc-800' : 'text-zinc-600 hover:bg-zinc-100'}`}>
-            {settings.darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
-          <button onClick={() => setCurrentView(AppView.SETTINGS)} className="p-2 hover:bg-zinc-800 rounded-xl" title="الإعدادات"><SettingsIcon className="w-5 h-5" /></button>
-          {settings.isLoginEnabled && (
-            <button onClick={handleLogout} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all" title="خروج من النظام">
-              <LogOut className="w-5 h-5" />
+        <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-1 border-l dark:border-zinc-800 pl-4 ml-2">
+            <button 
+              onClick={() => setCurrentView(AppView.PROFESSIONAL_INVOICE)} 
+              className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-primary p-2.5 rounded-xl transition-all" 
+              title="تصدير فاتورة احترافية"
+            >
+               <FileOutput className="w-5 h-5" />
             </button>
-          )}
-          <div className="flex items-center gap-3 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">
-            <span className="text-sm font-bold">{settings.managerName}</span>
+            <button 
+              onClick={() => setSettings({...settings, darkMode: !settings.darkMode})} 
+              className={`p-2.5 rounded-xl transition-all ${settings.darkMode ? 'text-amber-400 hover:bg-zinc-800' : 'text-zinc-600 hover:bg-zinc-100'}`}
+              title="تغيير المظهر"
+            >
+              {settings.darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+            <button 
+              onClick={() => setCurrentView(AppView.SETTINGS)} 
+              className="p-2.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all" 
+              title="إعدادات النظام"
+            >
+              <SettingsIcon className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {isAuthenticated && (
+              <button 
+                onClick={handleLogout} 
+                className="flex items-center gap-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white px-4 py-2 rounded-xl transition-all font-bold text-sm" 
+                title="تسجيل الخروج"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden md:inline">خروج</span>
+              </button>
+            )}
+            <div className="hidden sm:flex items-center gap-3 bg-zinc-100 dark:bg-zinc-800 px-4 py-2 rounded-full border dark:border-zinc-700 shadow-inner">
+              <span className="text-xs font-black opacity-70">{settings.managerName}</span>
+            </div>
           </div>
         </div>
       </header>

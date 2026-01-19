@@ -33,6 +33,62 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
     }
   };
 
+  // --- Data Management Functions ---
+  const handleExportData = () => {
+    const data: Record<string, any> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('sheno_')) {
+        data[key] = JSON.parse(localStorage.getItem(key) || '{}');
+      }
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `backup_${settings.companyName}_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+  };
+
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = JSON.parse(event.target?.result as string);
+          if (window.confirm('سيؤدي الاستيراد لاستبدال كافة البيانات الحالية. هل أنت متأكد؟')) {
+            Object.keys(data).forEach(key => {
+              if (key.startsWith('sheno_')) {
+                localStorage.setItem(key, JSON.stringify(data[key]));
+              }
+            });
+            alert('تم استيراد البيانات بنجاح، سيتم إعادة تحميل النظام.');
+            window.location.reload();
+          }
+        } catch (err) {
+          alert('خطأ في تنسيق الملف.');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleResetData = () => {
+    if (window.confirm('تحذير نهائي: سيتم مسح كافة الفواتير، المواد، والعمليات المالية تماماً. هل تريد المتابعة؟')) {
+      if (window.confirm('هل أنت متأكد حقاً؟ لا يمكن التراجع عن هذا الإجراء.')) {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('sheno_') && key !== 'sheno_settings') {
+            localStorage.removeItem(key);
+          }
+        }
+        alert('تم تصفير كافة قواعد البيانات.');
+        window.location.reload();
+      }
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
       <div className="flex items-center gap-4">
@@ -106,7 +162,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
           </div>
         </div>
 
-        {/* Financial Context - Enhanced with Secondary Currency */}
+        {/* Financial Context */}
         <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl space-y-6">
           <h3 className="text-lg font-black flex items-center gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4 text-readable">
             <Coins className="w-5 h-5 text-primary" /> نظام العملات المتعددة
@@ -174,29 +230,32 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
           </div>
         </div>
 
-        {/* Security & Login */}
+        {/* Security & Login - Fixed Toggle */}
         <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl space-y-6">
           <h3 className="text-lg font-black flex items-center gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4 text-readable">
             <ShieldCheck className="w-5 h-5 text-primary" /> الأمان وتشغيل النظام
           </h3>
           
-          <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/20">
+          <div className="flex items-center justify-between p-5 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-700">
              <div className="flex flex-col">
                 <span className="font-black text-sm text-readable">تفعيل شاشة القفل</span>
-                <span className="text-[10px] text-zinc-500 font-bold">يتطلب كلمة مرور عند فتح الموقع</span>
+                <span className="text-[10px] text-zinc-500 font-bold">يتطلب كلمة مرور عند فتح النظام</span>
              </div>
-             <div className="relative inline-flex items-center cursor-pointer">
-               <input 
-                 type="checkbox" 
-                 className="sr-only peer" 
-                 checked={localSettings.isLoginEnabled} 
-                 onChange={e => setLocalSettings({...localSettings, isLoginEnabled: e.target.checked})} 
-               />
-               <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
-             </div>
+             
+             <label className="relative inline-flex items-center cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  className="sr-only" 
+                  checked={localSettings.isLoginEnabled} 
+                  onChange={e => setLocalSettings({...localSettings, isLoginEnabled: e.target.checked})} 
+                />
+                <div className={`w-12 h-6 rounded-full transition-colors duration-300 relative ${localSettings.isLoginEnabled ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-600'}`}>
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-300 ${localSettings.isLoginEnabled ? (localSettings.language === 'ar' ? '-translate-x-7' : 'translate-x-7') : (localSettings.language === 'ar' ? '-translate-x-1' : 'translate-x-1')}`}></div>
+                </div>
+             </label>
           </div>
 
-          <div className={`space-y-4 transition-all duration-300 ${localSettings.isLoginEnabled ? 'opacity-100 scale-100' : 'opacity-40 scale-95 pointer-events-none grayscale'}`}>
+          <div className={`space-y-4 transition-all duration-500 ${localSettings.isLoginEnabled ? 'opacity-100 translate-y-0' : 'opacity-30 -translate-y-2 pointer-events-none grayscale'}`}>
              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-1">
                    <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">اسم مستخدم المدير</label>
@@ -211,7 +270,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
                    </div>
                 </div>
                 <div className="space-y-1">
-                   <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">كلمة المرور الجديدة</label>
+                   <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">كلمة المرور الحالية</label>
                    <div className="relative">
                      <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                      <input 
@@ -226,6 +285,46 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
                    </div>
                 </div>
              </div>
+          </div>
+        </div>
+
+        {/* Database & Backup Management */}
+        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl space-y-6 md:col-span-2">
+          <h3 className="text-lg font-black flex items-center gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4 text-readable">
+            <Database className="w-5 h-5 text-amber-500" /> إدارة قواعد البيانات والنسخ الاحتياطي
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             <button 
+               onClick={handleExportData}
+               className="bg-zinc-50 dark:bg-zinc-800 p-6 rounded-3xl border-2 border-zinc-100 dark:border-zinc-700 hover:border-emerald-500 transition-all group text-right"
+             >
+                <Download className="w-8 h-8 text-emerald-500 mb-4 group-hover:scale-110 transition-transform" />
+                <h4 className="font-black text-readable">تصدير نسخة احتياطية</h4>
+                <p className="text-[10px] text-zinc-500 font-bold mt-1">حفظ كافة بيانات النظام في ملف خارجي آمن</p>
+             </button>
+
+             <label className="bg-zinc-50 dark:bg-zinc-800 p-6 rounded-3xl border-2 border-zinc-100 dark:border-zinc-700 hover:border-primary transition-all group text-right cursor-pointer relative">
+                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImportData} accept=".json" />
+                <Upload className="w-8 h-8 text-primary mb-4 group-hover:scale-110 transition-transform" />
+                <h4 className="font-black text-readable">استيراد بيانات</h4>
+                <p className="text-[10px] text-zinc-500 font-bold mt-1">استعادة سجلات النظام من ملف تم تصديره مسبقاً</p>
+             </label>
+
+             <button 
+               onClick={handleResetData}
+               className="bg-zinc-50 dark:bg-zinc-800 p-6 rounded-3xl border-2 border-zinc-100 dark:border-zinc-700 hover:border-rose-500 transition-all group text-right"
+             >
+                <Trash2 className="w-8 h-8 text-rose-500 mb-4 group-hover:scale-110 transition-transform" />
+                <h4 className="font-black text-readable">تصفير النظام</h4>
+                <p className="text-[10px] text-zinc-500 font-bold mt-1">مسح كافة السجلات والفواتير (لا يمكن التراجع)</p>
+             </button>
+          </div>
+          
+          <div className="bg-amber-500/5 p-4 rounded-2xl border border-amber-500/20 flex gap-3">
+             <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+             <p className="text-[10px] text-amber-600 font-bold leading-relaxed">
+               تنبيه: نوصي بتصدير نسخة احتياطية من بياناتك بشكل أسبوعي لضمان عدم فقدان السجلات في حال تغيير المتصفح أو مسح ذاكرة التخزين المؤقت.
+             </p>
           </div>
         </div>
       </div>
