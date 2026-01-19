@@ -106,6 +106,7 @@ export interface StockEntry {
   movementType: 'إدخال' | 'صرف' | 'مرتجع';
   quantity: number;
   invoiceNumber: string;
+  partyName?: string; // جديد: لربط الحركة بعميل أو مورد
   statement: string;
   movementCode?: string;
 }

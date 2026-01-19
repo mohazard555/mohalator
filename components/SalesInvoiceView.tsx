@@ -111,7 +111,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
     setInvoices(updated);
     localStorage.setItem('sheno_sales_invoices', JSON.stringify(updated));
 
-    // Stock deduction
+    // Stock deduction with automated fields
     if (invoice.usedMaterials && invoice.usedMaterials.length > 0) {
       const savedStock = localStorage.getItem('sheno_stock_entries');
       let stock: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
@@ -128,7 +128,8 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
         movementType: 'صرف',
         quantity: m.quantity,
         invoiceNumber: invNum,
-        statement: `صرف لمبيعات الفاتورة رقم ${invNum}`
+        partyName: invoice.customerName, // ذكر اسم العميل كحقل مستقل
+        statement: `صرف مواد مستخدمة للفاتورة رقم ${invNum} - العميل: ${invoice.customerName}`
       }));
       localStorage.setItem('sheno_stock_entries', JSON.stringify([...deductions, ...stock]));
     }
@@ -153,7 +154,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
 
     setIsAdding(false);
     setNewInvoice({ invoiceNumber: '', customerName: '', date: new Date().toISOString().split('T')[0], items: [], usedMaterials: [], notes: '', paidAmount: 0, paymentType: 'نقداً' });
-    alert('تم حفظ الفاتورة بنجاح.');
+    alert('تم حفظ الفاتورة بنجاح وتحديث سجلات المستودع.');
   };
 
   return (
