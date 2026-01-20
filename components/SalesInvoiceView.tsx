@@ -272,7 +272,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                   </td>
                   <td className="p-2 border-l border-zinc-900">
                     <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
-                       {inv.usedMaterials?.map((m, i) => ( <span key={i} className="bg-rose-900/30 text-rose-400 px-1 py-0.5 rounded-sm text-[8px] font-black">{m.name}</span> ))}
+                       {inv.usedMaterials?.map((m, i) => ( <span key={i} className="bg-rose-900/30 text-rose-400 px-1 py-0.5 rounded-sm text-[8px] font-black">{m.name} ({m.quantity})</span> ))}
                     </div>
                   </td>
                   <td className="p-2 border-l border-zinc-900 text-center font-mono text-white">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
