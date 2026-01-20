@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Printer, Search, FileOutput, X, Users, Box, HardDrive, Calendar } from 'lucide-react';
+import { ArrowRight, Printer, Search, FileOutput, X, Users, Box, HardDrive, Calendar, Eye, EyeOff } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, CashEntry, Party, PartyType, AppSettings } from '../types';
 
 const tafqeet = (n: number, currencyName: string): string => {
@@ -20,6 +20,9 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
   const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  
+  // خيار الخصوصية: إظهار أو إخفاء المواد المستخدمة
+  const [showUsedMaterials, setShowUsedMaterials] = useState(true);
 
   useEffect(() => {
     const savedInvoices = localStorage.getItem('sheno_sales_invoices');
@@ -108,7 +111,8 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
          <div className="text-xs font-mono text-zinc-400 bg-white dark:bg-zinc-800 px-3 py-1 rounded border border-zinc-200 dark:border-zinc-700">#{new Date().getTime().toString().slice(-6)}</div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden rounded-2xl no-print">
+      {/* Filter & Privacy Controls */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden rounded-2xl no-print">
          <div className="col-span-1 border-l-2 border-zinc-200 dark:border-zinc-800 flex flex-col">
             <div className="flex border-b-2 border-zinc-200 dark:border-zinc-800 flex-1">
                <div className="bg-zinc-100 dark:bg-zinc-800 flex-1 p-2 text-xs font-bold text-center border-l border-zinc-200 dark:border-zinc-700 flex items-center justify-center">اجمالي عدد القطع</div>
@@ -131,9 +135,9 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
             </div>
          </div>
 
-         <div className="col-span-1 flex flex-col bg-zinc-50 dark:bg-zinc-800/50">
+         <div className="col-span-1 border-l-2 border-zinc-200 dark:border-zinc-800 flex flex-col bg-zinc-50 dark:bg-zinc-800/50">
             <div className="bg-zinc-100 dark:bg-zinc-800 p-2 text-xs font-bold text-center border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-center gap-2 text-readable">
-               <Users className="w-3 h-3"/> اختيار الزبون من القائمة
+               <Users className="w-3 h-3"/> اختيار الزبون
             </div>
             <select 
               value={customerFilter} 
@@ -144,6 +148,19 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
               {parties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
             </select>
          </div>
+
+         {/* قسم التحكم بالخصوصية */}
+         <div className="col-span-1 flex flex-col items-center justify-center p-4 gap-3 bg-zinc-100/50 dark:bg-zinc-800/30">
+            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">إعدادات الخصوصية</span>
+            <button 
+              onClick={() => setShowUsedMaterials(!showUsedMaterials)}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl font-black text-xs transition-all w-full justify-center ${showUsedMaterials ? 'bg-emerald-600 text-white shadow-lg' : 'bg-rose-600 text-white shadow-lg'}`}
+            >
+               {showUsedMaterials ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+               {showUsedMaterials ? 'عمود المواد (ظاهر حالياً)' : 'عمود المواد (مخفي للطباعة)'}
+            </button>
+            <p className="text-[8px] text-zinc-400 text-center font-bold">استخدم هذا الخيار لإخفاء تفاصيل المواد المخزنية المستخدمة في الكشف المطبوع.</p>
+         </div>
       </div>
 
       <div className="relative overflow-x-auto border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg rounded-2xl print:border-rose-900 print:rounded-none">
@@ -153,7 +170,7 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
               <th className="p-1 border border-rose-800 w-12 text-center">فاتورة</th>
               <th className="p-1 border border-rose-800 w-20 text-center">التاريخ</th>
               <th className="p-1 border border-rose-800 text-right pr-4">الصنف وتفاصيله</th>
-              <th className="p-1 border border-rose-800 text-right pr-4">المواد المستخدمة</th>
+              {showUsedMaterials && <th className="p-1 border border-rose-800 text-right pr-4">المواد المستخدمة</th>}
               <th className="p-1 border border-rose-800 w-12 text-center">العدد</th>
               <th className="p-1 border border-rose-800 w-24 text-center">السعر</th>
               <th className="p-1 border border-rose-800 w-24 text-center">المجموع</th>
@@ -163,7 +180,7 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
             {reportRows.length === 0 ? (
               Array.from({ length: 15 }).map((_, i) => (
                 <tr key={i} className="h-8 border-b border-zinc-100 dark:border-zinc-800">
-                  {Array.from({ length: 7 }).map((__, j) => <td key={j} className="border border-zinc-100 dark:border-zinc-800"></td>)}
+                  {Array.from({ length: showUsedMaterials ? 7 : 6 }).map((__, j) => <td key={j} className="border border-zinc-100 dark:border-zinc-800"></td>)}
                 </tr>
               ))
             ) : (
@@ -180,19 +197,21 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
                        </div>
                     </div>
                   </td>
-                  <td className="p-1 border border-zinc-100 dark:border-zinc-800 text-right pr-4 bg-zinc-50/50 dark:bg-zinc-800/30 print:bg-transparent">
-                     <div className="flex flex-wrap gap-1">
-                        {row.usedMaterials.length > 0 ? (
-                          row.usedMaterials.map((m: any, i: number) => (
-                            <span key={i} className="bg-rose-500/5 text-rose-600 dark:text-rose-300 px-1.5 py-0.5 rounded-sm border border-rose-200 dark:border-rose-900/50 text-[8px] flex items-center gap-1">
-                               <HardDrive className="w-2 h-2 opacity-50"/> {m.name} ({m.quantity})
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-zinc-300 dark:text-zinc-600 font-normal italic">لا يوجد مواد</span>
-                        )}
-                     </div>
-                  </td>
+                  {showUsedMaterials && (
+                    <td className="p-1 border border-zinc-100 dark:border-zinc-800 text-right pr-4 bg-zinc-50/50 dark:bg-zinc-800/30 print:bg-transparent">
+                       <div className="flex flex-wrap gap-1">
+                          {row.usedMaterials.length > 0 ? (
+                            row.usedMaterials.map((m: any, i: number) => (
+                              <span key={i} className="bg-rose-500/5 text-rose-600 dark:text-rose-300 px-1.5 py-0.5 rounded-sm border border-rose-200 dark:border-rose-900/50 text-[8px] flex items-center gap-1">
+                                 <HardDrive className="w-2 h-2 opacity-50"/> {m.name} ({m.quantity})
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-zinc-300 dark:text-zinc-600 font-normal italic">لا يوجد مواد</span>
+                          )}
+                       </div>
+                    </td>
+                  )}
                   <td className="p-1 border border-zinc-100 dark:border-zinc-800 font-mono text-center text-sm">{row.quantity}</td>
                   <td className="p-1 border border-zinc-100 dark:border-zinc-800 font-mono text-center">{row.price.toLocaleString()}</td>
                   <td className="p-1 border border-zinc-100 dark:border-zinc-800 font-mono font-black text-center text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/10 print:bg-transparent">{(row.quantity * row.price).toLocaleString()}</td>

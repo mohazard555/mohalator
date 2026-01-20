@@ -38,6 +38,7 @@ export const MENU_GROUPS = [
       { label: 'حركة مادة مفصلة', view: AppView.DETAILED_ITEM_MOVEMENT },
       { label: 'تكاليف فاتورة محددة', view: AppView.CUSTOMER_INVOICE_COSTS },
       { label: 'قائمة المواد والجرد', view: AppView.INVENTORY },
+      { label: 'إدارة ملف المستودعات', view: AppView.WAREHOUSE_MANAGEMENT },
       { label: 'إدخالات وصرف المواد', view: AppView.STOCK_ENTRIES },
       { label: 'إدارة الحسابات (جهات)', view: AppView.PARTY_MANAGEMENT },
     ]
