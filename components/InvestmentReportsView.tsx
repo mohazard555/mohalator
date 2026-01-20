@@ -17,6 +17,14 @@ interface InvestmentReportsViewProps {
 
 type ReportSubView = 'SUMMARY' | 'VALUATION' | 'PERFORMANCE' | 'HEALTH';
 
+// Fix: Define interface for best seller items to ensure type safety throughout the component
+interface BestSellerItem {
+  name: string;
+  code: string;
+  qty: number;
+  total: number;
+}
+
 const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack }) => {
   const [subView, setSubView] = useState<ReportSubView>('SUMMARY');
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -82,12 +90,19 @@ const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack })
   });
 
   // --- 3. Best Sellers ---
-  // Fix: Explicitly typing the Map to avoid 'unknown' errors during reduction and sorting
-  const bestSellers = Array.from(sales.filter(s => s.date >= startDate && s.date <= endDate).flatMap(s => s.items).reduce((acc, item) => {
-    const current = acc.get(item.name) || { name: item.name, code: item.code, qty: 0, total: 0 };
-    acc.set(item.name, { ...current, qty: current.qty + item.quantity, total: current.total + item.total });
-    return acc;
-  }, new Map<string, { name: string; code: string; qty: number; total: number } >()).values()).sort((a, b) => b.total - a.total).slice(0, 10);
+  // Fix: Aggregated best sellers with explicit types to resolve 'unknown' property errors
+  const bestSellersMap = sales
+    .filter(s => s.date >= startDate && s.date <= endDate)
+    .flatMap(s => s.items)
+    .reduce((acc, item) => {
+      const current = acc.get(item.name) || { name: item.name, code: item.code, qty: 0, total: 0 };
+      acc.set(item.name, { ...current, qty: current.qty + item.quantity, total: current.total + item.total });
+      return acc;
+    }, new Map<string, BestSellerItem>());
+
+  const bestSellers: BestSellerItem[] = Array.from(bestSellersMap.values())
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10);
 
   // --- 4. Stagnant Items (No movement in last 60 days) ---
   const stagnantItems = currentInventory.filter(item => {
@@ -240,7 +255,7 @@ const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack })
                     <h3 className="font-black text-readable">الأصناف الذهبية (الأكثر مبيعاً)</h3>
                  </div>
                  <div className="p-4 space-y-3">
-                    {/* Fix: item is now properly typed via bestSellers inference */}
+                    {/* Fix: item is now properly typed as BestSellerItem through explicit bestSellers typing */}
                     {bestSellers.map((item, idx) => (
                        <div key={idx} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl group transition-all hover:translate-x-[-4px]">
                           <div className="flex items-center gap-4">
@@ -263,8 +278,8 @@ const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack })
                  <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary"><BarChart3 className="w-10 h-10" /></div>
                  <h3 className="text-2xl font-black text-readable">تحليل التركيز البيعي</h3>
                  <p className="text-zinc-500 text-sm font-bold leading-relaxed">
-                    {/* Fix: casting c to any in reduce to avoid 'unknown' errors */}
-                    تعتمد {((bestSellers.reduce((s,c: any) => s + c.total, 0) / totalSalesVal) * 100).toFixed(1)}% من إيراداتك على أفضل 10 أصناف فقط. 
+                    {/* Fix: Resolved arithmetic operation error by ensuring reduce result and totalSalesVal are correctly treated as numbers */}
+                    تعتمد {((bestSellers.reduce((s, c) => s + c.total, 0) / (totalSalesVal || 1)) * 100).toFixed(1)}% من إيراداتك على أفضل 10 أصناف فقط. 
                     <br /> يُنصح بتنويع المخزون أو تعزيز المواد الأكثر طلباً لزيادة الاستثمار.
                  </p>
               </div>

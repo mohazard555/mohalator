@@ -31,18 +31,37 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack }) => {
 
   return (
     <div className="space-y-6">
+      {/* Print Header */}
+      <div className="print-only print-header flex justify-between items-center bg-rose-700 p-6 rounded-t-xl text-white mb-0 border-b-0">
+        <div className="flex items-center gap-4">
+          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
+          <div>
+            <h1 className="text-2xl font-black">{settings?.companyName}</h1>
+            <p className="text-xs opacity-80">{settings?.companyType}</p>
+          </div>
+        </div>
+        <div className="text-center">
+          <h2 className="text-3xl font-black underline decoration-white/30 underline-offset-8">سجل المبيعات العام</h2>
+          <p className="text-xs mt-2 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
+        </div>
+        <div className="text-left text-xs font-bold space-y-1">
+          <p>{settings?.address}</p>
+          <p>{settings?.phone}</p>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors">
             <ArrowRight className="w-6 h-6" />
           </button>
-          <h2 className="text-2xl font-black text-readable">سجل المبيعات العام</h2>
+          <h2 className="text-2xl font-black text-rose-700">سجل المبيعات العام</h2>
         </div>
         <div className="flex gap-2">
           <button onClick={() => exportToCSV(filteredInvoices, 'full_sales_history')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
              <FileDown className="w-5 h-5" /> تصدير XLSX
           </button>
-          <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border">
+          <button onClick={() => window.print()} className="bg-rose-100 text-rose-700 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-rose-200">
              <Printer className="w-5 h-5" /> طباعة السجل
           </button>
         </div>
@@ -54,7 +73,7 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack }) => {
           <input 
             type="text" 
             placeholder="بحث برقم الفاتورة أو اسم العميل..."
-            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-3 pr-12 outline-none font-bold"
+            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-3 pr-12 outline-none font-bold focus:border-rose-700"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
@@ -68,34 +87,34 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack }) => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl">
+      <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl print:border-rose-700 print:rounded-none">
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse text-[10px]">
             <thead>
-              <tr className="bg-zinc-900 text-white font-black uppercase tracking-tighter border-b border-zinc-700">
-                <th className="p-3 border-l border-zinc-800 text-center">تسلسل</th>
-                <th className="p-3 border-l border-zinc-800 text-center">رقم</th>
-                <th className="p-3 border-l border-zinc-800 text-center">تاريخ</th>
-                <th className="p-3 border-l border-zinc-800 text-center">العميل</th>
-                <th className="p-3 border-l border-zinc-800 text-right w-64">تفاصيل الأصناف</th>
-                <th className="p-3 border-l border-zinc-800 text-right w-48">المواد المستخدمة</th>
-                <th className="p-3 border-l border-zinc-800 text-center">العدد</th>
-                <th className="p-3 border-l border-zinc-800 text-center">السعر الإفرادي</th>
-                <th className="p-3 border-l border-zinc-800 text-center">الإجمالي</th>
-                <th className="p-3 border-l border-zinc-800 text-right w-64">التفقيط (كتابة)</th>
-                <th className="p-3 border-l border-zinc-800 text-right">ملاحظات</th>
-                <th className="p-3 border-l border-zinc-800 text-center">وقت</th>
+              <tr className="bg-rose-700 text-white font-black uppercase tracking-tighter border-b border-rose-800">
+                <th className="p-3 border-l border-rose-800 text-center">تسلسل</th>
+                <th className="p-3 border-l border-rose-800 text-center">رقم</th>
+                <th className="p-3 border-l border-rose-800 text-center">تاريخ</th>
+                <th className="p-3 border-l border-rose-800 text-center">العميل</th>
+                <th className="p-3 border-l border-rose-800 text-right w-64">تفاصيل الأصناف</th>
+                <th className="p-3 border-l border-rose-800 text-right w-48">المواد المستخدمة</th>
+                <th className="p-3 border-l border-rose-800 text-center">العدد</th>
+                <th className="p-3 border-l border-rose-800 text-center">السعر الإفرادي</th>
+                <th className="p-3 border-l border-rose-800 text-center">الإجمالي</th>
+                <th className="p-3 border-l border-rose-800 text-right w-64">التفقيط (كتابة)</th>
+                <th className="p-3 border-l border-rose-800 text-right">ملاحظات</th>
+                <th className="p-3 border-l border-rose-800 text-center">وقت</th>
                 <th className="p-3 text-center">المدفوع</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold">
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:divide-zinc-300">
               {filteredInvoices.length === 0 ? (
                 <tr><td colSpan={13} className="p-16 text-center italic text-zinc-400">لا يوجد سجلات مبيعات تطابق الفلترة</td></tr>
               ) : (
                 filteredInvoices.map((inv, idx) => (
-                  <tr key={inv.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                  <tr key={inv.id} className="hover:bg-rose-50 dark:hover:bg-zinc-800/30 transition-colors">
                     <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono text-zinc-400">{filteredInvoices.length - idx}</td>
-                    <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center text-primary font-black">#{inv.invoiceNumber}</td>
+                    <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center text-rose-700 font-black">#{inv.invoiceNumber}</td>
                     <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono">{inv.date}</td>
                     <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-readable">{inv.customerName}</td>
                     <td className="p-3 border-l border-zinc-100 dark:border-zinc-800">
@@ -121,7 +140,7 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack }) => {
                     <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono text-zinc-400">
                       {inv.items[0]?.price.toLocaleString()}
                     </td>
-                    <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center font-black text-rose-600 font-mono text-xs">
+                    <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center font-black text-rose-600 font-mono text-xs bg-rose-50 print:bg-transparent">
                       {inv.totalAmount.toLocaleString()}
                     </td>
                     <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-[9px] font-normal text-zinc-500 leading-tight">

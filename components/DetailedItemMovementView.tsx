@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Search, Printer, Filter, Calendar as CalendarIcon, LayoutPanelLeft } from 'lucide-react';
-import { StockEntry } from '../types';
+import { ArrowRight, Search, Printer, Filter, Calendar as CalendarIcon, LayoutPanelLeft, Calendar } from 'lucide-react';
+import { StockEntry, AppSettings } from '../types';
 
 interface DetailedItemMovementViewProps {
   onBack: () => void;
@@ -13,9 +13,12 @@ const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onB
   const [moveType, setMoveType] = useState('الكل');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [settings, setSettings] = useState<AppSettings | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('sheno_stock_entries');
+    const savedSettings = localStorage.getItem('sheno_settings');
+    if (savedSettings) setSettings(JSON.parse(savedSettings));
     if (saved) setEntries(JSON.parse(saved));
   }, []);
 
@@ -35,8 +38,27 @@ const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onB
 
   return (
     <div className="space-y-6" dir="rtl">
-      {/* Header matching provided photo styles exactly */}
-      <div className="bg-zinc-900 border-b border-zinc-800 p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl rounded-3xl">
+      {/* Print Header */}
+      <div className="print-only print-header flex justify-between items-center bg-rose-900 p-6 rounded-t-xl text-white mb-0 border-b-0">
+        <div className="flex items-center gap-4">
+          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
+          <div>
+            <h1 className="text-2xl font-black">{settings?.companyName}</h1>
+            <p className="text-xs opacity-80">{settings?.companyType}</p>
+          </div>
+        </div>
+        <div className="text-center">
+          <h2 className="text-3xl font-black underline decoration-white/30 underline-offset-8">كشف حركة مادة تفصيلي</h2>
+          <p className="text-[11px] mt-2 font-bold">{itemSearch || 'جميع المواد'}</p>
+          <p className="text-[9px] mt-1 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
+        </div>
+        <div className="text-left text-xs font-bold space-y-1">
+          <p>{settings?.address}</p>
+          <p>{settings?.phone}</p>
+        </div>
+      </div>
+
+      <div className="bg-zinc-900 border-b border-zinc-800 p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl rounded-3xl no-print">
          <div className="bg-rose-900 px-8 py-3 rounded-lg text-white font-black text-xl shadow-lg border border-white/10 uppercase tracking-tight">
            تقرير حركة مادة مفصلة
          </div>
@@ -60,8 +82,7 @@ const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onB
          </button>
       </div>
 
-      {/* Control Bar - Filters & Totals */}
-      <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 flex flex-wrap items-center justify-between gap-8 shadow-xl">
+      <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 flex flex-wrap items-center justify-between gap-8 shadow-xl no-print">
          <div className="flex items-center gap-6">
             <div className="flex flex-col gap-1">
                <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">نوع الحركة</span>
@@ -98,47 +119,46 @@ const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onB
          </div>
       </div>
 
-      {/* Main Data Table */}
-      <div className="bg-zinc-950 rounded-3xl border border-zinc-800 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+      <div className="bg-zinc-950 rounded-3xl border border-zinc-800 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] print:border-rose-900 print:rounded-none">
          <div className="overflow-x-auto">
             <table className="w-full text-right border-collapse text-xs">
                <thead>
-                  <tr className="bg-rose-900 text-white font-black h-14 text-center border-b border-rose-800">
-                     <th className="p-2 border-l border-rose-800/50 w-32">التاريخ</th>
-                     <th className="p-2 border-l border-rose-800/50">الصنف / المادة</th>
-                     <th className="p-2 border-l border-rose-800/50 w-20">الوحدة</th>
-                     <th className="p-2 border-l border-rose-800/50 w-28">السعر</th>
-                     <th className="p-2 border-l border-rose-800/50 w-32">نوع الحركة</th>
-                     <th className="p-2 border-l border-rose-800/50 w-24">الكمية</th>
-                     <th className="p-2 border-l border-rose-800/50 w-40">المستودع</th>
-                     <th className="p-2">البيان / الملاحظات</th>
+                  <tr className="bg-rose-900 text-white font-black h-14 text-center border-b border-rose-950">
+                     <th className="p-2 border-l border-rose-800 w-32 text-center">التاريخ</th>
+                     <th className="p-2 border-l border-rose-800">الصنف / المادة</th>
+                     <th className="p-2 border-l border-rose-800 w-20 text-center">الوحدة</th>
+                     <th className="p-2 border-l border-rose-800 w-28 text-center">السعر</th>
+                     <th className="p-2 border-l border-rose-800 w-32 text-center">نوع الحركة</th>
+                     <th className="p-2 border-l border-rose-800 w-24 text-center font-black">الكمية</th>
+                     <th className="p-2 border-l border-rose-800 w-40 text-center">المستودع</th>
+                     <th className="p-2 text-right pr-6">البيان / الملاحظات</th>
                   </tr>
                </thead>
-               <tbody className="font-bold text-center divide-y divide-zinc-900">
+               <tbody className="font-bold text-center divide-y divide-zinc-800 print:divide-zinc-300">
                   {filtered.length === 0 ? (
                     Array.from({ length: 12 }).map((_, i) => (
-                      <tr key={i} className="h-12 bg-zinc-900/20 group">
-                         {Array.from({ length: 8 }).map((__, j) => <td key={j} className="border-x border-zinc-900/50 group-hover:bg-zinc-900/40 transition-colors"></td>)}
+                      <tr key={i} className="h-12 bg-zinc-900/20">
+                         {Array.from({ length: 8 }).map((__, j) => <td key={j} className="border-x border-zinc-800"></td>)}
                       </tr>
                     ))
                   ) : (
                     filtered.map(e => (
-                      <tr key={e.id} className="h-14 hover:bg-rose-900/10 transition-colors group">
-                         <td className="p-2 font-mono text-zinc-500 border-l border-zinc-900/50">{e.date}</td>
-                         <td className="p-2 text-right pr-6 border-l border-zinc-900/50 text-zinc-100">{e.itemName}</td>
-                         <td className="p-2 text-zinc-500 border-l border-zinc-900/50">{e.unit}</td>
-                         <td className="p-2 font-mono text-zinc-300 border-l border-zinc-900/50">{e.price.toLocaleString()}</td>
-                         <td className="p-2 border-l border-zinc-900/50">
+                      <tr key={e.id} className="h-14 hover:bg-rose-50 transition-colors group">
+                         <td className="p-2 font-mono text-zinc-500 border-l border-zinc-200">{e.date}</td>
+                         <td className="p-2 text-right pr-6 border-l border-zinc-200 text-zinc-900">{e.itemName}</td>
+                         <td className="p-2 text-zinc-500 border-l border-zinc-200">{e.unit}</td>
+                         <td className="p-2 font-mono text-zinc-600 border-l border-zinc-200">{e.price.toLocaleString()}</td>
+                         <td className="p-2 border-l border-zinc-200">
                             <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest ${
-                              e.movementType === 'إدخال' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 
-                              e.movementType === 'صرف' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' : 
-                              'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                              e.movementType === 'إدخال' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 
+                              e.movementType === 'صرف' ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20' : 
+                              'bg-amber-500/10 text-amber-600 border border-amber-500/20'
                             }`}>
                                {e.movementType}
                             </span>
                          </td>
-                         <td className="p-2 font-mono text-xl text-rose-500 border-l border-zinc-900/50">{e.quantity.toLocaleString()}</td>
-                         <td className="p-2 text-[10px] text-zinc-400 border-l border-zinc-900/50 uppercase">{e.warehouse}</td>
+                         <td className="p-2 font-mono text-xl text-rose-700 border-l border-zinc-200 bg-rose-50 print:bg-transparent">{e.quantity.toLocaleString()}</td>
+                         <td className="p-2 text-[10px] text-zinc-400 border-l border-zinc-200 uppercase">{e.warehouse}</td>
                          <td className="p-2 text-right pr-6 text-zinc-500 font-normal italic">{e.statement || '-'}</td>
                       </tr>
                     ))

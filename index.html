@@ -21,31 +21,38 @@
       .text-primary { color: var(--primary-color); }
       .border-primary { border-color: var(--primary-color); }
       
-      /* Print Styles Overrides */
+      .print-only { display: none; }
+
       @media print {
         .no-print { display: none !important; }
-        body, #root, main, div, table, tr, td, th, section, header {
-          background-color: white !important;
-          background: white !important;
-          color: black !important;
-          border-color: #d1d5db !important;
-          box-shadow: none !important;
-          text-shadow: none !important;
-        }
-        .bg-primary { background-color: transparent !important; border: 1px solid black !important; }
-        .text-primary { color: black !important; font-weight: bold !important; }
         .print-only { display: block !important; }
         
-        /* Force remove dark utility backgrounds */
-        .dark { background-color: white !important; }
-        [class*="bg-zinc-"], [class*="bg-rose-"], [class*="bg-emerald-"], [class*="bg-amber-"] {
-           background-color: transparent !important;
-           border: 1px solid #eee !important;
-           color: black !important;
+        body {
+          background-color: white !important;
+          color: black !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
-        table thead tr {
-           background-color: #f3f4f6 !important;
-           color: black !important;
+
+        #root, main {
+          overflow: visible !important;
+          height: auto !important;
+        }
+
+        .bg-zinc-950, .bg-zinc-900 { background-color: white !important; color: black !important; }
+        
+        /* Ensure tables have visible borders in print */
+        table { border-collapse: collapse !important; width: 100% !important; }
+        th, td { border: 1px solid #e5e7eb !important; }
+        
+        /* Header specific styles for print */
+        .print-header {
+          display: flex !important;
+          justify-content: space-between;
+          align-items: center;
+          border-bottom: 3px solid #333;
+          margin-bottom: 20px;
+          padding-bottom: 10px;
         }
       }
     </style>
