@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Save, X, Search, Warehouse as WarehouseIcon, FileDown, Calendar, ChevronDown, Check, Package } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Edit2, Save, X, Search, Warehouse as WarehouseIcon, FileDown, Calendar, ChevronDown, Check, Package, Users } from 'lucide-react';
 import { StockEntry, InventoryItem, WarehouseEntity, Party, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -68,7 +68,10 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
   };
 
   const handleSave = () => {
-    if (!formData.itemCode || !formData.quantity) return;
+    if (!formData.itemCode || !formData.quantity) {
+      alert('يرجى اختيار المادة وتحديد الكمية');
+      return;
+    }
     
     const entry: StockEntry = { 
       ...formData as StockEntry, 
@@ -136,7 +139,7 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
           <h2 className="text-2xl font-black text-readable">إدخالات وصرف المواد (السجل التفصيلي)</h2>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => { setIsAdding(true); setEditingId(null); resetForm(); }} className="bg-primary text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl">
+          <button onClick={() => { setIsAdding(true); setEditingId(null); resetForm(); }} className="bg-primary text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110 transition-all">
             <Plus className="w-5 h-5" /> قيد مستودعي جديد
           </button>
           <button onClick={() => exportToCSV(filteredEntries, 'stock_entries')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">
@@ -144,6 +147,75 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
           </button>
         </div>
       </div>
+
+      {(isAdding || editingId) && (
+        <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl space-y-8 animate-in zoom-in-95 no-print text-readable relative overflow-hidden">
+           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full"></div>
+           <div className="flex items-center justify-between border-b pb-4 dark:border-zinc-800 relative z-10">
+              <h3 className="text-xl font-black flex items-center gap-3">
+                 <Package className="w-6 h-6 text-primary" /> {editingId ? 'تعديل قيد مستودعي' : 'إضافة قيد مستودعي جديد'}
+              </h3>
+              <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="text-zinc-400 hover:text-rose-500 transition-all"><X className="w-6 h-6"/></button>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
+              <div className="flex flex-col gap-1 md:col-span-2">
+                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المادة من المستودع</label>
+                 <select className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-800 text-readable p-3.5 rounded-2xl font-black outline-none focus:border-primary transition-all appearance-none cursor-pointer" value={formData.itemCode} onChange={e => handleMaterialSelect(e.target.value)}>
+                    <option value="">-- اختر مادة من المخزن --</option>
+                    {inventory.map(i => <option key={i.id} value={i.code}>{i.name} ({i.code})</option>)}
+                 </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">تاريخ القيد</label>
+                 <input type="date" className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-800 text-readable p-3.5 rounded-2xl outline-none font-mono text-sm" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+              </div>
+              <div className="flex flex-col gap-1">
+                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">نوع الحركة</label>
+                 <select className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-800 text-readable p-3.5 rounded-2xl font-black outline-none" value={formData.movementType} onChange={e => setFormData({...formData, movementType: e.target.value as any})}>
+                    <option value="إدخال">إدخال مخزني</option>
+                    <option value="صرف">صرف مخزني</option>
+                    <option value="مرتجع">مرتجع</option>
+                 </select>
+              </div>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
+              <div className="flex flex-col gap-1">
+                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">الجهة / العميل (اختياري)</label>
+                 <select className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-800 text-readable p-3.5 rounded-2xl font-black outline-none appearance-none cursor-pointer" value={formData.partyName} onChange={e => setFormData({...formData, partyName: e.target.value})}>
+                    <option value="">-- اختر الجهة --</option>
+                    {parties.map(p => <option key={p.id} value={p.name}>{p.name} ({p.type})</option>)}
+                 </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المستودع</label>
+                 <select className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-800 text-readable p-3.5 rounded-2xl font-black outline-none" value={formData.warehouse} onChange={e => setFormData({...formData, warehouse: e.target.value})}>
+                    {warehouses.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
+                 </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                 <label className="text-[10px] text-primary font-black uppercase tracking-widest mr-1">الكمية</label>
+                 <input type="number" className="bg-zinc-50 dark:bg-zinc-950 border-2 border-primary/30 text-primary p-3.5 rounded-2xl outline-none font-black text-2xl text-center" value={formData.quantity} onChange={e => setFormData({...formData, quantity: Number(e.target.value)})} />
+              </div>
+              <div className="flex flex-col gap-1">
+                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">السعر (اختياري)</label>
+                 <input type="number" className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-800 text-readable p-3.5 rounded-2xl outline-none font-mono font-bold text-center" value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} />
+              </div>
+           </div>
+
+           <div className="flex flex-col gap-1 relative z-10">
+              <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">بيان الحركة / ملاحظات</label>
+              <input type="text" placeholder="مثلاً: توريد بضاعة أول مدة، صرف لطلبية رقم..." className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-800 text-readable p-3.5 rounded-2xl outline-none font-bold" value={formData.statement} onChange={e => setFormData({...formData, statement: e.target.value})} />
+           </div>
+
+           <div className="flex justify-end gap-3 pt-6 border-t dark:border-zinc-800 relative z-10">
+              <button onClick={handleSave} className="bg-primary text-white px-16 py-4 rounded-3xl font-black shadow-2xl flex items-center gap-3 hover:scale-105 active:scale-95 transition-all text-xl">
+                 <Save className="w-6 h-6" /> {editingId ? 'تحديث بيانات القيد' : 'حفظ وتثبيت القيد المستودعي'}
+              </button>
+           </div>
+        </div>
+      )}
 
       <div className="bg-zinc-900/90 p-6 rounded-[2.5rem] border border-zinc-800 shadow-2xl space-y-4 no-print">
         <div className="flex flex-wrap gap-4 items-end">
@@ -214,6 +286,7 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
                 <th className="p-3 border-l border-zinc-800 w-20 text-center">اليوم</th>
                 <th className="p-3 border-l border-zinc-800 w-24 text-center">كود الصنف</th>
                 <th className="p-3 border-l border-zinc-800">اسم الصنف</th>
+                <th className="p-3 border-l border-zinc-800 text-primary">الجهة / العميل</th>
                 <th className="p-3 border-l border-zinc-800 w-16 text-center">الوحدة</th>
                 <th className="p-3 border-l border-zinc-800 w-24 text-center">السعر</th>
                 <th className="p-3 border-l border-zinc-800 w-24 text-center">الحركة</th>
@@ -230,6 +303,7 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
                   <td className="p-2 border-l border-zinc-900 text-center text-zinc-400">{e.day || '---'}</td>
                   <td className="p-2 border-l border-zinc-900 font-mono text-primary text-center">{e.itemCode}</td>
                   <td className="p-2 border-l border-zinc-900 text-white">{e.itemName}</td>
+                  <td className="p-2 border-l border-zinc-900 text-primary/80 truncate max-w-[120px] italic">{e.partyName || '-'}</td>
                   <td className="p-2 border-l border-zinc-900 text-center text-zinc-500">{e.unit}</td>
                   <td className="p-2 border-l border-zinc-900 text-center font-mono text-amber-500">{e.price?.toLocaleString()}</td>
                   <td className="p-2 border-l border-zinc-900 text-center">
@@ -245,20 +319,20 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
                   <td className="p-2 border-l border-zinc-900 text-zinc-600 text-[9px] truncate max-w-[100px]">{e.notes || '-'}</td>
                   <td className="p-2 no-print">
                      <div className="flex justify-center gap-1">
-                        <button onClick={() => { setEditingId(e.id); setIsAdding(true); setFormData(e); }} className="p-1.5 text-zinc-500 hover:text-primary"><Edit2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => { setEditingId(e.id); setIsAdding(true); setFormData(e); }} className="p-1.5 text-zinc-500 hover:text-primary transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
                         <button onClick={() => {
-                           if(window.confirm('حذف القيد؟')) {
+                           if(window.confirm('حذف القيد نهائياً؟')) {
                               const updated = entries.filter(x => x.id !== e.id);
                               setEntries(updated);
                               localStorage.setItem('sheno_stock_entries', JSON.stringify(updated));
                            }
-                        }} className="p-1.5 text-zinc-500 hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                        }} className="p-1.5 text-zinc-500 hover:text-rose-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                      </div>
                   </td>
                 </tr>
               ))}
               <tr className="bg-zinc-900 text-white font-black h-14">
-                 <td colSpan={7} className="p-3 text-center uppercase text-[10px] text-zinc-400 tracking-[0.2em]">إجمالي كمية الحركات المفلترة</td>
+                 <td colSpan={8} className="p-3 text-center uppercase text-[10px] text-zinc-400 tracking-[0.2em]">إجمالي كمية الحركات المفلترة</td>
                  <td className="p-3 text-center font-mono text-xl text-primary">{totalQty.toLocaleString()}</td>
                  <td colSpan={3} className="p-3"></td>
               </tr>

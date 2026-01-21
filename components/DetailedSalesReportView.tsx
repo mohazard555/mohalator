@@ -22,7 +22,6 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   
-  // خيار الخصوصية: إظهار أو إخفاء المواد المستخدمة
   const [showUsedMaterials, setShowUsedMaterials] = useState(true);
 
   useEffect(() => {
@@ -33,7 +32,7 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
     
     if (savedInvoices) setInvoices(JSON.parse(savedInvoices));
     if (savedCash) setCashEntries(JSON.parse(savedCash));
-    if (savedParties) setParties(JSON.parse(savedParties).filter((p: Party) => p.type === PartyType.CUSTOMER));
+    if (savedParties) setParties(JSON.parse(savedParties).filter((p: Party) => p.type === PartyType.CUSTOMER || p.type === PartyType.BOTH));
     if (savedSettings) setSettings(JSON.parse(savedSettings));
   }, []);
 
@@ -69,18 +68,12 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
   return (
     <div className="space-y-4 text-right bg-zinc-50 dark:bg-zinc-950 p-4 md:p-8 rounded-3xl shadow-2xl min-h-screen text-readable border border-zinc-200 dark:border-zinc-800 print:bg-white print:border-none print:shadow-none" dir="rtl">
       
-      {/* Image Preview Modal */}
       {previewImage && (
         <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 md:p-20 animate-in fade-in duration-300" onClick={() => setPreviewImage(null)}>
           <button className="absolute top-10 right-10 text-white hover:text-rose-500 transition-colors no-print">
             <X className="w-10 h-10" />
           </button>
-          <img 
-            src={previewImage} 
-            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border-4 border-white/10" 
-            onClick={(e) => e.stopPropagation()} 
-            alt="Full Preview"
-          />
+          <img src={previewImage} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border-4 border-white/10" onClick={(e) => e.stopPropagation()} alt="Full Preview" />
         </div>
       )}
 
@@ -95,7 +88,11 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
         </div>
         <div className="text-center">
           <h2 className="text-2xl font-black underline decoration-white/30 underline-offset-8">كشف حساب زبون تفصيلي</h2>
-          <p className="text-[10px] mt-2 opacity-80 font-bold">{customerFilter || 'جميع الزبائن'}</p>
+          <div className="flex gap-4 justify-center mt-3">
+             <span className="bg-white/20 px-3 py-0.5 rounded text-[10px] font-black">إجمالي القطع: {totalItemsCount}</span>
+             <span className="bg-white/20 px-3 py-0.5 rounded text-[10px] font-black">عدد الفواتير: {totalInvoicesCount}</span>
+          </div>
+          <p className="text-[10px] mt-1 opacity-80 font-bold">{customerFilter || 'جميع الزبائن'}</p>
           <p className="text-[9px] mt-1 opacity-70 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> {startDate} ← {endDate}</p>
         </div>
         <div className="text-left text-xs font-bold space-y-1">
@@ -155,23 +152,15 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
             <div className="bg-zinc-100 dark:bg-zinc-800 p-2 text-xs font-bold text-center border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-center gap-2 text-readable">
                <Users className="w-3 h-3"/> اختيار الزبون
             </div>
-            <select 
-              value={customerFilter} 
-              onChange={e => setCustomerFilter(e.target.value)} 
-              className="flex-1 text-center font-black text-xl outline-none py-4 appearance-none cursor-pointer bg-white dark:bg-zinc-900 text-rose-800 dark:text-rose-400"
-            >
+            <select value={customerFilter} onChange={e => setCustomerFilter(e.target.value)} className="flex-1 text-center font-black text-xl outline-none py-4 appearance-none cursor-pointer bg-white dark:bg-zinc-900 text-rose-800 dark:text-rose-400">
               <option value="">-- عرض جميع الزبائن --</option>
               {parties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
             </select>
          </div>
 
-         {/* قسم التحكم بالخصوصية */}
          <div className="col-span-1 flex flex-col items-center justify-center p-4 gap-3 bg-zinc-100/50 dark:bg-zinc-800/30">
             <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">إعدادات الخصوصية</span>
-            <button 
-              onClick={() => setShowUsedMaterials(!showUsedMaterials)}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl font-black text-xs transition-all w-full justify-center ${showUsedMaterials ? 'bg-emerald-600 text-white shadow-lg' : 'bg-rose-600 text-white shadow-lg'}`}
-            >
+            <button onClick={() => setShowUsedMaterials(!showUsedMaterials)} className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl font-black text-xs transition-all w-full justify-center ${showUsedMaterials ? 'bg-emerald-600 text-white shadow-lg' : 'bg-rose-600 text-white shadow-lg'}`}>
                {showUsedMaterials ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                {showUsedMaterials ? 'عمود المواد (ظاهر حالياً)' : 'عمود المواد (مخفي للطباعة)'}
             </button>
