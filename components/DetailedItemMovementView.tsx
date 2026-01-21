@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Search, Printer, Filter, Calendar as CalendarIcon, LayoutPanelLeft, Calendar } from 'lucide-react';
+import { ArrowRight, Search, Printer, Filter, Calendar as CalendarIcon, LayoutPanelLeft, Calendar, RotateCcw } from 'lucide-react';
 import { StockEntry, AppSettings } from '../types';
 
 interface DetailedItemMovementViewProps {
@@ -49,8 +49,12 @@ const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onB
         </div>
         <div className="text-center">
           <h2 className="text-3xl font-black underline decoration-white/30 underline-offset-8">كشف حركة مادة تفصيلي</h2>
-          <p className="text-[11px] mt-2 font-bold">{itemSearch || 'جميع المواد'}</p>
-          <p className="text-[9px] mt-1 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
+          <div className="flex gap-3 justify-center mt-2">
+            <span className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">إدخال: {totals.in.toLocaleString()}</span>
+            <span className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">صرف: {totals.out.toLocaleString()}</span>
+            <span className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">مرتجع: {totals.ret.toLocaleString()}</span>
+          </div>
+          <p className="text-[9px] mt-2 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
         </div>
         <div className="text-left text-xs font-bold space-y-1">
           <p>{settings?.address}</p>
@@ -107,14 +111,18 @@ const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onB
             </div>
          </div>
 
-         <div className="flex gap-4">
-            <div className="bg-emerald-500/5 border border-emerald-500/20 px-8 py-3 rounded-2xl flex flex-col items-center min-w-[140px] shadow-inner">
+         <div className="flex flex-wrap gap-4">
+            <div className="bg-emerald-500/5 border border-emerald-500/20 px-6 py-3 rounded-2xl flex flex-col items-center min-w-[120px] shadow-inner">
                <span className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-1">إجمالي الإدخال</span>
-               <span className="font-mono font-black text-2xl text-emerald-400">{totals.in.toLocaleString()}</span>
+               <span className="font-mono font-black text-xl text-emerald-400">{totals.in.toLocaleString()}</span>
             </div>
-            <div className="bg-rose-500/5 border border-rose-500/20 px-8 py-3 rounded-2xl flex flex-col items-center min-w-[140px] shadow-inner">
+            <div className="bg-rose-500/5 border border-rose-500/20 px-6 py-3 rounded-2xl flex flex-col items-center min-w-[120px] shadow-inner">
                <span className="text-[9px] font-black text-rose-500 uppercase tracking-[0.2em] mb-1">إجمالي الصرف</span>
-               <span className="font-mono font-black text-2xl text-rose-400">{totals.out.toLocaleString()}</span>
+               <span className="font-mono font-black text-xl text-rose-400">{totals.out.toLocaleString()}</span>
+            </div>
+            <div className="bg-amber-500/5 border border-amber-500/20 px-6 py-3 rounded-2xl flex flex-col items-center min-w-[120px] shadow-inner">
+               <span className="text-[9px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1">إجمالي المرتجع</span>
+               <span className="font-mono font-black text-xl text-amber-400">{totals.ret.toLocaleString()}</span>
             </div>
          </div>
       </div>
@@ -143,9 +151,9 @@ const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onB
                     ))
                   ) : (
                     filtered.map(e => (
-                      <tr key={e.id} className="h-14 hover:bg-rose-50 transition-colors group">
+                      <tr key={e.id} className="h-14 hover:bg-rose-50 dark:hover:bg-rose-900/10 transition-colors group">
                          <td className="p-2 font-mono text-zinc-500 border-l border-zinc-200">{e.date}</td>
-                         <td className="p-2 text-right pr-6 border-l border-zinc-200 text-zinc-900">{e.itemName}</td>
+                         <td className="p-2 text-right pr-6 border-l border-zinc-200 text-readable">{e.itemName}</td>
                          <td className="p-2 text-zinc-500 border-l border-zinc-200">{e.unit}</td>
                          <td className="p-2 font-mono text-zinc-600 border-l border-zinc-200">{e.price.toLocaleString()}</td>
                          <td className="p-2 border-l border-zinc-200">
