@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Printer, Search, FileDown, Calendar, Truck } from 'lucide-react';
+import { ArrowRight, Printer, Search, FileDown, Calendar, Truck, Package } from 'lucide-react';
 import { PurchaseInvoice, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -51,7 +51,7 @@ const PurchaseHistoryView: React.FC<PurchaseHistoryViewProps> = ({ onBack }) => 
           <input 
             type="text" 
             placeholder="بحث باسم المورد أو رقم الفاتورة..."
-            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-3 pr-12 outline-none font-bold"
+            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-3 pr-12 outline-none font-bold text-readable"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
@@ -59,9 +59,9 @@ const PurchaseHistoryView: React.FC<PurchaseHistoryViewProps> = ({ onBack }) => 
         <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 px-4 py-2 rounded-2xl border border-zinc-200 dark:border-zinc-700">
            <Calendar className="w-4 h-4 text-zinc-400" />
            <span className="text-[10px] font-black text-zinc-500 uppercase">من</span>
-           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none" />
+           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-readable" />
            <span className="text-[10px] font-black text-zinc-500 uppercase">إلى</span>
-           <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none" />
+           <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-readable" />
         </div>
       </div>
 
@@ -70,12 +70,12 @@ const PurchaseHistoryView: React.FC<PurchaseHistoryViewProps> = ({ onBack }) => 
           <table className="w-full text-right border-collapse text-sm">
             <thead>
               <tr className="bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest border-b border-zinc-700 h-12">
-                <th className="p-4 border-l border-zinc-800 text-center">رقم الفاتورة</th>
-                <th className="p-4 border-l border-zinc-800 text-center">التاريخ</th>
+                <th className="p-4 border-l border-zinc-800 text-center w-24">رقم الفاتورة</th>
+                <th className="p-4 border-l border-zinc-800 text-center w-32">التاريخ</th>
                 <th className="p-4 border-l border-zinc-800">المورد</th>
-                <th className="p-4 border-l border-zinc-800">تفاصيل المواد</th>
-                <th className="p-4 border-l border-zinc-800 text-center">إجمالي المبلغ</th>
-                <th className="p-4 text-center">المدفوع نقداً</th>
+                <th className="p-4 border-l border-zinc-800">تفاصيل المواد (كمية / وحدة)</th>
+                <th className="p-4 border-l border-zinc-800 text-center w-40">إجمالي المبلغ</th>
+                <th className="p-4 text-center w-40">المدفوع نقداً</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold">
@@ -89,14 +89,16 @@ const PurchaseHistoryView: React.FC<PurchaseHistoryViewProps> = ({ onBack }) => 
                   <td className="p-4">
                      <div className="flex flex-col gap-1">
                         {p.items.map((it, i) => (
-                           <div key={i} className="text-xs text-zinc-500 font-normal">
-                              • {it.name} ({it.quantity} {it.unit})
+                           <div key={i} className="text-xs text-zinc-500 font-normal flex items-center gap-2">
+                              <Package className="w-3 h-3 text-zinc-300" />
+                              <span className="font-bold text-readable">{it.name}</span>
+                              <span className="bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-[10px] font-mono text-amber-600">{it.quantity} {it.unit}</span>
                            </div>
                         ))}
                      </div>
                   </td>
-                  <td className="p-4 text-center font-black text-rose-600 font-mono">{p.totalAmount.toLocaleString()}</td>
-                  <td className="p-4 text-center font-black text-emerald-600 font-mono">{p.paidAmount.toLocaleString()}</td>
+                  <td className="p-4 text-center font-black text-rose-600 font-mono text-lg">{p.totalAmount.toLocaleString()}</td>
+                  <td className="p-4 text-center font-black text-emerald-600 font-mono text-lg">{p.paidAmount.toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>

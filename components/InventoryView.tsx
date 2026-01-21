@@ -202,6 +202,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
                 <th className="p-4">المادة</th>
                 <th className="p-4">المستودع</th>
                 <th className="p-4 text-center">الوحدة</th>
+                <th className="p-4 text-center">السعر</th>
                 <th className="p-4 text-center">أول المدة</th>
                 <th className="p-4 text-center">الإضافات</th>
                 <th className="p-4 text-center">الصرف</th>
@@ -212,7 +213,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:divide-zinc-300">
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-20 text-center text-zinc-500 italic font-bold">لا توجد مواد مسجلة حالياً.</td>
+                  <td colSpan={10} className="p-20 text-center text-zinc-500 italic font-bold">لا توجد مواد مسجلة حالياً.</td>
                 </tr>
               ) : (
                 filteredItems.map((item) => (
@@ -231,6 +232,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
                        </div>
                     </td>
                     <td className="p-4 text-center text-zinc-500 font-normal">{item.unit}</td>
+                    <td className="p-4 text-center font-mono text-amber-600">{item.price.toLocaleString()}</td>
                     <td className="p-4 text-center font-mono">{item.openingStock.toLocaleString()}</td>
                     <td className="p-4 text-center font-mono text-emerald-600">+{item.added.toLocaleString()}</td>
                     <td className="p-4 text-center font-mono text-rose-600">-{item.issued.toLocaleString()}</td>

@@ -40,6 +40,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
     const savedInv = localStorage.getItem('sheno_sales_invoices');
     const savedParties = localStorage.getItem('sheno_parties');
     const savedInventory = localStorage.getItem('sheno_inventory_list');
+    const savedEntries = localStorage.getItem('sheno_stock_entries');
     const savedSettings = localStorage.getItem('sheno_settings');
 
     if (savedInv) setInvoices(JSON.parse(savedInv));
@@ -47,9 +48,28 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
        const allParties = JSON.parse(savedParties);
        setParties(allParties.filter((p: Party) => p.type === PartyType.CUSTOMER || p.type === PartyType.BOTH));
     }
-    if (savedInventory) setInventory(JSON.parse(savedInventory));
+
+    // حساب الرصيد الفعلي للمواد بناءً على سجل الحركات
+    if (savedInventory) {
+       const baseItems: InventoryItem[] = JSON.parse(savedInventory);
+       const entries: StockEntry[] = savedEntries ? JSON.parse(savedEntries) : [];
+
+       const updatedInventory = baseItems.map(item => {
+         const itemEntries = entries.filter(e => e.itemCode === item.code);
+         const added = itemEntries.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
+         const issued = itemEntries.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
+         const returned = itemEntries.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
+         
+         return {
+           ...item,
+           currentBalance: (item.openingStock || 0) + added - issued + returned
+         };
+       });
+       setInventory(updatedInventory);
+    }
+    
     if (savedSettings) setSettings(JSON.parse(savedSettings));
-  }, []);
+  }, [isAdding]); // إعادة الحساب عند فتح نموذج إضافة فاتورة جديدة
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -254,7 +274,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                       setUsedMaterial({ ...usedMaterial, code: e.target.value, name: mat?.name || '' });
                    }}>
                       <option value="">-- اختر مادة مخزنية --</option>
-                      {inventory.map(i => <option key={i.id} value={i.code}>{i.name} (رصيد: {i.currentBalance})</option>)}
+                      {inventory.map(i => <option key={i.id} value={i.code}>{i.name} (رصيد متاح: {i.currentBalance})</option>)}
                    </select>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-4">

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Plus, Trash2, Save, X, ShoppingBag, Truck, ScrollText, Calendar, Hash } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Save, X, ShoppingBag, Truck, ScrollText, Calendar, Hash, Box } from 'lucide-react';
 import { PurchaseInvoice, InvoiceItem, StockEntry, Party, PartyType, CashEntry } from '../types';
 
 const tafqeet = (n: number): string => {
@@ -26,7 +26,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
     paidAmount: 0
   });
 
-  const [newItem, setNewItem] = useState({ name: '', quantity: 1, price: 0 });
+  const [newItem, setNewItem] = useState({ name: '', quantity: 1, unit: 'قطعة', price: 0 });
 
   useEffect(() => {
     const saved = localStorage.getItem('sheno_purchases');
@@ -45,14 +45,14 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
       code: 'PUR-' + Math.floor(Math.random() * 1000),
       name: newItem.name,
       quantity: newItem.quantity,
+      unit: newItem.unit,
       price: newItem.price,
-      unit: 'قطعة',
       total: newItem.quantity * newItem.price,
       date: newInvoice.date!,
       notes: ''
     };
     setNewInvoice({ ...newInvoice, items: [...(newInvoice.items || []), item] });
-    setNewItem({ name: '', quantity: 1, price: 0 });
+    setNewItem({ name: '', quantity: 1, unit: 'قطعة', price: 0 });
   };
 
   const handleSave = () => {
@@ -160,12 +160,31 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                <h4 className="text-sm font-black text-amber-600 flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-2 uppercase tracking-widest">
                   <ShoppingBag className="w-4 h-4" /> بنود التوريد (المواد المستلمة)
                </h4>
-               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <input type="text" placeholder="اسم المادة..." className="md:col-span-2 bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
-                  <input type="number" placeholder="الكمية" className="bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 text-center font-bold" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: Number(e.target.value)})} />
-                  <div className="flex gap-2">
-                     <input type="number" placeholder="سعر الشراء" className="flex-1 bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 text-center font-bold" value={newItem.price} onChange={e => setNewItem({...newItem, price: Number(e.target.value)})} />
-                     <button onClick={handleAddItem} className="bg-amber-600 text-white p-3 rounded-xl shadow-lg hover:bg-amber-500 transition-all font-bold">إضافة</button>
+               <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+                  <div className="md:col-span-2 flex flex-col gap-1">
+                    <label className="text-[9px] text-zinc-400 font-black uppercase mr-1">اسم المادة</label>
+                    <input type="text" placeholder="اسم المادة..." className="bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] text-zinc-400 font-black uppercase mr-1">الكمية</label>
+                    <input type="number" placeholder="0" className="bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 text-center font-bold" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: Number(e.target.value)})} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] text-zinc-400 font-black uppercase mr-1">الوحدة</label>
+                    <select className="bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={newItem.unit} onChange={e => setNewItem({...newItem, unit: e.target.value})}>
+                        <option value="قطعة">قطعة</option>
+                        <option value="كيلو">كيلو</option>
+                        <option value="متر">متر</option>
+                        <option value="علبة">علبة</option>
+                        <option value="طرد">طرد</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] text-zinc-400 font-black uppercase mr-1">سعر الشراء</label>
+                    <input type="number" placeholder="0" className="bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 text-center font-bold" value={newItem.price} onChange={e => setNewItem({...newItem, price: Number(e.target.value)})} />
+                  </div>
+                  <div className="flex flex-col justify-end">
+                    <button onClick={handleAddItem} className="bg-amber-600 text-white h-[52px] rounded-xl shadow-lg hover:bg-amber-500 transition-all font-black">إضافة البند</button>
                   </div>
                </div>
                <div className="overflow-x-auto">
@@ -174,6 +193,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                         <tr className="border-b border-zinc-200 dark:border-zinc-800">
                            <th className="p-3 text-right">المادة</th>
                            <th className="p-3 text-center">الكمية</th>
+                           <th className="p-3 text-center">الوحدة</th>
                            <th className="p-3 text-center">السعر</th>
                            <th className="p-3 text-center">المجموع</th>
                            <th className="p-3"></th>
@@ -184,6 +204,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                            <tr key={item.id} className="border-b border-zinc-100 dark:border-zinc-800/50">
                               <td className="p-3">{item.name}</td>
                               <td className="p-3 text-center font-mono">{item.quantity}</td>
+                              <td className="p-3 text-center text-zinc-400">{item.unit}</td>
                               <td className="p-3 text-center font-mono">{item.price.toLocaleString()}</td>
                               <td className="p-3 text-center font-mono text-primary">{(item.quantity * item.price).toLocaleString()}</td>
                               <td className="p-3 text-center">

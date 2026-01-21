@@ -118,7 +118,6 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
                      (e.partyName && e.partyName.includes(searchTerm)) ||
                      (e.notes && e.notes.includes(searchTerm));
     
-    // فلتر مخصص لحركة صنف محدد
     const matchItemMovement = !itemMovementSearch || 
                               e.itemName.includes(itemMovementSearch) || 
                               e.itemCode.includes(itemMovementSearch);
@@ -192,18 +191,60 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
              </div>
           </div>
 
-          <div className="flex-1 min-w-[200px] space-y-1">
-             <label className="text-[10px] font-black text-rose-500 uppercase mr-1">حركة صنف محدد</label>
-             <div className="relative">
-                <Package className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-300 w-5 h-5" />
-                <input 
-                  type="text" 
-                  placeholder="ابحث بحركة مادة محددة..."
-                  className="w-full bg-rose-50 dark:bg-zinc-800 border-2 border-rose-100 dark:border-rose-900/30 focus:border-rose-500 p-3 pr-12 rounded-2xl font-black outline-none transition-all text-readable"
-                  value={itemMovementSearch}
-                  onChange={e => setItemMovementSearch(e.target.value)}
-                />
-             </div>
+          <div className="flex-1 min-w-[200px] space-y-1 relative">
+             <label className="text-[10px] font-black text-zinc-500 uppercase mr-1">تحديد مواد للجرد (متعدد)</label>
+             <button 
+               onClick={() => setShowItemDropdown(!showItemDropdown)}
+               className="w-full bg-zinc-50 dark:bg-zinc-800 p-3 px-6 rounded-2xl flex items-center justify-between font-black text-readable hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all border-2 border-transparent shadow-sm"
+             >
+                <div className="flex items-center gap-2 truncate">
+                   <Package className={`w-5 h-5 shrink-0 ${selectedItems.length > 0 ? 'text-primary' : 'text-zinc-400'}`} />
+                   <span className="truncate text-lg">
+                      {selectedItems.length === 0 ? 'جميع مواد المستودع' : `تم اختيار (${selectedItems.length}) مواد`}
+                   </span>
+                </div>
+                <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${showItemDropdown ? 'rotate-180 text-primary' : ''}`} />
+             </button>
+             
+             {showItemDropdown && (
+               <div className="absolute top-full right-0 left-0 mt-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] shadow-2xl z-[60] overflow-hidden animate-in zoom-in-95 duration-200">
+                  <div className="p-2 border-b dark:border-zinc-800">
+                    <button 
+                      onClick={() => { setSelectedItems([]); setShowItemDropdown(false); }} 
+                      className="w-full text-center py-2 text-[11px] font-black text-primary uppercase tracking-widest hover:bg-primary/5 rounded-xl transition-colors"
+                    >
+                      إعادة تعيين (عرض الكل)
+                    </button>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto p-2 custom-scrollbar">
+                    {inventory.length === 0 ? (
+                      <div className="p-6 text-center text-zinc-400 font-bold italic">لا توجد مواد مخزنة</div>
+                    ) : (
+                      inventory.map(item => (
+                        <div 
+                          key={item.id}
+                          onClick={() => toggleItemSelection(item.code)}
+                          className={`flex items-center justify-between p-3 mb-1 rounded-2xl cursor-pointer transition-all ${selectedItems.includes(item.code) ? 'bg-primary text-white shadow-lg' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
+                        >
+                           <div className="flex flex-col">
+                              <span className="font-black text-sm">{item.name}</span>
+                              <span className={`text-[10px] font-mono ${selectedItems.includes(item.code) ? 'text-white/70' : 'text-zinc-400'}`}>{item.code}</span>
+                           </div>
+                           {selectedItems.includes(item.code) && <Check className="w-5 h-5" />}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="p-2 bg-zinc-50 dark:bg-zinc-800/50 border-t dark:border-zinc-800 flex justify-center">
+                    <button 
+                      onClick={() => setShowItemDropdown(false)}
+                      className="text-[9px] font-black text-zinc-400 hover:text-zinc-600 transition-colors py-1 px-4"
+                    >
+                      إغلاق القائمة
+                    </button>
+                  </div>
+               </div>
+             )}
           </div>
 
           <div className="w-44 space-y-1">
@@ -227,9 +268,9 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
              <Calendar className="w-4 h-4 text-zinc-400" />
              <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black text-zinc-500">من</span>
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none focus:text-primary transition-colors" />
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none focus:text-primary transition-colors text-readable" />
                 <span className="text-[10px] font-black text-zinc-500">إلى</span>
-                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none focus:text-primary transition-colors" />
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none focus:text-primary transition-colors text-readable" />
              </div>
           </div>
         </div>
@@ -243,18 +284,18 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="flex flex-col gap-1">
                  <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">التاريخ</label>
-                 <input type="date" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                 <input type="date" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-readable" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
               </div>
               <div className="flex flex-col gap-1 md:col-span-2">
                  <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المادة (اختيار من المستودع)</label>
-                 <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={formData.itemCode} onChange={e => handleMaterialSelect(e.target.value)}>
+                 <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none text-readable" value={formData.itemCode} onChange={e => handleMaterialSelect(e.target.value)}>
                     <option value="">-- اختر مادة من المستودع --</option>
                     {inventory.map(i => <option key={i.id} value={i.code}>{i.name} ({i.code})</option>)}
                  </select>
               </div>
               <div className="flex flex-col gap-1">
                  <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">نوع الحركة</label>
-                 <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold" value={formData.movementType} onChange={e => setFormData({...formData, movementType: e.target.value as any})}>
+                 <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold text-readable" value={formData.movementType} onChange={e => setFormData({...formData, movementType: e.target.value as any})}>
                     <option value="إدخال">إدخال (توريد)</option>
                     <option value="صرف">صرف (إخراج)</option>
                     <option value="مرتجع">مرتجع (إرجاع للمستودع)</option>
@@ -263,7 +304,7 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
               
               <div className="flex flex-col gap-1">
                  <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">العميل / المورد</label>
-                 <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={formData.partyName} onChange={e => setFormData({...formData, partyName: e.target.value})}>
+                 <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none text-readable" value={formData.partyName} onChange={e => setFormData({...formData, partyName: e.target.value})}>
                     <option value="">-- اختر الطرف المرتبط --</option>
                     {parties.map(p => <option key={p.id} value={p.name}>{p.name} ({p.type})</option>)}
                  </select>
@@ -271,7 +312,7 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
 
               <div className="flex flex-col gap-1">
                  <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">رقم الفاتورة</label>
-                 <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-mono font-bold text-center" value={formData.invoiceNumber} onChange={e => setFormData({...formData, invoiceNumber: e.target.value})} placeholder="0000" />
+                 <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-mono font-bold text-center text-readable" value={formData.invoiceNumber} onChange={e => setFormData({...formData, invoiceNumber: e.target.value})} placeholder="0000" />
               </div>
 
               <div className="flex flex-col gap-1">
@@ -281,7 +322,7 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
 
               <div className="flex flex-col gap-1">
                  <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المستودع</label>
-                 <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold" value={formData.warehouse} onChange={e => setFormData({...formData, warehouse: e.target.value})}>
+                 <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold text-readable" value={formData.warehouse} onChange={e => setFormData({...formData, warehouse: e.target.value})}>
                     {warehouses.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
                  </select>
               </div>
@@ -290,11 +331,11 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">البيان / الوصف</label>
-                <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold" value={formData.statement} onChange={e => setFormData({...formData, statement: e.target.value})} placeholder="اكتب تفاصيل القيد هنا..." />
+                <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold text-readable" value={formData.statement} onChange={e => setFormData({...formData, statement: e.target.value})} placeholder="اكتب تفاصيل القيد هنا..." />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">ملاحظات إضافية</label>
-                <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} placeholder="أي ملاحظات فنية أو إدارية..." />
+                <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold text-readable" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} placeholder="أي ملاحظات فنية أو إدارية..." />
               </div>
            </div>
 
