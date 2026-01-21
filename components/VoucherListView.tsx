@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Search, Printer, Plus, Trash2, Edit2, Save, X, FileDown, Calendar as CalendarIcon, FileText, User, Coins, CreditCard, Filter, ChevronDown, CheckCircle2 } from 'lucide-react';
-import { CashEntry, Party, AppSettings, SalesInvoice, PurchaseInvoice } from '../types';
+import { CashEntry, Party, AppSettings, SalesInvoice, PurchaseInvoice, PartyType } from '../types';
 import { exportToCSV } from '../utils/export';
 
 const tafqeet = (n: number, currencyName: string): string => {
@@ -42,7 +42,15 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
       const all = JSON.parse(savedVouchers);
       setVouchers(all.filter((v: CashEntry) => v.type === type));
     }
-    if (savedParties) setParties(JSON.parse(savedParties));
+    if (savedParties) {
+       const allParties = JSON.parse(savedParties);
+       // Show customers for Receipt, suppliers for Payment, and BOTH for both.
+       if (type === 'قبض') {
+         setParties(allParties.filter((p: Party) => p.type === PartyType.CUSTOMER || p.type === PartyType.BOTH));
+       } else {
+         setParties(allParties.filter((p: Party) => p.type === PartyType.SUPPLIER || p.type === PartyType.BOTH));
+       }
+    }
   };
 
   const calculateCustomerTotals = () => {
@@ -221,39 +229,45 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
         <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
            <style>{`
              @media print {
-               @page { size: A4 portrait; margin: 0; }
+               @page { size: A4 portrait; margin: 5mm; }
                body * { visibility: hidden; }
                .printable-report, .printable-report * { visibility: visible; }
                .printable-report { 
                  position: absolute; left: 0; top: 0; width: 100%; 
                  background: white !important; color: black !important;
+                 padding: 10mm;
                }
                .no-print { display: none !important; }
-               .print-card { border: 1px solid #e5e7eb !important; background: #fff !important; padding: 1rem !important; }
-               .print-header-top { background: #18181b !important; color: white !important; }
-               .print-table th { background: #f4f4f5 !important; color: black !important; }
+               .print-summary-grid { display: flex !important; flex-direction: row !important; gap: 10px !important; justify-content: space-between !important; }
+               .print-card { 
+                 flex: 1; border: 1.5px solid #e5e7eb !important; background: #fff !important; 
+                 padding: 15px !important; border-radius: 12px !important; text-align: center !important;
+               }
+               .print-header-top { background: #fff !important; color: #18181b !important; border-bottom: 4px solid #e11d48 !important; padding-bottom: 10px !important; margin-bottom: 20px !important; }
+               .print-table th { background: #f4f4f5 !important; color: black !important; border: 1px solid #d4d4d8 !important; }
+               .print-table td { border: 1px solid #e5e7eb !important; }
              }
            `}</style>
 
            <div className="bg-zinc-900/50 w-full max-w-6xl rounded-[3rem] border border-zinc-800 shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[95vh] print:bg-white print:border-none print:shadow-none print:rounded-none print:max-h-none print:static printable-report">
               
-              {/* ترويسة التقرير في الطباعة فقط */}
-              <div className="print-only print-header-top flex justify-between items-center bg-zinc-900 p-6 text-white border-b-8 border-primary mb-4 rounded-b-[2rem]">
-                 <div className="flex items-center gap-4">
-                    {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-2 rounded-2xl" />}
+              {/* ترويسة التقرير في الطباعة */}
+              <div className="print-only print-header-top flex justify-between items-center bg-zinc-900 p-8 text-white border-b-8 border-primary mb-8 rounded-b-[2rem]">
+                 <div className="flex items-center gap-6">
+                    {settings?.logoUrl && <img src={settings.logoUrl} className="w-24 h-24 object-contain bg-white p-2 rounded-2xl" />}
                     <div>
-                       <h1 className="text-2xl font-black">{settings?.companyName}</h1>
-                       <p className="text-[10px] font-bold opacity-60 tracking-widest">{settings?.companyType}</p>
+                       <h1 className="text-4xl font-black">{settings?.companyName}</h1>
+                       <p className="text-sm font-bold opacity-60 tracking-widest">{settings?.companyType}</p>
                     </div>
                  </div>
                  <div className="text-center">
-                    <h2 className="text-xl font-black underline underline-offset-[8px] decoration-primary">تقرير كشف حساب {type === 'قبض' ? 'زبون' : 'مورد'}</h2>
-                    <div className="mt-4 flex flex-col gap-1">
-                       <span className="text-[9px] bg-white/10 px-3 py-1 rounded-full border border-white/20">الفترة: {reportStart || 'البداية'} ← {reportEnd || 'اليوم'}</span>
-                       <span className="text-[10px] font-black text-primary uppercase mt-1 tracking-widest">{reportParty}</span>
+                    <h2 className="text-3xl font-black underline underline-offset-[12px] decoration-primary">تقرير كشف حساب {type === 'قبض' ? 'زبون' : 'مورد'}</h2>
+                    <div className="mt-6 flex flex-col gap-1">
+                       <span className="text-xs bg-white/10 px-4 py-1 rounded-full border border-white/20">الفترة: {reportStart || 'البداية'} ← {reportEnd || 'اليوم'}</span>
+                       <span className="text-[12px] font-black text-primary uppercase mt-1 tracking-widest">{reportParty}</span>
                     </div>
                  </div>
-                 <div className="text-left text-[9px] font-bold space-y-0.5">
+                 <div className="text-left text-xs font-bold space-y-1">
                     <p className="font-black text-primary">المحاسبة والمالية</p>
                     <p>{settings?.address}</p>
                     <p dir="ltr">{new Date().toLocaleDateString('ar-SA')}</p>
@@ -269,7 +283,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  <button onClick={() => setShowCustomerReport(false)} className="text-zinc-500 hover:text-white transition-all bg-zinc-800 p-3 rounded-2xl hover:bg-rose-900"><X className="w-6 h-6" /></button>
               </div>
               
-              <div className="p-8 overflow-y-auto space-y-4 custom-scrollbar print:overflow-visible print:p-6 print:pt-0">
+              <div className="p-8 overflow-y-auto space-y-8 custom-scrollbar print:overflow-visible print:p-0">
                  {/* Filter Controls - No Print */}
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 no-print">
                     <div className="flex flex-col gap-2">
@@ -295,42 +309,42 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
 
                  {reportParty && (
                     <>
-                       {/* Summary Widgets - Redesigned to be smaller */}
-                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:gap-2">
-                          <div className="bg-zinc-950/50 p-6 rounded-3xl border-2 border-zinc-800 flex flex-col items-center gap-1 shadow-2xl print:bg-white print:border print:border-zinc-200 print:rounded-xl print:p-3 print:shadow-none print-card">
-                             <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest text-center">إجمالي المسحوبات (الديون)</span>
-                             <span className="text-3xl font-mono font-black text-white print:text-zinc-900">{due.toLocaleString()}</span>
+                       {/* Summary Widgets - Side-by-Side كما في الصورة */}
+                       <div className="flex flex-row items-stretch gap-6 print:gap-4 print-summary-grid">
+                          <div className="flex-1 bg-zinc-950/50 p-8 rounded-[2.5rem] border-2 border-zinc-800 flex flex-col items-center justify-center gap-3 shadow-2xl print:bg-white print:border print:border-zinc-200 print:rounded-3xl print:p-6 print:shadow-none print-card">
+                             <span className="text-[12px] font-black text-zinc-500 uppercase tracking-widest text-center">إجمالي المسحوبات (الديون)</span>
+                             <span className="text-5xl font-mono font-black text-white print:text-zinc-900">{due.toLocaleString()}</span>
                           </div>
-                          <div className="bg-zinc-950/50 p-6 rounded-3xl border-2 border-zinc-800 flex flex-col items-center gap-1 shadow-2xl print:bg-white print:border print:border-zinc-200 print:rounded-xl print:p-3 print:shadow-none print-card">
-                             <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest text-center">إجمالي المدفوعات (الواصل)</span>
-                             <span className="text-3xl font-mono font-black text-emerald-500">{paid.toLocaleString()}</span>
+                          <div className="flex-1 bg-zinc-950/50 p-8 rounded-[2.5rem] border-2 border-zinc-800 flex flex-col items-center justify-center gap-3 shadow-2xl print:bg-white print:border print:border-zinc-200 print:rounded-3xl print:p-6 print:shadow-none print-card">
+                             <span className="text-[12px] font-black text-emerald-500 uppercase tracking-widest text-center">إجمالي المدفوعات (الواصل)</span>
+                             <span className="text-5xl font-mono font-black text-emerald-500">{paid.toLocaleString()}</span>
                           </div>
-                          <div className="bg-rose-900/10 p-6 rounded-3xl border-2 border-rose-900/30 flex flex-col items-center gap-1 shadow-2xl print:bg-rose-50/30 print:border print:border-rose-100 print:rounded-xl print:p-3 print:shadow-none print-card">
-                             <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest text-center">الرصيد المتبقي (الذمة)</span>
-                             <span className="text-4xl font-mono font-black text-rose-500">{(due - paid).toLocaleString()}</span>
+                          <div className="flex-1 bg-rose-900/10 p-8 rounded-[2.5rem] border-2 border-rose-900/30 flex flex-col items-center justify-center gap-3 shadow-2xl print:bg-rose-50/20 print:border print:border-rose-100 print:rounded-3xl print:p-6 print:shadow-none print-card">
+                             <span className="text-[12px] font-black text-rose-500 uppercase tracking-widest text-center">الرصيد المتبقي (الذمة)</span>
+                             <span className="text-6xl font-mono font-black text-rose-500">{(due - paid).toLocaleString()}</span>
                           </div>
                        </div>
 
                        {/* Detailed Table */}
-                       <div className="border-2 border-zinc-800 rounded-[2.5rem] overflow-hidden shadow-inner print:rounded-xl print:border print:border-zinc-200 mt-2">
+                       <div className="border-2 border-zinc-800 rounded-[2.5rem] overflow-hidden shadow-inner print:rounded-none print:border print:border-zinc-300">
                           <table className="w-full text-right border-collapse print-table">
                              <thead>
-                                <tr className="bg-zinc-800 text-zinc-400 font-black text-[10px] uppercase tracking-widest h-10 print:bg-zinc-50 print:text-zinc-600">
-                                   <th className="p-3 border-l border-zinc-700 w-28">التاريخ</th>
-                                   <th className="p-3 border-l border-zinc-700 w-28 text-center">رقم السند</th>
-                                   <th className="p-3 border-l border-zinc-700">البيان / الوصف</th>
-                                   <th className="p-3 text-center w-40">القيمة</th>
+                                <tr className="bg-zinc-800 text-zinc-400 font-black text-[11px] uppercase tracking-widest h-14 print:bg-zinc-100 print:text-zinc-600">
+                                   <th className="p-5 border-l border-zinc-700 w-32">التاريخ</th>
+                                   <th className="p-5 border-l border-zinc-700 w-32 text-center">رقم السند</th>
+                                   <th className="p-5 border-l border-zinc-700">البيان / الوصف</th>
+                                   <th className="p-5 text-center w-48">القيمة</th>
                                 </tr>
                              </thead>
                              <tbody className="divide-y divide-zinc-800 print:divide-zinc-200">
                                 {reportVouchers.length === 0 ? (
-                                   <tr><td colSpan={4} className="p-10 text-center italic text-zinc-600 font-black">لا توجد حركات مالية مسجلة لهذا الحساب في الفترة المحددة</td></tr>
+                                   <tr><td colSpan={4} className="p-20 text-center italic text-zinc-600 font-black text-lg">لا توجد حركات مالية مسجلة لهذا الحساب في الفترة المحددة</td></tr>
                                 ) : reportVouchers.map(v => (
-                                   <tr key={v.id} className="hover:bg-zinc-800/30 text-sm font-bold text-zinc-300 h-10 print:text-zinc-900 print:hover:bg-zinc-50">
-                                      <td className="p-3 border-l border-zinc-800 font-mono text-xs text-zinc-500 print:border-zinc-200">{v.date}</td>
-                                      <td className="p-3 border-l border-zinc-800 text-center font-black print:border-zinc-200">#{v.voucherNumber || '---'}</td>
-                                      <td className="p-3 border-l border-zinc-800 print:border-zinc-200 truncate max-w-[200px]">{v.statement}</td>
-                                      <td className="p-3 text-center font-mono font-black text-xl text-emerald-500 print:text-emerald-700">{ (v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD).toLocaleString() }</td>
+                                   <tr key={v.id} className="hover:bg-zinc-800/30 text-base font-bold text-zinc-300 h-14 print:text-zinc-900 print:hover:bg-zinc-50">
+                                      <td className="p-5 border-l border-zinc-800 font-mono text-xs text-zinc-500 print:border-zinc-200">{v.date}</td>
+                                      <td className="p-5 border-l border-zinc-800 text-center font-black print:border-zinc-200">#{v.voucherNumber || '---'}</td>
+                                      <td className="p-5 border-l border-zinc-800 print:border-zinc-200">{v.statement}</td>
+                                      <td className="p-5 text-center font-mono font-black text-2xl text-emerald-500 print:text-emerald-700">{ (v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD).toLocaleString() }</td>
                                    </tr>
                                 ))}
                              </tbody>

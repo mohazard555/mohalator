@@ -9,7 +9,7 @@ interface CustomerBalancesViewProps {
 }
 
 const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) => {
-  const [partyType, setPartyType] = useState<PartyType>(PartyType.CUSTOMER);
+  const [partyType, setPartyType] = useState<PartyType | 'الكل'>(PartyType.CUSTOMER);
   const [currencyFilter, setCurrencyFilter] = useState<'primary' | 'secondary'>('primary');
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -61,10 +61,11 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
     return { totalSales, totalPayments, balance };
   };
 
-  const filteredParties = parties.filter(p => 
-    p.type === partyType && 
-    (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.code.includes(searchTerm))
-  );
+  const filteredParties = parties.filter(p => {
+    const matchType = partyType === 'الكل' || p.type === partyType;
+    const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.code.includes(searchTerm);
+    return matchType && matchSearch;
+  });
 
   const balancesData = filteredParties.map(p => {
     const calc = calculateBalance(p, currencyFilter);
@@ -86,7 +87,7 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
           </div>
         </div>
         <div className="text-center">
-          <h2 className="text-2xl font-black underline decoration-primary underline-offset-8">كشف أرصدة {partyType === PartyType.CUSTOMER ? 'العملاء' : 'الموردين'} الكلي</h2>
+          <h2 className="text-2xl font-black underline decoration-primary underline-offset-8">كشف أرصدة {partyType === 'الكل' ? 'الحسابات' : partyType} الكلي</h2>
           <div className="flex gap-4 justify-center mt-3">
              <span className="bg-white/10 px-3 py-1 rounded-lg text-xs font-bold border border-white/20">تاريخ الكشف: {new Date().toLocaleDateString('ar-SA')}</span>
           </div>
@@ -101,7 +102,7 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors"><ArrowRight className="w-6 h-6" /></button>
-          <h2 className="text-2xl font-black text-readable">أرصدة {partyType === PartyType.CUSTOMER ? 'العملاء' : 'الموردين'}</h2>
+          <h2 className="text-2xl font-black text-readable">أرصدة العملاء والموردين</h2>
         </div>
         <div className="flex gap-2">
            <button onClick={() => exportToCSV(balancesData, 'customer_balances')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2"><FileDown className="w-5 h-5" /> تصدير XLSX</button>
@@ -112,9 +113,11 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
       <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-wrap gap-4 items-center shadow-sm no-print">
         <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800 px-4 py-2 rounded-2xl border">
            <Filter className="w-4 h-4 text-zinc-500" />
-           <select className="bg-transparent text-sm outline-none font-black" value={partyType} onChange={e => setPartyType(e.target.value as PartyType)}>
+           <select className="bg-transparent text-sm outline-none font-black" value={partyType} onChange={e => setPartyType(e.target.value as any)}>
               <option value={PartyType.CUSTOMER}>العملاء</option>
               <option value={PartyType.SUPPLIER}>الموردين</option>
+              <option value={PartyType.BOTH}>عميل ومورد معاً</option>
+              <option value="الكل">الكل</option>
            </select>
         </div>
         <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800 p-1 rounded-2xl border">
@@ -165,7 +168,7 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
                 </td>
                 <td className="p-4 text-center">
                   <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${party.balance > 0 ? 'text-rose-500 bg-rose-500/10 border-rose-500/20' : party.balance < 0 ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' : 'text-zinc-400 bg-zinc-100'}`}>
-                    {party.balance > 0 ? (partyType === PartyType.CUSTOMER ? 'مدين' : 'دائن') : party.balance < 0 ? 'له رصيد' : 'مسدد'}
+                    {party.balance > 0 ? (party.type === PartyType.CUSTOMER ? 'مدين' : 'دائن') : party.balance < 0 ? 'له رصيد' : 'مسدد'}
                   </span>
                 </td>
               </tr>

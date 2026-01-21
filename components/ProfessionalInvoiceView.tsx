@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Printer, ChevronDown, Globe, FileText, RotateCcw, Truck } from 'lucide-react';
+import { ArrowRight, Printer, ChevronDown, Globe, FileText, RotateCcw, Truck, ShoppingBag } from 'lucide-react';
 import { SalesInvoice, AppSettings } from '../types';
 
 interface ProfessionalInvoiceViewProps {
@@ -8,7 +8,7 @@ interface ProfessionalInvoiceViewProps {
   settings: AppSettings;
 }
 
-type DocType = 'SALES' | 'SALES_RETURN' | 'PURCHASE_RETURN';
+type DocType = 'SALES' | 'SALES_RETURN' | 'PURCHASE_RETURN' | 'PURCHASE';
 
 const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBack, settings }) => {
   const [docType, setDocType] = useState<DocType>('SALES');
@@ -25,6 +25,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
     if (docType === 'SALES') key = 'sheno_sales_invoices';
     else if (docType === 'SALES_RETURN') key = 'sheno_sales_returns';
     else if (docType === 'PURCHASE_RETURN') key = 'sheno_purchase_returns';
+    else if (docType === 'PURCHASE') key = 'sheno_purchases';
 
     const saved = localStorage.getItem(key);
     if (saved) {
@@ -53,17 +54,25 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
   const getDocTitle = () => {
     if (docType === 'SALES') return 'فاتورة مبيعات';
     if (docType === 'SALES_RETURN') return 'مرتجع مبيعات';
+    if (docType === 'PURCHASE') return 'فاتورة مشتريات';
     return 'مرتجع مشتريات';
   };
 
   const getPartyLabel = () => {
-    if (docType === 'PURCHASE_RETURN') return 'المطلوب من السيد / المورد';
+    if (docType === 'PURCHASE_RETURN' || docType === 'PURCHASE') return 'المطلوب من السيد / المورد';
     return 'المطلوب من السيد / MESSRS';
   };
 
   const getPartyName = () => {
-    if (docType === 'PURCHASE_RETURN') return document?.supplierName;
+    if (docType === 'PURCHASE_RETURN' || docType === 'PURCHASE') return document?.supplierName;
     return document?.customerName;
+  };
+
+  const getAccentColorClass = () => {
+    if (docType === 'SALES') return 'bg-[#881337] border-[#881337]';
+    if (docType === 'SALES_RETURN') return 'bg-rose-700 border-rose-700';
+    if (docType === 'PURCHASE') return 'bg-emerald-700 border-emerald-700';
+    return 'bg-amber-600 border-amber-600';
   };
 
   return (
@@ -77,10 +86,11 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                </button>
                <h2 className="text-2xl font-black text-readable">تصدير الوثائق الاحترافي</h2>
             </div>
-            <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded-2xl border dark:border-zinc-700">
-               <button onClick={() => setDocType('SALES')} className={`px-5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${docType === 'SALES' ? 'bg-primary text-white shadow-lg' : 'text-zinc-500'}`}><FileText className="w-4 h-4"/> مبيعات</button>
-               <button onClick={() => setDocType('SALES_RETURN')} className={`px-5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${docType === 'SALES_RETURN' ? 'bg-rose-900 text-white shadow-lg' : 'text-zinc-500'}`}><RotateCcw className="w-4 h-4"/> مرتجع مبيع</button>
-               <button onClick={() => setDocType('PURCHASE_RETURN')} className={`px-5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${docType === 'PURCHASE_RETURN' ? 'bg-amber-600 text-white shadow-lg' : 'text-zinc-500'}`}><Truck className="w-4 h-4"/> مرتجع شراء</button>
+            <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded-2xl border dark:border-zinc-700 flex-wrap gap-1">
+               <button onClick={() => setDocType('SALES')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${docType === 'SALES' ? 'bg-[#881337] text-white shadow-lg' : 'text-zinc-500'}`}><FileText className="w-4 h-4"/> مبيعات</button>
+               <button onClick={() => setDocType('PURCHASE')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${docType === 'PURCHASE' ? 'bg-emerald-700 text-white shadow-lg' : 'text-zinc-500'}`}><ShoppingBag className="w-4 h-4"/> مشتريات</button>
+               <button onClick={() => setDocType('SALES_RETURN')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${docType === 'SALES_RETURN' ? 'bg-rose-900 text-white shadow-lg' : 'text-zinc-500'}`}><RotateCcw className="w-4 h-4"/> مرتجع مبيع</button>
+               <button onClick={() => setDocType('PURCHASE_RETURN')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${docType === 'PURCHASE_RETURN' ? 'bg-amber-600 text-white shadow-lg' : 'text-zinc-500'}`}><Truck className="w-4 h-4"/> مرتجع شراء</button>
             </div>
          </div>
          
@@ -126,7 +136,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
             {/* Header */}
             <div className="p-8 relative z-10 flex justify-between items-start">
                <div className="space-y-4">
-                  <div className={`text-white px-12 py-3 rounded-none font-black text-2xl tracking-wider shadow-lg w-fit ${docType === 'SALES' ? 'bg-[#881337]' : docType === 'SALES_RETURN' ? 'bg-rose-700' : 'bg-amber-600'}`}>
+                  <div className={`text-white px-12 py-3 rounded-none font-black text-2xl tracking-wider shadow-lg w-fit ${getAccentColorClass().split(' ')[0]}`}>
                     {getDocTitle()}
                   </div>
                   <div className="flex flex-col gap-1 pr-2">
@@ -152,23 +162,31 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                </div>
             </div>
 
-            <div className={`mx-8 border-b-4 mb-6 ${docType === 'SALES' ? 'border-[#881337]' : docType === 'SALES_RETURN' ? 'border-rose-700' : 'border-amber-600'}`}></div>
+            <div className={`mx-8 border-b-4 mb-6 ${getAccentColorClass().split(' ')[1]}`}></div>
 
-            {/* Info Section */}
+            {/* Info Section - Reordered for Party Name on the Right in RTL */}
             <div className="px-8 grid grid-cols-3 gap-6 mb-6 relative z-10">
-               <div className="col-start-2">
-                  <div className="bg-zinc-50 border border-zinc-200 p-4 rounded-3xl flex flex-col items-center justify-center shadow-sm">
+               {/* Party Name Section (Now first in DOM, so right-most in RTL) */}
+               <div className="flex flex-col items-start justify-center text-right">
+                  <span className={`text-[10px] font-black text-zinc-500 uppercase border-r-4 pr-3 mr-2 ${getAccentColorClass().split(' ')[1]}`}>
+                    {getPartyLabel()}
+                  </span>
+                  <span className="text-2xl font-black italic text-zinc-800 mt-1">{getPartyName() || '..........................'}</span>
+               </div>
+               
+               {/* Middle Column */}
+               <div className="flex items-center justify-center">
+                  <div className="bg-zinc-50 border border-zinc-200 p-4 rounded-3xl flex flex-col items-center justify-center shadow-sm w-full max-w-[150px]">
                      <span className="text-[9px] font-black text-zinc-400 uppercase mb-1">إجمالي القطع</span>
                      <span className="text-4xl font-black font-mono text-[#881337] leading-none">
                         {document?.items?.reduce((s:number,c:any) => s + c.quantity, 0) || '00'}
                      </span>
                   </div>
                </div>
-               <div className="flex flex-col items-end justify-center text-left">
-                  <span className={`text-[10px] font-black text-zinc-500 uppercase border-r-4 pr-3 mr-2 ${docType === 'SALES' ? 'border-[#881337]' : 'border-rose-500'}`}>
-                    {getPartyLabel()}
-                  </span>
-                  <span className="text-2xl font-black italic text-zinc-800 mt-1">{getPartyName() || '..........................'}</span>
+
+               {/* Left-most in RTL (Empty or for symmetry) */}
+               <div className="flex flex-col items-end justify-center">
+                  {/* Space for future details like tax or warehouse */}
                </div>
             </div>
 

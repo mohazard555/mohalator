@@ -43,7 +43,10 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
     const savedSettings = localStorage.getItem('sheno_settings');
 
     if (savedInv) setInvoices(JSON.parse(savedInv));
-    if (savedParties) setParties(JSON.parse(savedParties).filter((p: Party) => p.type === PartyType.CUSTOMER));
+    if (savedParties) {
+       const allParties = JSON.parse(savedParties);
+       setParties(allParties.filter((p: Party) => p.type === PartyType.CUSTOMER || p.type === PartyType.BOTH));
+    }
     if (savedInventory) setInventory(JSON.parse(savedInventory));
     if (savedSettings) setSettings(JSON.parse(savedSettings));
   }, []);
@@ -144,7 +147,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">العميل</label>
               <select className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none text-readable" value={newInvoice.customerName} onChange={e => setNewInvoice({...newInvoice, customerName: e.target.value})}>
                 <option value="">-- اختر زبون --</option>
-                {parties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                {parties.map(p => <option key={p.id} value={p.name}>{p.name} {p.type === PartyType.BOTH ? '(مشترك)' : ''}</option>)}
               </select>
             </div>
             <div className="flex flex-col gap-1">

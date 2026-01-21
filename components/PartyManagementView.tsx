@@ -13,7 +13,7 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [filterType, setFilterType] = useState<'الكل' | PartyType>('الكل');
+  const [filterType, setFilterType] = useState<'الكل' | PartyType | 'عميل ومورد'>('الكل');
   
   const [formData, setFormData] = useState<Partial<Party>>({ 
     name: '', code: '', phone: '', address: '', type: PartyType.CUSTOMER, openingBalance: 0 
@@ -108,6 +108,7 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
                  <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as PartyType})}>
                     <option value={PartyType.CUSTOMER}>عميل</option>
                     <option value={PartyType.SUPPLIER}>مورد</option>
+                    <option value={PartyType.BOTH}>عميل ومورد (مشترك)</option>
                  </select>
               </div>
               <div className="flex flex-col gap-1">
@@ -149,16 +150,17 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
           <option value="الكل">جميع الأنواع</option>
           <option value={PartyType.CUSTOMER}>العملاء فقط</option>
           <option value={PartyType.SUPPLIER}>الموردين فقط</option>
+          <option value={PartyType.BOTH}>العملاء والموردين معاً</option>
         </select>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 no-print">
          {filteredParties.map(p => (
            <div key={p.id} className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-lg hover:shadow-2xl transition-all group relative overflow-hidden">
-              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${p.type === PartyType.CUSTOMER ? 'bg-blue-500' : 'bg-amber-500'}`}></div>
+              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${p.type === PartyType.CUSTOMER ? 'bg-blue-500' : p.type === PartyType.SUPPLIER ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
               <div className="flex justify-between items-start mb-4">
-                 <div className={`p-3 rounded-2xl ${p.type === PartyType.CUSTOMER ? 'bg-blue-500/10 text-blue-500' : 'bg-amber-500/10 text-amber-500'}`}>
-                    {p.type === PartyType.CUSTOMER ? <Users className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
+                 <div className={`p-3 rounded-2xl ${p.type === PartyType.CUSTOMER ? 'bg-blue-500/10 text-blue-500' : p.type === PartyType.SUPPLIER ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                    {p.type === PartyType.CUSTOMER ? <Users className="w-6 h-6" /> : p.type === PartyType.SUPPLIER ? <Building2 className="w-6 h-6" /> : <Users className="w-6 h-6" />}
                  </div>
                  <div className="flex gap-1">
                     <button onClick={() => { setEditingId(p.id); setFormData(p); setIsAdding(true); }} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-primary transition-all"><Edit2 className="w-4 h-4" /></button>
@@ -173,7 +175,10 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
               </div>
               <div>
                  <h3 className="text-xl font-black text-readable mb-1">{p.name}</h3>
-                 <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">كود: {p.code}</span>
+                 <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">كود: {p.code}</span>
+                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${p.type === PartyType.BOTH ? 'bg-emerald-500/10 text-emerald-600' : 'bg-zinc-100 dark:bg-zinc-800'}`}>{p.type}</span>
+                 </div>
               </div>
               <div className="mt-4 space-y-2">
                  <div className="flex items-center gap-2 text-xs text-zinc-500 font-bold">

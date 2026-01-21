@@ -33,7 +33,8 @@ export enum AppView {
 
 export enum PartyType {
   CUSTOMER = 'عميل',
-  SUPPLIER = 'مورد'
+  SUPPLIER = 'مورد',
+  BOTH = 'عميل ومورد'
 }
 
 export interface AppSettings {

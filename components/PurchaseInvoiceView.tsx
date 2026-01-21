@@ -32,7 +32,10 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
     const saved = localStorage.getItem('sheno_purchases');
     const savedParties = localStorage.getItem('sheno_parties');
     if (saved) setPurchases(JSON.parse(saved));
-    if (savedParties) setParties(JSON.parse(savedParties).filter((p: Party) => p.type === PartyType.SUPPLIER));
+    if (savedParties) {
+       const allParties = JSON.parse(savedParties);
+       setParties(allParties.filter((p: Party) => p.type === PartyType.SUPPLIER || p.type === PartyType.BOTH));
+    }
   }, []);
 
   const handleAddItem = () => {
@@ -136,7 +139,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                   <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">المورد</label>
                   <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={newInvoice.supplierName} onChange={e => setNewInvoice({...newInvoice, supplierName: e.target.value})}>
                     <option value="">-- اختر مورد --</option>
-                    {parties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                    {parties.map(p => <option key={p.id} value={p.name}>{p.name} {p.type === PartyType.BOTH ? '(مشترك)' : ''}</option>)}
                   </select>
                </div>
                <div className="flex flex-col gap-1">
