@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Moon, Sun, Settings as SettingsIcon, LogOut, FileOutput, Heart } from 'lucide-react';
-import { AppView, AppSettings } from './types';
+import { AppView, AppSettings, SalesInvoice } from './types';
 import Dashboard from './components/Dashboard';
 import SalesInvoiceView from './components/SalesInvoiceView';
 import SalesHistoryView from './components/SalesHistoryView';
@@ -33,6 +33,7 @@ import LoginView from './components/LoginView';
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<SalesInvoice | null>(null);
   const [settings, setSettings] = useState<AppSettings>({
     companyName: 'SAMLATOR2026',
     companyType: 'نظام إدارة محاسبية متطور',
@@ -80,6 +81,11 @@ const App: React.FC = () => {
     setCurrentView(AppView.DASHBOARD);
   };
 
+  const handleEditFromHistory = (invoice: SalesInvoice) => {
+    setEditingInvoice(invoice);
+    setCurrentView(AppView.SALES_INVOICE);
+  };
+
   if (settings.isLoginEnabled && !isAuthenticated) {
     return <LoginView settings={settings} onLogin={() => setIsAuthenticated(true)} />;
   }
@@ -88,7 +94,7 @@ const App: React.FC = () => {
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${settings.darkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'}>
       <header className={`${settings.darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'} border-b px-6 py-3 flex items-center justify-between sticky top-0 z-50 no-print shadow-sm`}>
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setCurrentView(AppView.DASHBOARD)}>
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => { setEditingInvoice(null); setCurrentView(AppView.DASHBOARD); }}>
             {settings.logoUrl ? (
               <img src={settings.logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded transition-transform group-hover:scale-105" />
             ) : (
@@ -147,7 +153,18 @@ const App: React.FC = () => {
         {(() => {
           switch (currentView) {
             case AppView.DASHBOARD: return <Dashboard setView={setCurrentView} />;
-            case AppView.SALES_INVOICE: return <SalesInvoiceView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.SALES_INVOICE: return (
+              <SalesInvoiceView 
+                onBack={() => { setEditingInvoice(null); setCurrentView(AppView.DASHBOARD); }} 
+                initialInvoice={editingInvoice || undefined}
+              />
+            );
+            case AppView.SALES_HISTORY: return (
+              <SalesHistoryView 
+                onBack={() => setCurrentView(AppView.DASHBOARD)} 
+                onEdit={handleEditFromHistory}
+              />
+            );
             case AppView.SALES_HISTORY: return <SalesHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.SALES_RETURN_HISTORY: return <SalesReturnHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.PURCHASE_HISTORY: return <PurchaseHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;

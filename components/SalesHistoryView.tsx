@@ -1,14 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Printer, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check, X } from 'lucide-react';
+/* Added HardDrive to imports */
+import { ArrowRight, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check, X, HardDrive } from 'lucide-react';
 import { SalesInvoice, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
 interface SalesHistoryViewProps {
   onBack: () => void;
+  onEdit?: (invoice: SalesInvoice) => void;
 }
 
-const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack }) => {
+const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) => {
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -52,15 +54,14 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack }) => {
   const totalFilteredPieces = filteredInvoices.reduce((sum, inv) => sum + inv.items.reduce((s,i) => s + i.quantity, 0), 0);
   const totalFilteredAmount = filteredInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
 
-  const materialsAnalysis = selectedItems.length > 0 ? selectedItems.map(itemName => {
-    let totalQty = 0;
-    let totalVal = 0;
-    filteredInvoices.forEach(inv => {
-      inv.items.forEach(it => { if (it.name === itemName) { totalQty += it.quantity; totalVal += it.total; } });
-      inv.usedMaterials?.forEach(m => { if (m.name === itemName) totalQty += m.quantity; });
+  // Aggregate used materials by unit for the summary
+  const usedMaterialsByUnit = filteredInvoices.reduce((acc: Record<string, number>, inv) => {
+    inv.usedMaterials?.forEach(m => {
+      const unit = m.unit || 'قطعة';
+      acc[unit] = (acc[unit] || 0) + m.quantity;
     });
-    return { name: itemName, qty: totalQty, val: totalVal };
-  }) : [];
+    return acc;
+  }, {});
 
   const toggleItemSelection = (name: string) => {
     setSelectedItems(prev => prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]);
@@ -101,9 +102,19 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack }) => {
         </div>
         <div className="text-center">
           <h2 className="text-2xl font-black underline decoration-white/30 underline-offset-8">سجل المبيعات المفلتر</h2>
-          <div className="flex gap-4 justify-center mt-2">
-            <p className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">إجمالي القطع: {totalFilteredPieces.toLocaleString()}</p>
-            <p className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">إجمالي القيمة: {totalFilteredAmount.toLocaleString()}</p>
+          <div className="flex flex-col gap-1 justify-center mt-2">
+            <div className="flex gap-4 justify-center">
+              <p className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">إجمالي القطع: {totalFilteredPieces.toLocaleString()}</p>
+              <p className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">إجمالي القيمة: {totalFilteredAmount.toLocaleString()}</p>
+            </div>
+            {/* Totals by Unit displayed in print header too */}
+            <div className="flex gap-2 justify-center flex-wrap mt-1">
+              {Object.entries(usedMaterialsByUnit).map(([unit, total]) => (
+                <span key={unit} className="text-[8px] font-bold bg-white/10 px-2 py-0.5 rounded border border-white/20">
+                  إجمالي ({unit}): {total.toLocaleString()}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
         <div className="text-left text-xs font-bold space-y-1">
@@ -119,7 +130,7 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack }) => {
         </div>
         <div className="flex gap-2">
           <button onClick={() => exportToCSV(filteredInvoices, 'full_sales_history')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg"><FileDown className="w-5 h-5" /> تصدير XLSX</button>
-          <button onClick={() => window.print()} className="bg-rose-100 text-rose-700 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-rose-200"><Printer className="w-5 h-5" /> طباعة السجل المفلتر</button>
+          <button onClick={() => window.print()} className="bg-rose-100 text-rose-700 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-rose-200">طباعة السجل الكامل</button>
         </div>
       </div>
 
@@ -151,6 +162,25 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack }) => {
             <Calendar className="w-4 h-4 text-zinc-400" />
             <div className="flex items-center gap-2"><span className="text-[10px] font-black text-zinc-500">من</span><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-readable" /><span className="text-[10px] font-black text-zinc-500">إلى</span><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-readable" /></div>
           </div>
+        </div>
+      </div>
+
+      {/* Used Materials Summary Section */}
+      <div className="bg-emerald-500/5 dark:bg-emerald-500/10 p-6 rounded-3xl border border-emerald-500/20 shadow-sm space-y-4">
+        <h3 className="text-sm font-black text-emerald-600 flex items-center gap-2">
+          <HardDrive className="w-4 h-4" /> إجمالي استهلاك المواد (المفلتر)
+        </h3>
+        <div className="flex flex-wrap gap-4">
+           {Object.keys(usedMaterialsByUnit).length === 0 ? (
+             <p className="text-zinc-400 text-xs italic font-bold">لا يوجد استهلاك مواد مخزنية في هذه الفترة.</p>
+           ) : (
+             Object.entries(usedMaterialsByUnit).map(([unit, total]) => (
+               <div key={unit} className="bg-white dark:bg-zinc-800 px-6 py-3 rounded-2xl border border-emerald-200 dark:border-emerald-900 shadow-sm flex flex-col items-center min-w-[120px]">
+                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">وحدة ({unit})</span>
+                 <span className="text-2xl font-mono font-black text-emerald-600">{total.toLocaleString()}</span>
+               </div>
+             ))
+           )}
         </div>
       </div>
 
@@ -207,7 +237,13 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack }) => {
                       <td className="p-2 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono text-[8px] text-zinc-400">{inv.time}</td>
                       <td className="p-2 border-l border-zinc-100 dark:border-zinc-800 text-center no-print">
                         <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => window.print()} className="p-1 text-zinc-400 hover:text-primary transition-all"><Printer className="w-3.5 h-3.5" /></button>
+                          <button 
+                            onClick={() => onEdit?.(inv)} 
+                            className="p-1 text-zinc-400 hover:text-amber-500 transition-all"
+                            title="تعديل الفاتورة"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
                           <button onClick={() => handleDelete(inv.id, inv.invoiceNumber)} className="p-1 text-zinc-400 hover:text-rose-500 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
