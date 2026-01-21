@@ -94,6 +94,10 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
             display: flex;
             flex-direction: column;
           }
+          /* التأكد من طباعة الحدود السوداء بوضوح */
+          table, th, td {
+            border-color: black !important;
+          }
         }
       `}</style>
 
@@ -182,7 +186,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                </div>
 
                <div className="flex-shrink-0 px-4">
-                  <div className="border-2 border-zinc-100 rounded-[2rem] px-8 py-2 flex flex-col items-center justify-center bg-zinc-50 shadow-inner">
+                  <div className="border-2 border-black rounded-[2rem] px-8 py-2 flex flex-col items-center justify-center bg-zinc-50 shadow-inner">
                      <span className="text-[9px] font-black text-zinc-400 uppercase mb-0">إجمالي القطع</span>
                      <span className="text-4xl font-black font-mono leading-none" style={{ color: getAccentColor() }}>
                         {document?.items?.reduce((s:number,c:any) => s + c.quantity, 0) || '00'}
@@ -198,40 +202,59 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                <table className="w-full text-right border-collapse">
                   <thead>
                      <tr className="bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest h-8">
-                        <th className="p-2 pr-4 border border-zinc-700">الوصف / DESCRIPTION</th>
-                        <th className="p-2 text-center w-20 border border-zinc-700">الكمية</th>
-                        <th className="p-2 text-center w-28 border border-zinc-700">السعر</th>
-                        <th className="p-2 text-center w-32 border border-zinc-700">الإجمالي</th>
+                        <th className="p-2 pr-4 border border-black">الوصف / DESCRIPTION</th>
+                        <th className="p-2 text-center w-20 border border-black">الكمية</th>
+                        <th className="p-2 text-center w-28 border border-black">السعر</th>
+                        <th className="p-2 text-center w-32 border border-black">الإجمالي</th>
                      </tr>
                   </thead>
                   <tbody className="text-[11px] font-black">
                      {(document?.items || Array.from({ length: 4 })).map((item: any, idx: number) => (
-                        <tr key={idx} className="h-9 border border-zinc-200">
-                           <td className="p-2 pr-4 text-zinc-800">
+                        <tr key={idx} className="h-14 border border-black">
+                           <td className="p-2 pr-4 text-zinc-800 border border-black">
                               {item ? (
-                                <div className="flex items-center gap-2">
-                                   {item.image && <img src={item.image} className="w-6 h-6 rounded border object-contain bg-white cursor-zoom-in" onClick={() => setPreviewImage(item.image)} alt="Item" />}
-                                   <span>{item.name}</span>
+                                <div className="flex items-center gap-3">
+                                   {item.image && (
+                                     <img 
+                                       src={item.image} 
+                                       className="w-16 h-16 rounded border-2 border-zinc-100 object-contain bg-white cursor-zoom-in shadow-sm" 
+                                       onClick={() => setPreviewImage(item.image)} 
+                                       alt="Item" 
+                                     />
+                                   )}
+                                   <div className="flex flex-col">
+                                      <span>{item.name}</span>
+                                      {item.serialNumber && <span className="text-[8px] text-zinc-400">SN: {item.serialNumber}</span>}
+                                   </div>
                                 </div>
                               ) : '..........................'}
                            </td>
-                           <td className="p-2 text-center font-mono text-lg border-x border-zinc-200">{item?.quantity || ''}</td>
-                           <td className="p-2 text-center font-mono border-x border-zinc-200">{item?.price?.toLocaleString() || ''}</td>
-                           <td className="p-2 text-center font-mono" style={{ color: getAccentColor() }}>{item ? (item.quantity * item.price).toLocaleString() : ''}</td>
+                           <td className="p-2 text-center font-mono text-lg border border-black">{item?.quantity || ''}</td>
+                           <td className="p-2 text-center font-mono border border-black">{item?.price?.toLocaleString() || ''}</td>
+                           <td className="p-2 text-center font-mono border border-black" style={{ color: getAccentColor() }}>{item ? (item.quantity * item.price).toLocaleString() : ''}</td>
                         </tr>
                      ))}
                   </tbody>
                </table>
             </div>
 
-            {/* Totals Section */}
-            <div className="mt-4 flex items-center justify-between border-t-2 border-zinc-100 pt-4">
-               <div>
-                  <span className="text-[9px] font-black uppercase tracking-widest block mb-1" style={{ color: getAccentColor() }}>المبلغ كتابةً / IN WORDS</span>
-                  <div className="text-xs font-black italic text-zinc-400">
-                    {document?.totalAmountLiteral || '................................................'}
+            {/* Totals & Notes Section */}
+            <div className="mt-4 flex items-start justify-between border-t-2 border-black pt-4">
+               <div className="flex-1 space-y-4">
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-widest block mb-1" style={{ color: getAccentColor() }}>المبلغ كتابةً / IN WORDS</span>
+                    <div className="text-xs font-black italic text-zinc-500">
+                      {document?.totalAmountLiteral || '................................................'}
+                    </div>
                   </div>
+                  {document?.notes && (
+                    <div className="bg-zinc-50 p-2 border border-black/10 rounded-sm max-w-md">
+                       <span className="text-[8px] font-black text-zinc-400 uppercase block mb-1">ملاحظات الفاتورة / NOTES</span>
+                       <p className="text-[10px] font-bold text-zinc-600 leading-tight">{document.notes}</p>
+                    </div>
+                  )}
                </div>
+
                <div className="flex items-center gap-6">
                   <span className="text-sm font-black text-zinc-400">الإجمالي / TOTAL</span>
                   <div className="flex flex-col items-end">
@@ -246,7 +269,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
             {/* Footer Signatures */}
             <div className="mt-auto pt-4 flex justify-between items-end border-t border-zinc-50">
                <div className="text-center">
-                  <div className="w-40 border-b border-zinc-200 mb-1"></div>
+                  <div className="w-40 border-b border-black mb-1"></div>
                   <span className="text-[9px] font-black text-zinc-400 uppercase">المحاسب المعتمد</span>
                </div>
                <div className="flex flex-col items-end gap-1 text-[8px] font-bold text-zinc-400">
