@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Printer, Search, FileOutput, X, Users, Box, HardDrive, Calendar, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Printer, Search, FileOutput, X, Users, Box, HardDrive, Calendar, Eye, EyeOff, FileDown } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, CashEntry, Party, PartyType, AppSettings } from '../types';
 
 const tafqeet = (n: number, currencyName: string): string => {
@@ -115,13 +115,17 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
                   </div>
                )}
                <div className="flex flex-col">
-                 <span className="text-readable font-black text-lg leading-none">{settings?.companyName || 'شينو للمحاسبة'}</span>
+                 <span className="text-readable font-black text-lg leading-none">{settings?.companyName || 'نظام شينو'}</span>
                  <span className="text-zinc-400 text-[8px] font-bold uppercase tracking-widest">{settings?.address || 'Accounting System'}</span>
                </div>
             </div>
          </div>
          <h1 className="text-2xl font-black flex-1 text-center tracking-tight text-readable">كشف حساب زبون مفصل</h1>
-         <div className="text-xs font-mono text-zinc-400 bg-white dark:bg-zinc-800 px-3 py-1 rounded border border-zinc-200 dark:border-zinc-700">#{new Date().getTime().toString().slice(-6)}</div>
+         <div className="flex gap-2">
+            <button onClick={() => window.print()} className="bg-rose-900 text-white px-6 py-2 rounded-xl flex items-center gap-2 font-black shadow-lg hover:brightness-110 transition-all">
+               <FileDown className="w-5 h-5" /> تصدير PDF
+            </button>
+         </div>
       </div>
 
       {/* Filter & Privacy Controls */}
@@ -162,9 +166,8 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
             <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">إعدادات الخصوصية</span>
             <button onClick={() => setShowUsedMaterials(!showUsedMaterials)} className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl font-black text-xs transition-all w-full justify-center ${showUsedMaterials ? 'bg-emerald-600 text-white shadow-lg' : 'bg-rose-600 text-white shadow-lg'}`}>
                {showUsedMaterials ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-               {showUsedMaterials ? 'عمود المواد (ظاهر حالياً)' : 'عمود المواد (مخفي للطباعة)'}
+               {showUsedMaterials ? 'إظهار عمود المواد' : 'إخفاء عمود المواد'}
             </button>
-            <p className="text-[8px] text-zinc-400 text-center font-bold">استخدم هذا الخيار لإخفاء تفاصيل المواد المخزنية المستخدمة في الكشف المطبوع.</p>
          </div>
       </div>
 
@@ -266,7 +269,7 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
             العودة للرئيسية
          </button>
          <button onClick={() => window.print()} className="bg-rose-900 text-white px-12 py-3 rounded-2xl flex items-center gap-2 font-black shadow-xl hover:bg-rose-800 transition-all active:scale-95">
-            <Printer className="w-6 h-6" /> طباعة الكشف الكامل
+            <Printer className="w-6 h-6" /> طباعة / تصدير PDF
          </button>
       </div>
     </div>

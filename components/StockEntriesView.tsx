@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Save, X, Search, Warehouse as WarehouseIcon, FileDown, Calendar, ChevronDown, Check, Package, Users } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Edit2, Save, X, Search, Warehouse as WarehouseIcon, FileDown, Calendar, ChevronDown, Check, Package, Users, Printer } from 'lucide-react';
 import { StockEntry, InventoryItem, WarehouseEntity, Party, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -114,9 +114,9 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
   };
 
   const filteredEntries = entries.filter(e => {
-    const matchText = e.itemName.includes(searchTerm) || 
-                     e.itemCode.includes(searchTerm) || 
-                     e.invoiceNumber.includes(searchTerm) ||
+    const matchText = (e.itemName || '').includes(searchTerm) || 
+                     (e.itemCode || '').includes(searchTerm) || 
+                     (e.invoiceNumber || '').includes(searchTerm) ||
                      (e.partyName && e.partyName.includes(searchTerm)) ||
                      (e.notes && e.notes.includes(searchTerm));
     
@@ -131,6 +131,25 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
 
   return (
     <div className="space-y-6">
+      {/* Print Header */}
+      <div className="print-only print-header flex justify-between items-center bg-zinc-900 p-6 rounded-t-xl text-white mb-0 border-b-0">
+        <div className="flex items-center gap-4">
+          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
+          <div>
+            <h1 className="text-2xl font-black">{settings?.companyName}</h1>
+            <p className="text-xs opacity-80">{settings?.companyType}</p>
+          </div>
+        </div>
+        <div className="text-center">
+          <h2 className="text-2xl font-black underline decoration-white/30 underline-offset-8">تقرير سجل حركات المستودع</h2>
+          <p className="text-[10px] mt-2 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
+        </div>
+        <div className="text-left text-xs font-bold">
+          <p>{settings?.address}</p>
+          <p>{settings?.phone}</p>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors">
@@ -144,6 +163,9 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
           </button>
           <button onClick={() => exportToCSV(filteredEntries, 'stock_entries')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">
              <FileDown className="w-5 h-5" /> XLSX
+          </button>
+          <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable border border-zinc-200 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">
+             <Printer className="w-5 h-5" /> طباعة PDF
           </button>
         </div>
       </div>
@@ -241,7 +263,7 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
              >
                 <div className="flex items-center gap-2 truncate">
                    <Package className={`w-5 h-5 shrink-0 ${selectedItems.length > 0 ? 'text-primary' : 'text-zinc-500'}`} />
-                   <span className="truncate">
+                   <span className="truncate text-lg">
                       {selectedItems.length === 0 ? 'جميع مواد المستودع' : `مختار (${selectedItems.length})`}
                    </span>
                 </div>
@@ -277,11 +299,11 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
         </div>
       </div>
 
-      <div className="bg-zinc-950 rounded-3xl border border-zinc-800 overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.8)]">
+      <div className="bg-zinc-950 rounded-3xl border border-zinc-800 overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.8)] print:border-zinc-300 print:rounded-none">
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse text-[10px]">
             <thead>
-              <tr className="bg-zinc-900 text-white font-black border-b border-zinc-800 h-14 uppercase tracking-tighter shadow-md">
+              <tr className="bg-zinc-900 text-white font-black border-b border-zinc-800 h-14 uppercase tracking-tighter shadow-md print:bg-zinc-100 print:text-zinc-900">
                 <th className="p-3 border-l border-zinc-800 w-24 text-center">التاريخ</th>
                 <th className="p-3 border-l border-zinc-800 w-20 text-center">اليوم</th>
                 <th className="p-3 border-l border-zinc-800 w-24 text-center">كود الصنف</th>
@@ -290,19 +312,19 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
                 <th className="p-3 border-l border-zinc-800 w-16 text-center">الوحدة</th>
                 <th className="p-3 border-l border-zinc-800 w-24 text-center">السعر</th>
                 <th className="p-3 border-l border-zinc-800 w-24 text-center">الحركة</th>
-                <th className="p-3 border-l border-zinc-800 w-24 text-center font-black">الكمية</th>
+                <th className="p-3 border-l border-zinc-800 w-24 text-center font-black bg-zinc-800">الكمية</th>
                 <th className="p-3 border-l border-zinc-800">البيان</th>
-                <th className="p-3 border-l border-zinc-800">ملاحظات</th>
+                <th className="p-3 border-l border-zinc-800 no-print">ملاحظات</th>
                 <th className="p-3 text-center no-print">إجراءات</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-900 font-bold bg-zinc-950 text-zinc-300">
+            <tbody className="divide-y divide-zinc-900 font-bold bg-zinc-950 text-zinc-300 print:bg-white print:text-zinc-900 print:divide-zinc-200">
               {filteredEntries.map((e, idx) => (
                 <tr key={e.id} className="hover:bg-zinc-900 transition-colors h-12">
                   <td className="p-2 border-l border-zinc-900 font-mono text-zinc-500 text-center">{e.date}</td>
                   <td className="p-2 border-l border-zinc-900 text-center text-zinc-400">{e.day || '---'}</td>
                   <td className="p-2 border-l border-zinc-900 font-mono text-primary text-center">{e.itemCode}</td>
-                  <td className="p-2 border-l border-zinc-900 text-white">{e.itemName}</td>
+                  <td className="p-2 border-l border-zinc-900 text-white print:text-zinc-900">{e.itemName}</td>
                   <td className="p-2 border-l border-zinc-900 text-primary/80 truncate max-w-[120px] italic">{e.partyName || '-'}</td>
                   <td className="p-2 border-l border-zinc-900 text-center text-zinc-500">{e.unit}</td>
                   <td className="p-2 border-l border-zinc-900 text-center font-mono text-amber-500">{e.price?.toLocaleString()}</td>
@@ -314,9 +336,9 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
                         {e.movementType}
                      </span>
                   </td>
-                  <td className="p-2 text-center font-mono text-lg text-white border-l border-zinc-900 bg-zinc-900/30">{e.quantity.toLocaleString()}</td>
+                  <td className="p-2 text-center font-mono text-lg text-white border-l border-zinc-900 bg-zinc-900/30 print:bg-transparent print:text-zinc-900">{e.quantity.toLocaleString()}</td>
                   <td className="p-2 border-l border-zinc-900 text-zinc-400 text-[9px] italic truncate max-w-[150px]">{e.statement}</td>
-                  <td className="p-2 border-l border-zinc-900 text-zinc-600 text-[9px] truncate max-w-[100px]">{e.notes || '-'}</td>
+                  <td className="p-2 border-l border-zinc-900 text-zinc-600 text-[9px] truncate max-w-[100px] no-print">{e.notes || '-'}</td>
                   <td className="p-2 no-print">
                      <div className="flex justify-center gap-1">
                         <button onClick={() => { setEditingId(e.id); setIsAdding(true); setFormData(e); }} className="p-1.5 text-zinc-500 hover:text-primary transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
@@ -331,10 +353,10 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
                   </td>
                 </tr>
               ))}
-              <tr className="bg-zinc-900 text-white font-black h-14">
+              <tr className="bg-zinc-900 text-white font-black h-14 print:bg-zinc-100 print:text-zinc-900">
                  <td colSpan={8} className="p-3 text-center uppercase text-[10px] text-zinc-400 tracking-[0.2em]">إجمالي كمية الحركات المفلترة</td>
-                 <td className="p-3 text-center font-mono text-xl text-primary">{totalQty.toLocaleString()}</td>
-                 <td colSpan={3} className="p-3"></td>
+                 <td className="p-3 text-center font-mono text-2xl text-primary">{totalQty.toLocaleString()}</td>
+                 <td colSpan={3} className="p-3 no-print"></td>
               </tr>
             </tbody>
           </table>

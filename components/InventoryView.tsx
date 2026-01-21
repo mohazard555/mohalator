@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Search, Package, Plus, Trash2, Edit2, FileDown, Printer, Box, Save, X, Warehouse as WarehouseIcon, Calendar } from 'lucide-react';
+import { ArrowRight, Search, Package, Plus, Trash2, Edit2, FileDown, Printer, Box, Save, X, Warehouse as WarehouseIcon, Calendar, Coins, Hash } from 'lucide-react';
 import { StockEntry, InventoryItem, WarehouseEntity, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -54,7 +54,10 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
   };
 
   const handleSaveItem = () => {
-    if (!formData.name || !formData.code) return;
+    if (!formData.name || !formData.code) {
+      alert('يرجى إدخال اسم وكود المادة');
+      return;
+    }
     
     const saved = localStorage.getItem('sheno_inventory_list');
     let all: InventoryItem[] = saved ? JSON.parse(saved) : [];
@@ -68,7 +71,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
     localStorage.setItem('sheno_inventory_list', JSON.stringify(all));
     setIsAdding(false);
     setEditingId(null);
-    setFormData({ code: '', name: '', category: 'عام', unit: 'قطعة', price: 0, openingStock: 0, warehouse: 'المستودع الرئيسي' });
+    setFormData({ code: '', name: '', category: 'عام', unit: 'قطعة', price: 0, openingStock: 0, warehouse: warehouses[0]?.name || 'المستودع الرئيسي' });
     loadData();
   };
 
@@ -113,47 +116,82 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
           <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors">
             <ArrowRight className="w-6 h-6" />
           </button>
-          <h2 className="text-2xl font-bold tracking-tight text-emerald-600">قائمة المواد والجرد</h2>
+          <h2 className="text-2xl font-black text-emerald-600">قائمة المواد والجرد</h2>
         </div>
-        <div className="flex gap-3">
-          <button onClick={() => setIsAdding(true)} className="bg-emerald-600 text-white px-8 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:brightness-110 active:scale-95 transition-all">
+        <div className="flex gap-2">
+          <button onClick={() => { setIsAdding(true); setEditingId(null); }} className="bg-emerald-600 text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110 active:scale-95 transition-all">
              <Plus className="w-5 h-5" /> إضافة مادة جديدة
           </button>
-          <button onClick={() => exportToCSV(items, 'inventory_report')} className="bg-zinc-800 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-zinc-700 transition-all">
-             <FileDown className="w-5 h-5" /> XLSX
+          <button onClick={() => exportToCSV(items, 'inventory_report')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 hover:bg-zinc-700 transition-all">
+             <FileDown className="w-5 h-5" /> تصدير XLSX
           </button>
-          <button onClick={() => window.print()} className="bg-emerald-100 text-emerald-700 px-6 py-2 rounded-xl font-bold flex items-center gap-2">
-             <Printer className="w-5 h-5" /> طباعة
+          <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable border border-zinc-200 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">
+             <Printer className="w-5 h-5" /> طباعة PDF
           </button>
         </div>
       </div>
 
       {(isAdding || editingId) && (
-        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl space-y-6 animate-in zoom-in-95 no-print">
-           <h3 className="text-lg font-bold flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-3 text-readable">
-              <Box className="w-5 h-5 text-emerald-600" /> تفاصيل المادة المستودعية
-           </h3>
+        <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl space-y-8 animate-in zoom-in-95 no-print text-readable">
+           <div className="flex items-center justify-between border-b pb-4 dark:border-zinc-800">
+              <h3 className="text-xl font-black flex items-center gap-2">
+                 <Box className="w-6 h-6 text-emerald-600" /> {editingId ? 'تعديل بيانات مادة' : 'إضافة مادة جديدة للمخزن'}
+              </h3>
+              <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="text-zinc-400 hover:text-rose-500 transition-all"><X className="w-6 h-6"/></button>
+           </div>
+
            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="flex flex-col gap-1">
-                 <label className="text-xs text-zinc-500 font-bold">كود المادة</label>
-                 <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 font-mono font-bold" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} />
+                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">كود المادة</label>
+                 <div className="relative">
+                    <Hash className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                    <input type="text" className="w-full bg-zinc-50 dark:bg-zinc-800 p-3 pr-10 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-mono font-black outline-none focus:border-emerald-500 transition-all" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} placeholder="مثلاً: ITEM-001" />
+                 </div>
               </div>
               <div className="flex flex-col gap-1 md:col-span-2">
-                 <label className="text-xs text-zinc-500 font-bold">اسم المادة / الصنف</label>
-                 <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 font-bold" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">اسم المادة / الصنف</label>
+                 <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-black outline-none focus:border-emerald-500 transition-all" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="اسم المادة..." />
               </div>
               <div className="flex flex-col gap-1">
-                 <label className="text-xs text-zinc-500 font-bold">المستودع المخصص</label>
-                 <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 font-bold" value={formData.warehouse} onChange={e => setFormData({...formData, warehouse: e.target.value})}>
+                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المستودع المخصص</label>
+                 <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-black outline-none appearance-none cursor-pointer" value={formData.warehouse} onChange={e => setFormData({...formData, warehouse: e.target.value})}>
                     {warehouses.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
                  </select>
               </div>
            </div>
-           <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-              <button onClick={handleSaveItem} className="bg-emerald-600 text-white px-12 py-3 rounded-2xl font-black shadow-lg flex items-center gap-2 active:scale-95 transition-all">
-                 <Save className="w-5 h-5" /> {editingId ? 'تحديث البيانات' : 'حفظ المادة في النظام'}
+
+           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="flex flex-col gap-1">
+                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">وحدة القياس</label>
+                 <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-black outline-none" value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value})}>
+                    <option value="قطعة">قطعة</option>
+                    <option value="كيلو">كيلو</option>
+                    <option value="متر">متر</option>
+                    <option value="طرد">طرد</option>
+                    <option value="كرتونة">كرتونة</option>
+                 </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">سعر المادة</label>
+                 <div className="relative">
+                    <Coins className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500" />
+                    <input type="number" className="w-full bg-zinc-50 dark:bg-zinc-800 p-3 pr-10 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-mono font-black text-amber-600 outline-none" value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} />
+                 </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                 <label className="text-[10px] text-emerald-600 font-black uppercase tracking-widest mr-1">رصيد أول المدة (الكمية)</label>
+                 <input type="number" className="bg-zinc-50 dark:bg-zinc-950 border-2 border-emerald-500/20 text-emerald-600 p-3 rounded-2xl font-mono font-black text-2xl text-center outline-none focus:border-emerald-500 transition-all" value={formData.openingStock} onChange={e => setFormData({...formData, openingStock: Number(e.target.value)})} />
+              </div>
+              <div className="flex flex-col justify-end pb-1">
+                 <p className="text-[9px] text-zinc-400 font-bold leading-tight">سيتم اعتماد هذه الكمية كـ "رصيد افتتاحي" للمادة في المستودع المحدد.</p>
+              </div>
+           </div>
+
+           <div className="flex justify-end gap-3 pt-6 border-t border-zinc-100 dark:border-zinc-800">
+              <button onClick={handleSaveItem} className="bg-emerald-600 text-white px-16 py-4 rounded-3xl font-black shadow-2xl flex items-center gap-3 hover:scale-105 active:scale-95 transition-all text-lg">
+                 <Save className="w-6 h-6" /> {editingId ? 'تحديث البيانات' : 'حفظ المادة وتثبيت الرصيد'}
               </button>
-              <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 px-8 py-3 rounded-2xl font-bold">إلغاء</button>
+              <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-10 py-4 rounded-2xl font-bold">إلغاء</button>
            </div>
         </div>
       )}
@@ -162,17 +200,17 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse text-sm">
             <thead>
-              <tr className="bg-emerald-600 text-[10px] text-white font-black uppercase tracking-widest border-b border-emerald-700">
-                <th className="p-4">كود</th>
-                <th className="p-4">المادة</th>
-                <th className="p-4">المستودع</th>
-                <th className="p-4 text-center">الوحدة</th>
-                <th className="p-4 text-center">السعر</th>
-                <th className="p-4 text-center">أول المدة</th>
-                <th className="p-4 text-center">الإضافات</th>
-                <th className="p-4 text-center">الصرف</th>
-                <th className="p-4 text-center">المرتجع</th>
-                <th className="p-4 text-center font-black">الرصيد الكلي</th>
+              <tr className="bg-emerald-600 text-[10px] text-white font-black uppercase tracking-widest border-b border-emerald-700 h-12">
+                <th className="p-4 border-l border-emerald-700">كود</th>
+                <th className="p-4 border-l border-emerald-700">المادة</th>
+                <th className="p-4 border-l border-emerald-700">المستودع</th>
+                <th className="p-4 border-l border-emerald-700 text-center">الوحدة</th>
+                <th className="p-4 border-l border-emerald-700 text-center">السعر</th>
+                <th className="p-4 border-l border-emerald-700 text-center">أول المدة</th>
+                <th className="p-4 border-l border-emerald-700 text-center">الإضافات</th>
+                <th className="p-4 border-l border-emerald-700 text-center">الصرف</th>
+                <th className="p-4 border-l border-emerald-700 text-center">المرتجع</th>
+                <th className="p-4 text-center font-black bg-emerald-700">الرصيد الكلي</th>
                 <th className="p-4 text-center no-print">إجراءات</th>
               </tr>
             </thead>
@@ -184,15 +222,15 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
               ) : (
                 filteredItems.map((item) => (
                   <tr key={item.id} className="hover:bg-emerald-50 dark:hover:bg-zinc-800/30 transition-colors group">
-                    <td className="p-4 font-mono text-emerald-600">{item.code}</td>
-                    <td className="p-4">{item.name}</td>
-                    <td className="p-4 text-zinc-500 text-xs">{item.warehouse}</td>
-                    <td className="p-4 text-center text-zinc-500 font-normal">{item.unit}</td>
-                    <td className="p-4 text-center font-mono text-amber-600">{item.price.toLocaleString()}</td>
-                    <td className="p-4 text-center font-mono">{item.openingStock.toLocaleString()}</td>
-                    <td className="p-4 text-center font-mono text-emerald-600">+{item.added.toLocaleString()}</td>
-                    <td className="p-4 text-center font-mono text-rose-600">-{item.issued.toLocaleString()}</td>
-                    <td className="p-4 text-center font-mono text-amber-500">+{item.returned.toLocaleString()}</td>
+                    <td className="p-4 font-mono text-emerald-600 border-l border-zinc-100 dark:border-zinc-800">{item.code}</td>
+                    <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">{item.name}</td>
+                    <td className="p-4 text-zinc-500 text-xs border-l border-zinc-100 dark:border-zinc-800">{item.warehouse}</td>
+                    <td className="p-4 text-center text-zinc-500 font-normal border-l border-zinc-100 dark:border-zinc-800">{item.unit}</td>
+                    <td className="p-4 text-center font-mono text-amber-600 border-l border-zinc-100 dark:border-zinc-800">{item.price.toLocaleString()}</td>
+                    <td className="p-4 text-center font-mono border-l border-zinc-100 dark:border-zinc-800">{item.openingStock.toLocaleString()}</td>
+                    <td className="p-4 text-center font-mono text-emerald-600 border-l border-zinc-100 dark:border-zinc-800">+{item.added.toLocaleString()}</td>
+                    <td className="p-4 text-center font-mono text-rose-600 border-l border-zinc-100 dark:border-zinc-800">-{item.issued.toLocaleString()}</td>
+                    <td className="p-4 text-center font-mono text-amber-500 border-l border-zinc-100 dark:border-zinc-800">+{item.returned.toLocaleString()}</td>
                     <td className={`p-4 text-center font-mono text-lg ${item.currentBalance < 0 ? 'text-rose-600 bg-rose-50' : 'text-emerald-700 bg-emerald-50'} print:bg-transparent`}>{item.currentBalance.toLocaleString()}</td>
                     <td className="p-4 no-print">
                        <div className="flex justify-center gap-2">

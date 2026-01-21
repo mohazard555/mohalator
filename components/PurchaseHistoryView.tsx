@@ -13,21 +13,43 @@ const PurchaseHistoryView: React.FC<PurchaseHistoryViewProps> = ({ onBack }) => 
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [settings, setSettings] = useState<AppSettings | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('sheno_purchases');
+    const savedSettings = localStorage.getItem('sheno_settings');
     if (saved) setPurchases(JSON.parse(saved));
+    if (savedSettings) setSettings(JSON.parse(savedSettings));
   }, []);
 
   const filtered = purchases.filter(p => {
-    const matchSearch = p.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                       p.invoiceNumber.includes(searchTerm);
+    const matchSearch = (p.supplierName || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                       (p.invoiceNumber || '').includes(searchTerm);
     const matchDate = (!startDate || p.date >= startDate) && (!endDate || p.date <= endDate);
     return matchSearch && matchDate;
   });
 
   return (
     <div className="space-y-6">
+       {/* Print Header */}
+      <div className="print-only print-header flex justify-between items-center bg-amber-600 p-6 rounded-t-xl text-white mb-0 border-b-0">
+        <div className="flex items-center gap-4">
+          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
+          <div>
+            <h1 className="text-2xl font-black">{settings?.companyName}</h1>
+            <p className="text-xs opacity-80">{settings?.companyType}</p>
+          </div>
+        </div>
+        <div className="text-center">
+          <h2 className="text-3xl font-black underline decoration-white/30 underline-offset-8">سجل فواتير المشتريات والتوريد</h2>
+          <p className="text-xs mt-2 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
+        </div>
+        <div className="text-left text-xs font-bold">
+          <p>{settings?.address}</p>
+          <p>{settings?.phone}</p>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors">
@@ -39,8 +61,8 @@ const PurchaseHistoryView: React.FC<PurchaseHistoryViewProps> = ({ onBack }) => 
           <button onClick={() => exportToCSV(filtered, 'purchase_history')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
              <FileDown className="w-5 h-5" /> تصدير XLSX
           </button>
-          <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border">
-             <Printer className="w-5 h-5" /> طباعة السجل
+          <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable border border-zinc-200 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">
+             <Printer className="w-5 h-5" /> طباعة PDF
           </button>
         </div>
       </div>
@@ -65,11 +87,11 @@ const PurchaseHistoryView: React.FC<PurchaseHistoryViewProps> = ({ onBack }) => 
         </div>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl">
+      <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl print:border-amber-600 print:rounded-none">
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse text-sm">
             <thead>
-              <tr className="bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest border-b border-zinc-700 h-12">
+              <tr className="bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest border-b border-zinc-700 h-12 print:bg-amber-600 print:text-white">
                 <th className="p-4 border-l border-zinc-800 text-center w-24">رقم الفاتورة</th>
                 <th className="p-4 border-l border-zinc-800 text-center w-32">التاريخ</th>
                 <th className="p-4 border-l border-zinc-800">المورد</th>
@@ -78,15 +100,15 @@ const PurchaseHistoryView: React.FC<PurchaseHistoryViewProps> = ({ onBack }) => 
                 <th className="p-4 text-center w-40">المدفوع نقداً</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold">
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:divide-zinc-300">
               {filtered.length === 0 ? (
                 <tr><td colSpan={6} className="p-20 text-center italic text-zinc-400">لا يوجد سجلات مشتريات تطابق البحث</td></tr>
               ) : filtered.map(p => (
-                <tr key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
-                  <td className="p-4 text-amber-600 font-black text-center font-mono">#{p.invoiceNumber}</td>
-                  <td className="p-4 font-mono text-zinc-400 text-center">{p.date}</td>
-                  <td className="p-4 text-readable">{p.supplierName}</td>
-                  <td className="p-4">
+                <tr key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors h-14">
+                  <td className="p-4 text-amber-600 font-black text-center font-mono border-l border-zinc-100 dark:border-zinc-800">#{p.invoiceNumber}</td>
+                  <td className="p-4 font-mono text-zinc-400 text-center border-l border-zinc-100 dark:border-zinc-800">{p.date}</td>
+                  <td className="p-4 text-readable border-l border-zinc-100 dark:border-zinc-800">{p.supplierName}</td>
+                  <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">
                      <div className="flex flex-col gap-1">
                         {p.items.map((it, i) => (
                            <div key={i} className="text-xs text-zinc-500 font-normal flex items-center gap-2">
@@ -97,8 +119,8 @@ const PurchaseHistoryView: React.FC<PurchaseHistoryViewProps> = ({ onBack }) => 
                         ))}
                      </div>
                   </td>
-                  <td className="p-4 text-center font-black text-rose-600 font-mono text-lg">{p.totalAmount.toLocaleString()}</td>
-                  <td className="p-4 text-center font-black text-emerald-600 font-mono text-lg">{p.paidAmount.toLocaleString()}</td>
+                  <td className="p-4 text-center font-black text-rose-600 font-mono text-lg border-l border-zinc-100 dark:border-zinc-800 bg-rose-50/20">{p.totalAmount.toLocaleString()}</td>
+                  <td className="p-4 text-center font-black text-emerald-600 font-mono text-lg bg-emerald-50/20">{p.paidAmount?.toLocaleString() || '0'}</td>
                 </tr>
               ))}
             </tbody>
