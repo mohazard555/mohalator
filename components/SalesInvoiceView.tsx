@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, Box, Clock, FileDown, User, Hash, HardDrive, ScrollText, Image as ImageIcon, CreditCard, Coins, Upload } from 'lucide-react';
+import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, Box, Clock, FileDown, User, Hash, HardDrive, ScrollText, Image as ImageIcon, CreditCard, Coins, Upload, Search, Filter, Calendar, Package, ChevronDown, Check } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, StockEntry, Party, PartyType, InventoryItem, CashEntry, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -21,6 +21,13 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [selectedCurrencyType, setSelectedCurrencyType] = useState<'primary' | 'secondary'>('primary');
+
+  // Filter States (Matching Image)
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [showItemDropdown, setShowItemDropdown] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const [newInvoice, setNewInvoice] = useState<Partial<SalesInvoice>>({
     invoiceNumber: '',
@@ -49,7 +56,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
        setParties(allParties.filter((p: Party) => p.type === PartyType.CUSTOMER || p.type === PartyType.BOTH));
     }
 
-    // حساب الرصيد الفعلي للمواد بناءً على سجل الحركات
     if (savedInventory) {
        const baseItems: InventoryItem[] = JSON.parse(savedInventory);
        const entries: StockEntry[] = savedEntries ? JSON.parse(savedEntries) : [];
@@ -69,7 +75,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
     }
     
     if (savedSettings) setSettings(JSON.parse(savedSettings));
-  }, [isAdding]); // إعادة الحساب عند فتح نموذج إضافة فاتورة جديدة
+  }, [isAdding]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -112,16 +118,13 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
       totalAmountLiteral: tafqeet(total, currencyName)
     };
 
-    // --- تحديث سجلات المستودع بناءً على المواد المستخدمة ---
     const savedStock = localStorage.getItem('sheno_stock_entries');
     let stockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
     
-    // إزالة الحركات القديمة لنفس رقم الفاتورة في حال التعديل
     if (editingId) {
       stockEntries = stockEntries.filter(e => e.invoiceNumber !== invoice.invoiceNumber);
     }
 
-    // إنشاء حركات صرف للمواد المستخدمة فقط
     const usedStockMoves: StockEntry[] = (invoice.usedMaterials || []).map(m => ({
       id: crypto.randomUUID(),
       date: invoice.date,
@@ -154,13 +157,12 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('حذف الفاتورة؟')) {
+    if (window.confirm('حذف الفاتورة نهائياً؟')) {
       const invToDelete = invoices.find(i => i.id === id);
       const updated = invoices.filter(i => i.id !== id);
       setInvoices(updated);
       localStorage.setItem('sheno_sales_invoices', JSON.stringify(updated));
       
-      // مسح حركات المستودع المرتبطة بالفاتورة المحذوفة
       if (invToDelete) {
         const savedStock = localStorage.getItem('sheno_stock_entries');
         if (savedStock) {
@@ -169,6 +171,23 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
         }
       }
     }
+  };
+
+  const filteredInvoices = invoices.filter(inv => {
+    const matchSearch = inv.customerName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                       inv.invoiceNumber.includes(searchTerm) ||
+                       inv.items.some(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchDate = (!startDate || inv.date >= startDate) && (!endDate || inv.date <= endDate);
+    let matchItems = true;
+    if (selectedItems.length > 0) {
+      const invoiceAllItems = [...inv.items.map(it => it.name), ...(inv.usedMaterials?.map(m => m.name) || [])];
+      matchItems = selectedItems.some(selected => invoiceAllItems.includes(selected));
+    }
+    return matchSearch && matchDate && matchItems;
+  });
+
+  const toggleItemSelection = (name: string) => {
+    setSelectedItems(prev => prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]);
   };
 
   return (
@@ -186,7 +205,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
               <Plus className="w-5 h-5" /> فاتورة مبيعات جديدة
             </button>
           )}
-          <button onClick={() => exportToCSV(invoices, 'sales_report')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">
+          <button onClick={() => exportToCSV(filteredInvoices, 'sales_report')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">
              <FileDown className="w-5 h-5" /> تصدير XLSX
           </button>
         </div>
@@ -295,6 +314,74 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
         </div>
       )}
 
+      {/* Advanced Filter Bar (Matches Image) */}
+      <div className="bg-zinc-900/90 dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-800 shadow-2xl space-y-4 no-print">
+        <div className="flex flex-wrap gap-4 items-end">
+          {/* Search Input */}
+          <div className="flex-1 min-w-[200px] flex flex-col gap-1">
+            <label className="text-[10px] font-black text-zinc-500 uppercase mr-1 tracking-widest">بحث نصي (فاتورة، عميل، صنف)</label>
+            <div className="relative">
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
+              <input 
+                type="text" 
+                placeholder="ابحث برقم الفاتورة، العميل، أو الصنف..." 
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl py-3 pr-12 outline-none font-bold text-readable focus:border-rose-900 transition-all shadow-inner" 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+              />
+            </div>
+          </div>
+
+          {/* Item Multi-select */}
+          <div className="flex-1 min-w-[200px] flex flex-col gap-1 relative">
+            <label className="text-[10px] font-black text-zinc-500 uppercase mr-1 tracking-widest">تحديد أصناف معينة للتحليل</label>
+            <button 
+              onClick={() => setShowItemDropdown(!showItemDropdown)} 
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl py-3 px-6 flex items-center justify-between font-black text-readable hover:bg-zinc-900 transition-all overflow-hidden shadow-inner"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Package className="w-5 h-5 text-rose-500 shrink-0" />
+                <span className="truncate text-lg">
+                  {selectedItems.length > 0 ? `تم اختيار (${selectedItems.length}) أصناف` : 'جميع المواد'}
+                </span>
+              </div>
+              <ChevronDown className={`w-5 h-5 transition-transform ${showItemDropdown ? 'rotate-180' : ''}`} />
+            </button>
+            {showItemDropdown && (
+              <div className="absolute top-full right-0 left-0 mt-3 bg-zinc-900 border border-zinc-800 rounded-[2rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-50 max-h-64 overflow-y-auto p-3 animate-in zoom-in-95">
+                <button 
+                  onClick={() => { setSelectedItems([]); setShowItemDropdown(false); }} 
+                  className="w-full text-center p-2 text-[11px] font-black text-rose-500 border-b border-zinc-800 mb-2 hover:bg-rose-900/10 rounded-xl transition-colors uppercase tracking-widest"
+                >
+                  إعادة تعيين (عرض الكل)
+                </button>
+                {inventory.map(item => (
+                  <div 
+                    key={item.id} 
+                    onClick={() => toggleItemSelection(item.name)} 
+                    className={`flex items-center justify-between p-3 mb-1 rounded-xl cursor-pointer transition-all ${selectedItems.includes(item.name) ? 'bg-primary text-white shadow-lg' : 'hover:bg-zinc-800 text-zinc-400'}`}
+                  >
+                    <span className="font-black text-sm">{item.name}</span>
+                    {selectedItems.includes(item.name) && <Check className="w-4 h-4" />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Date Picker Range */}
+          <div className="flex items-center gap-3 bg-zinc-950 px-6 py-2.5 rounded-2xl border border-zinc-800 h-[54px] shadow-inner">
+            <Calendar className="w-4 h-4 text-zinc-500" />
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">من</span>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-readable focus:text-primary transition-colors" />
+              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">إلى</span>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-readable focus:text-primary transition-colors" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-zinc-950 rounded-3xl border border-zinc-800 overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.8)]">
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse text-[10px]">
@@ -304,22 +391,20 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                 <th className="p-3 border-l border-zinc-800 text-center w-16 text-rose-500">رقم</th>
                 <th className="p-3 border-l border-zinc-800 text-center w-20">تاريخ</th>
                 <th className="p-3 border-l border-zinc-800 text-center">العميل</th>
-                <th className="p-3 border-l border-zinc-800 text-right w-48">تفاصيل الأصناف</th>
+                <th className="p-3 border-l border-zinc-800 text-right w-48">الأصناف</th>
                 <th className="p-3 border-l border-zinc-800 text-right w-40">المواد المستخدمة</th>
                 <th className="p-3 border-l border-zinc-800 text-center w-12">العدد</th>
-                <th className="p-3 border-l border-zinc-800 text-center w-24">السعر الإفرادي</th>
                 <th className="p-3 border-l border-zinc-800 text-center w-24">الإجمالي</th>
                 <th className="p-3 border-l border-zinc-800 text-right w-48">التفقيط (كتابة)</th>
                 <th className="p-3 border-l border-zinc-800 text-right">ملاحظات</th>
-                <th className="p-3 border-l border-zinc-800 text-center w-16">وقت</th>
                 <th className="p-3 border-l border-zinc-800 text-center w-20 no-print">إجراءات</th>
                 <th className="p-3 text-center w-20 text-emerald-500">المدفوع</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-900 font-bold bg-zinc-950 text-zinc-300">
-              {invoices.map((inv, idx) => (
+              {filteredInvoices.map((inv, idx) => (
                 <tr key={inv.id} className="hover:bg-zinc-900 transition-colors h-14">
-                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-600">{invoices.length - idx}</td>
+                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-600">{filteredInvoices.length - idx}</td>
                   <td className="p-2 border-l border-zinc-900 text-center text-rose-500 font-black">#{inv.invoiceNumber}</td>
                   <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-500">{inv.date}</td>
                   <td className="p-2 border-l border-zinc-900 text-white truncate max-w-[100px]">{inv.customerName}</td>
@@ -327,7 +412,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                     <div className="flex flex-col gap-0.5 max-h-12 overflow-y-auto">
                       {inv.items.map((it, i) => ( 
                         <div key={i} className="flex items-center gap-1 truncate text-[9px]">
-                          {it.image && <img src={it.image} className="w-4 h-4 rounded-sm object-cover" />}
                           • {it.name} ({it.quantity})
                         </div>
                       ))}
@@ -339,7 +423,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                     </div>
                   </td>
                   <td className="p-2 border-l border-zinc-900 text-center font-mono text-white">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
-                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-500">{inv.items[0]?.price.toLocaleString()}</td>
                   <td className="p-2 border-l border-zinc-900 text-center font-black text-rose-500 font-mono text-sm bg-rose-900/10">
                     {inv.totalAmount.toLocaleString()}
                   </td>
@@ -348,9 +431,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                   </td>
                   <td className="p-2 border-l border-zinc-900 text-zinc-600 font-normal italic truncate max-w-[100px]">
                     {inv.notes || '-'}
-                  </td>
-                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-[8px] text-zinc-600">
-                    {inv.time}
                   </td>
                   <td className="p-2 border-l border-zinc-900 text-center no-print">
                     <div className="flex items-center justify-center gap-1">
