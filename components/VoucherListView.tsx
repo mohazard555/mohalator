@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Search, Printer, Plus, Trash2, Edit2, Save, X, FileDown, Calendar as CalendarIcon, FileText, User, Coins, CreditCard, Filter, ChevronDown, CheckCircle2 } from 'lucide-react';
+/* Added Search to the imports below */
+import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, FileDown, Calendar as CalendarIcon, FileText, User, Coins, CreditCard, Filter, ChevronDown, CheckCircle2, Search } from 'lucide-react';
 import { CashEntry, Party, AppSettings, SalesInvoice, PurchaseInvoice, PartyType } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -44,7 +45,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     }
     if (savedParties) {
        const allParties = JSON.parse(savedParties);
-       // Show customers for Receipt, suppliers for Payment, and BOTH for both.
        if (type === 'قبض') {
          setParties(allParties.filter((p: Party) => p.type === PartyType.CUSTOMER || p.type === PartyType.BOTH));
        } else {
@@ -166,56 +166,117 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     const displayCurrencyName = isVoucherPrimary ? (settings?.currency || 'ليرة سورية') : (settings?.secondaryCurrency || 'دولار');
 
     return (
-      <div className="min-h-screen bg-zinc-100 p-4 md:p-10 animate-in fade-in" dir="rtl">
-        <div className="max-w-4xl mx-auto mb-6 no-print flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border">
+      <div className="min-h-screen bg-zinc-100 flex flex-col items-center justify-center p-4 animate-in fade-in" dir="rtl">
+        <style>{`
+          @media print {
+            @page { size: 148mm 105mm; margin: 0; }
+            body { margin: 0; padding: 0; background: white; }
+            .no-print { display: none !important; }
+            .print-area { 
+              width: 148mm !important; 
+              height: 105mm !important; 
+              padding: 5mm !important; 
+              margin: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+            }
+          }
+        `}</style>
+
+        <div className="max-w-xl w-full mb-6 no-print flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border">
            <button onClick={() => setPrintingVoucher(null)} className="flex items-center gap-2 text-zinc-500 font-black hover:text-rose-900 transition-colors">
              <ArrowRight className="w-5 h-5" /> العودة للقائمة
            </button>
-           <button onClick={() => window.print()} className="bg-rose-900 text-white px-10 py-3 rounded-2xl font-black shadow-xl flex items-center gap-2 hover:scale-105 transition-all">
-             <Printer className="w-5 h-5" /> طباعة السند (نصف A4)
+           <button onClick={() => window.print()} className="bg-rose-900 text-white px-8 py-3 rounded-2xl font-black flex items-center gap-2 hover:scale-105 transition-all">
+             <Printer className="w-5 h-5" /> طباعة (ربع A4)
            </button>
         </div>
-        <div className="max-w-[210mm] mx-auto bg-white text-zinc-900 p-8 rounded-xl shadow-2xl border-2 border-zinc-100 flex flex-col relative print:shadow-none print:border print:border-zinc-200" style={{ minHeight: '148mm' }}>
-          <div className="flex justify-between items-start mb-6 border-b-4 border-rose-900 pb-4">
-             <div className="flex flex-col gap-1">
-                <div className="bg-zinc-900 text-white px-3 py-1 rounded font-mono text-lg font-black">NO: {printingVoucher.voucherNumber || printingVoucher.id.slice(0, 8).toUpperCase()}</div>
-                <div className="text-zinc-500 font-bold text-xs">التاريخ: {printingVoucher.date}</div>
+
+        {/* وثيقة السند - قياس ربع A4 عرضي */}
+        <div className="print-area bg-white text-zinc-900 border-2 border-zinc-200 shadow-2xl flex flex-col relative overflow-hidden" 
+             style={{ width: '148mm', height: '105mm', padding: '8mm' }}>
+          
+          {/* خلفية مائية خفيفة */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none -rotate-12 select-none">
+             <span className="text-[60px] font-black uppercase">{settings?.companyName}</span>
+          </div>
+
+          {/* الترويسة - Header */}
+          <div className="flex justify-between items-start border-b-2 border-rose-900 pb-2 relative z-10">
+             <div className="flex flex-col gap-0.5">
+                <div className="text-rose-900 font-black text-sm uppercase tracking-tighter">
+                   سند {type} مالي
+                </div>
+                <div className="bg-zinc-900 text-white px-2 py-0.5 rounded text-[10px] font-mono font-bold w-fit">
+                   NO: {printingVoucher.voucherNumber || printingVoucher.id.slice(0, 6).toUpperCase()}
+                </div>
+                <div className="text-zinc-500 font-bold text-[9px] mt-0.5">
+                   DATE: {printingVoucher.date}
+                </div>
              </div>
-             <div className="text-center">
-                <div className="text-3xl font-black text-rose-900">سند {type} مالي</div>
-                <div className="text-zinc-400 font-black text-[10px] tracking-widest uppercase">OFFICIAL {type === 'قبض' ? 'RECEIPT' : 'PAYMENT'}</div>
+
+             <div className="flex flex-col items-center">
+                {settings?.logoUrl ? (
+                   <img src={settings.logoUrl} className="h-10 w-auto object-contain mb-1" alt="Logo" />
+                ) : (
+                   <div className="text-lg font-black text-rose-900 leading-none">SHENO</div>
+                )}
+                <div className="text-zinc-400 font-black text-[7px] tracking-widest uppercase">{settings?.companyType}</div>
              </div>
-             <div className="flex flex-col items-end">
-                <h1 className="text-2xl font-black text-rose-900">{settings?.companyName}</h1>
-                <div className="text-zinc-400 text-[8px] font-black">{settings?.companyType}</div>
+
+             <div className="text-left flex flex-col items-end">
+                <h1 className="text-sm font-black text-rose-900 leading-none">{settings?.companyName}</h1>
+                <div className="text-zinc-400 text-[8px] font-bold mt-1" dir="ltr">{settings?.phone}</div>
              </div>
           </div>
-          <div className="flex-1 space-y-6 pt-4">
-             <div className="flex items-baseline gap-4 border-b border-zinc-100 pb-2">
-                <span className="text-rose-900 font-black text-base whitespace-nowrap">{type === 'قبض' ? 'استلمنا من' : 'دفعنا إلى'}:</span>
-                <span className="flex-1 text-xl font-black italic">{printingVoucher.partyName}</span>
+
+          {/* المحتوى - Content */}
+          <div className="flex-1 pt-4 space-y-3 relative z-10">
+             <div className="flex items-baseline gap-2 border-b border-zinc-100 pb-1">
+                <span className="text-rose-900 font-black text-[11px] whitespace-nowrap">{type === 'قبض' ? 'استلمنا من' : 'دفعنا إلى'}:</span>
+                <span className="flex-1 text-sm font-black italic text-zinc-800">{printingVoucher.partyName}</span>
              </div>
-             <div className="flex items-baseline gap-4 border-b border-zinc-100 pb-2">
-                <span className="text-rose-900 font-black text-base whitespace-nowrap">مبلغاً وقدره:</span>
-                <span className="flex-1 text-lg font-bold text-zinc-700">{tafqeet(displayAmount || 0, displayCurrencyName)}</span>
+             
+             <div className="flex items-baseline gap-2 border-b border-zinc-100 pb-1">
+                <span className="text-rose-900 font-black text-[11px] whitespace-nowrap">مبلغاً وقدره:</span>
+                <span className="flex-1 text-xs font-bold text-zinc-700">{tafqeet(displayAmount || 0, displayCurrencyName)}</span>
              </div>
-             <div className="flex items-baseline gap-4 border-b border-zinc-100 pb-2">
-                <span className="text-rose-900 font-black text-base whitespace-nowrap">وذلك عن:</span>
-                <span className="flex-1 text-lg font-bold text-zinc-600">{printingVoucher.statement}</span>
+
+             <div className="flex items-baseline gap-2 border-b border-zinc-100 pb-1">
+                <span className="text-rose-900 font-black text-[11px] whitespace-nowrap">وذلك عن:</span>
+                <span className="flex-1 text-xs font-bold text-zinc-600">{printingVoucher.statement}</span>
              </div>
-             <div className="flex justify-center pt-4">
-                <div className="bg-zinc-900 p-0.5 rounded-lg">
-                   <div className="bg-white border-2 border-rose-900 rounded px-12 py-2 flex flex-col items-center min-w-[240px]">
-                      <span className="text-[9px] font-black text-rose-900 mb-1 uppercase">Amount | المبلغ</span>
-                      <span className="text-3xl font-black font-mono tracking-tighter">{displayAmount?.toLocaleString()}</span>
-                      <span className="text-[9px] text-zinc-400 font-bold mt-0.5">{displayCurrencySymbol}</span>
+
+             {/* صندوق المبلغ - Amount Box */}
+             <div className="flex justify-center pt-2">
+                <div className="bg-zinc-900 p-[1px] rounded-lg">
+                   <div className="bg-white border border-rose-900 rounded-md px-6 py-1 flex items-center gap-4">
+                      <div className="flex flex-col items-center">
+                         <span className="text-[7px] font-black text-rose-900 leading-none">AMOUNT | المبلغ</span>
+                         <div className="text-xl font-black font-mono tracking-tighter leading-none mt-1">
+                            {displayAmount?.toLocaleString()}
+                         </div>
+                      </div>
+                      <div className="h-6 w-px bg-zinc-200"></div>
+                      <span className="text-[10px] font-black text-zinc-400">{displayCurrencySymbol}</span>
                    </div>
                 </div>
              </div>
           </div>
-          <div className="mt-8 flex justify-between px-6 pt-4 border-t border-zinc-50">
-             <div className="flex flex-col items-center"><span className="text-zinc-400 font-bold text-[10px] mb-8 uppercase">{type === 'قبض' ? 'المسلم' : 'المستلم'}</span><div className="w-32 border-b border-zinc-300"></div></div>
-             <div className="flex flex-col items-center"><span className="text-zinc-400 font-bold text-[10px] mb-8 uppercase">المحاسب</span><div className="w-32 border-b border-zinc-300 font-black text-center text-xs">{settings?.accountantName}</div></div>
+
+          {/* التواقيع - Footer */}
+          <div className="flex justify-between px-4 pt-2 border-t border-zinc-100 relative z-10">
+             <div className="flex flex-col items-center">
+                <span className="text-zinc-400 font-bold text-[8px] mb-4 uppercase">{type === 'قبض' ? 'المسلم' : 'المستلم'}</span>
+                <div className="w-20 border-b border-zinc-200"></div>
+             </div>
+             <div className="flex flex-col items-center">
+                <span className="text-zinc-400 font-bold text-[8px] mb-4 uppercase">المحاسب</span>
+                <div className="flex flex-col items-center">
+                   <div className="w-20 border-b border-zinc-200"></div>
+                   <span className="text-[8px] font-black text-zinc-800 mt-0.5">{settings?.accountantName}</span>
+                </div>
+             </div>
           </div>
         </div>
       </div>
@@ -224,7 +285,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
 
   return (
     <div className="space-y-6">
-      {/* نافذة تقرير العميل المحسنة */}
+      {/* نافذة تقرير العميل */}
       {showCustomerReport && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
            <style>{`
@@ -238,21 +299,10 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  padding: 10mm;
                }
                .no-print { display: none !important; }
-               .print-summary-grid { display: flex !important; flex-direction: row !important; gap: 10px !important; justify-content: space-between !important; }
-               .print-card { 
-                 flex: 1; border: 1.5px solid #e5e7eb !important; background: #fff !important; 
-                 padding: 15px !important; border-radius: 12px !important; text-align: center !important;
-               }
-               .print-header-top { background: #fff !important; color: #18181b !important; border-bottom: 4px solid #e11d48 !important; padding-bottom: 10px !important; margin-bottom: 20px !important; }
-               .print-table th { background: #f4f4f5 !important; color: black !important; border: 1px solid #d4d4d8 !important; }
-               .print-table td { border: 1px solid #e5e7eb !important; }
              }
            `}</style>
-
            <div className="bg-zinc-900/50 w-full max-w-6xl rounded-[3rem] border border-zinc-800 shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[95vh] print:bg-white print:border-none print:shadow-none print:rounded-none print:max-h-none print:static printable-report">
-              
-              {/* ترويسة التقرير في الطباعة */}
-              <div className="print-only print-header-top flex justify-between items-center bg-zinc-900 p-8 text-white border-b-8 border-primary mb-8 rounded-b-[2rem]">
+              <div className="print-only flex justify-between items-center bg-zinc-900 p-8 text-white border-b-8 border-primary mb-8 rounded-b-[2rem]">
                  <div className="flex items-center gap-6">
                     {settings?.logoUrl && <img src={settings.logoUrl} className="w-24 h-24 object-contain bg-white p-2 rounded-2xl" />}
                     <div>
@@ -273,8 +323,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                     <p dir="ltr">{new Date().toLocaleDateString('ar-SA')}</p>
                  </div>
               </div>
-
-              {/* Header Modal - No Print */}
               <div className="p-8 flex justify-between items-center shrink-0 no-print border-b border-zinc-800/50">
                  <div className="flex items-center gap-4">
                     <div className="bg-primary/20 p-3 rounded-2xl shadow-inner border border-primary/20"><FileText className="text-primary w-7 h-7" /></div>
@@ -282,17 +330,11 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  </div>
                  <button onClick={() => setShowCustomerReport(false)} className="text-zinc-500 hover:text-white transition-all bg-zinc-800 p-3 rounded-2xl hover:bg-rose-900"><X className="w-6 h-6" /></button>
               </div>
-              
               <div className="p-8 overflow-y-auto space-y-8 custom-scrollbar print:overflow-visible print:p-0">
-                 {/* Filter Controls - No Print */}
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 no-print">
                     <div className="flex flex-col gap-2">
                        <label className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] mr-1">اختيار الطرف</label>
-                       <select 
-                         value={reportParty} 
-                         onChange={e => setReportParty(e.target.value)}
-                         className="bg-zinc-950 border-2 border-zinc-800 text-white p-4 rounded-2xl font-black text-lg outline-none focus:border-primary shadow-xl appearance-none"
-                       >
+                       <select value={reportParty} onChange={e => setReportParty(e.target.value)} className="bg-zinc-950 border-2 border-zinc-800 text-white p-4 rounded-2xl font-black text-lg outline-none focus:border-primary shadow-xl appearance-none">
                           <option value="">-- اختر الطرف --</option>
                           {parties.map(p => <option key={p.id} value={p.name}>{p.name} ({p.type})</option>)}
                        </select>
@@ -306,26 +348,22 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                        <input type="date" value={reportEnd} onChange={e => setReportEnd(e.target.value)} className="bg-zinc-950 border-2 border-zinc-800 text-white p-4 rounded-2xl font-mono text-sm outline-none focus:border-primary shadow-xl" />
                     </div>
                  </div>
-
                  {reportParty && (
                     <>
-                       {/* Summary Widgets - Side-by-Side كما في الصورة */}
                        <div className="flex flex-row items-stretch gap-6 print:gap-4 print-summary-grid">
-                          <div className="flex-1 bg-zinc-950/50 p-8 rounded-[2.5rem] border-2 border-zinc-800 flex flex-col items-center justify-center gap-3 shadow-2xl print:bg-white print:border print:border-zinc-200 print:rounded-3xl print:p-6 print:shadow-none print-card">
+                          <div className="flex-1 bg-zinc-950/50 p-8 rounded-[2.5rem] border-2 border-zinc-800 flex flex-col items-center justify-center gap-3 shadow-2xl print:bg-white print:border print:border-zinc-200 print:rounded-3xl print:p-6 print:shadow-none print:card">
                              <span className="text-[12px] font-black text-zinc-500 uppercase tracking-widest text-center">إجمالي المسحوبات (الديون)</span>
                              <span className="text-5xl font-mono font-black text-white print:text-zinc-900">{due.toLocaleString()}</span>
                           </div>
-                          <div className="flex-1 bg-zinc-950/50 p-8 rounded-[2.5rem] border-2 border-zinc-800 flex flex-col items-center justify-center gap-3 shadow-2xl print:bg-white print:border print:border-zinc-200 print:rounded-3xl print:p-6 print:shadow-none print-card">
+                          <div className="flex-1 bg-zinc-950/50 p-8 rounded-[2.5rem] border-2 border-zinc-800 flex flex-col items-center justify-center gap-3 shadow-2xl print:bg-white print:border print:border-zinc-200 print:rounded-3xl print:p-6 print:shadow-none print:card">
                              <span className="text-[12px] font-black text-emerald-500 uppercase tracking-widest text-center">إجمالي المدفوعات (الواصل)</span>
                              <span className="text-5xl font-mono font-black text-emerald-500">{paid.toLocaleString()}</span>
                           </div>
-                          <div className="flex-1 bg-rose-900/10 p-8 rounded-[2.5rem] border-2 border-rose-900/30 flex flex-col items-center justify-center gap-3 shadow-2xl print:bg-rose-50/20 print:border print:border-rose-100 print:rounded-3xl print:p-6 print:shadow-none print-card">
+                          <div className="flex-1 bg-rose-900/10 p-8 rounded-[2.5rem] border-2 border-rose-900/30 flex flex-col items-center justify-center gap-3 shadow-2xl print:bg-rose-50/20 print:border print:border-rose-100 print:rounded-3xl print:p-6 print:shadow-none print:card">
                              <span className="text-[12px] font-black text-rose-500 uppercase tracking-widest text-center">الرصيد المتبقي (الذمة)</span>
                              <span className="text-6xl font-mono font-black text-rose-500">{(due - paid).toLocaleString()}</span>
                           </div>
                        </div>
-
-                       {/* Detailed Table */}
                        <div className="border-2 border-zinc-800 rounded-[2.5rem] overflow-hidden shadow-inner print:rounded-none print:border print:border-zinc-300">
                           <table className="w-full text-right border-collapse print-table">
                              <thead>
@@ -342,7 +380,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                                 ) : reportVouchers.map(v => (
                                    <tr key={v.id} className="hover:bg-zinc-800/30 text-base font-bold text-zinc-300 h-14 print:text-zinc-900 print:hover:bg-zinc-50">
                                       <td className="p-5 border-l border-zinc-800 font-mono text-xs text-zinc-500 print:border-zinc-200">{v.date}</td>
-                                      <td className="p-5 border-l border-zinc-800 text-center font-black print:border-zinc-200">#{v.voucherNumber || '---'}</td>
+                                      <td className="p-5 border-l border-zinc-700 text-center font-black print:border-zinc-200">#{v.voucherNumber || '---'}</td>
                                       <td className="p-5 border-l border-zinc-800 print:border-zinc-200">{v.statement}</td>
                                       <td className="p-5 text-center font-mono font-black text-2xl text-emerald-500 print:text-emerald-700">{ (v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD).toLocaleString() }</td>
                                    </tr>
@@ -353,7 +391,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                     </>
                  )}
               </div>
-              
               <div className="bg-zinc-950 p-8 border-t border-zinc-800 flex justify-end gap-3 shrink-0 no-print">
                  <button onClick={() => window.print()} className="bg-primary text-white px-16 py-4 rounded-3xl font-black flex items-center gap-3 shadow-[0_10px_30px_rgba(225,29,72,0.3)] hover:scale-105 active:scale-95 transition-all text-xl"><Printer className="w-7 h-7" /> طباعة الكشف المالي</button>
                  <button onClick={() => setShowCustomerReport(false)} className="bg-zinc-800 text-zinc-400 px-10 py-4 rounded-3xl font-bold hover:text-zinc-200">إلغاء</button>
