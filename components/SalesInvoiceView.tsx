@@ -92,6 +92,36 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
       totalAmountLiteral: tafqeet(total, currencyName)
     };
 
+    // --- تحديث سجلات المستودع بناءً على المواد المستخدمة ---
+    const savedStock = localStorage.getItem('sheno_stock_entries');
+    let stockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
+    
+    // إزالة الحركات القديمة لنفس رقم الفاتورة في حال التعديل
+    if (editingId) {
+      stockEntries = stockEntries.filter(e => e.invoiceNumber !== invoice.invoiceNumber);
+    }
+
+    // إنشاء حركات صرف للمواد المستخدمة فقط
+    const usedStockMoves: StockEntry[] = (invoice.usedMaterials || []).map(m => ({
+      id: crypto.randomUUID(),
+      date: invoice.date,
+      day: new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(new Date(invoice.date)),
+      department: 'مبيعات (مواد مستخدمة)',
+      itemCode: m.code,
+      itemName: m.name,
+      unit: m.unit || 'قطعة',
+      price: 0,
+      warehouse: 'المستودع الرئيسي',
+      movementType: 'صرف',
+      quantity: m.quantity,
+      invoiceNumber: invoice.invoiceNumber,
+      partyName: invoice.customerName,
+      statement: `مواد مستخدمة في الفاتورة رقم ${invoice.invoiceNumber}`,
+      notes: invoice.notes
+    }));
+
+    localStorage.setItem('sheno_stock_entries', JSON.stringify([...usedStockMoves, ...stockEntries]));
+
     const updated = editingId ? invoices.map(i => i.id === editingId ? invoice : i) : [invoice, ...invoices];
     setInvoices(updated);
     localStorage.setItem('sheno_sales_invoices', JSON.stringify(updated));
@@ -105,9 +135,19 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
 
   const handleDelete = (id: string) => {
     if (window.confirm('حذف الفاتورة؟')) {
+      const invToDelete = invoices.find(i => i.id === id);
       const updated = invoices.filter(i => i.id !== id);
       setInvoices(updated);
       localStorage.setItem('sheno_sales_invoices', JSON.stringify(updated));
+      
+      // مسح حركات المستودع المرتبطة بالفاتورة المحذوفة
+      if (invToDelete) {
+        const savedStock = localStorage.getItem('sheno_stock_entries');
+        if (savedStock) {
+           const stock = JSON.parse(savedStock).filter((e: StockEntry) => e.invoiceNumber !== invToDelete.invoiceNumber);
+           localStorage.setItem('sheno_stock_entries', JSON.stringify(stock));
+        }
+      }
     }
   };
 

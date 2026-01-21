@@ -18,6 +18,7 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [itemMovementSearch, setItemMovementSearch] = useState(''); // حقل البحث الجديد
   const [filterType, setFilterType] = useState<string>('الكل');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -117,11 +118,16 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
                      (e.partyName && e.partyName.includes(searchTerm)) ||
                      (e.notes && e.notes.includes(searchTerm));
     
+    // فلتر مخصص لحركة صنف محدد
+    const matchItemMovement = !itemMovementSearch || 
+                              e.itemName.includes(itemMovementSearch) || 
+                              e.itemCode.includes(itemMovementSearch);
+
     const matchType = filterType === 'الكل' || e.movementType === filterType;
     const matchDate = (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate);
     const matchItems = selectedItems.length === 0 || selectedItems.includes(e.itemCode);
 
-    return matchText && matchType && matchDate && matchItems;
+    return matchText && matchItemMovement && matchType && matchDate && matchItems;
   });
 
   const totalQuantity = filteredEntries.reduce((sum, e) => sum + e.quantity, 0);
@@ -186,6 +192,20 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
              </div>
           </div>
 
+          <div className="flex-1 min-w-[200px] space-y-1">
+             <label className="text-[10px] font-black text-rose-500 uppercase mr-1">حركة صنف محدد</label>
+             <div className="relative">
+                <Package className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-300 w-5 h-5" />
+                <input 
+                  type="text" 
+                  placeholder="ابحث بحركة مادة محددة..."
+                  className="w-full bg-rose-50 dark:bg-zinc-800 border-2 border-rose-100 dark:border-rose-900/30 focus:border-rose-500 p-3 pr-12 rounded-2xl font-black outline-none transition-all text-readable"
+                  value={itemMovementSearch}
+                  onChange={e => setItemMovementSearch(e.target.value)}
+                />
+             </div>
+          </div>
+
           <div className="w-44 space-y-1">
              <label className="text-[10px] font-black text-zinc-500 uppercase mr-1">نوع الحركة</label>
              <div className="relative">
@@ -201,39 +221,6 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
                    <option value="مرتجع">مرتجع</option>
                 </select>
              </div>
-          </div>
-
-          <div className="flex-1 min-w-[200px] space-y-1 relative">
-             <label className="text-[10px] font-black text-zinc-500 uppercase mr-1">تحديد مواد للجرد (متعدد)</label>
-             <button 
-               onClick={() => setShowItemDropdown(!showItemDropdown)}
-               className="w-full bg-zinc-50 dark:bg-zinc-800 p-3 px-4 rounded-2xl flex items-center justify-between font-bold text-readable hover:bg-zinc-100 transition-all border-2 border-transparent"
-             >
-                <div className="flex items-center gap-2 truncate">
-                   <Package className="w-4 h-4 text-primary shrink-0" />
-                   <span className="truncate">{selectedItems.length > 0 ? `مختار (${selectedItems.length}) مواد` : 'جميع مواد المستودع'}</span>
-                </div>
-                <ChevronDown className={`w-4 h-4 transition-transform ${showItemDropdown ? 'rotate-180' : ''}`} />
-             </button>
-             
-             {showItemDropdown && (
-               <div className="absolute top-full right-0 left-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50 max-h-60 overflow-y-auto p-2 animate-in slide-in-from-top-2">
-                  <button onClick={() => setSelectedItems([])} className="w-full text-right p-2 text-[10px] font-black text-primary border-b mb-1 hover:bg-zinc-50 rounded-lg">إعادة تعيين (عرض الكل)</button>
-                  {inventory.map(item => (
-                    <div 
-                      key={item.id}
-                      onClick={() => toggleItemSelection(item.code)}
-                      className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${selectedItems.includes(item.code) ? 'bg-primary/10 text-primary' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
-                    >
-                       <div className="flex flex-col">
-                          <span className="font-bold text-xs">{item.name}</span>
-                          <span className="text-[10px] text-zinc-400 font-mono">{item.code}</span>
-                       </div>
-                       {selectedItems.includes(item.code) && <Check className="w-4 h-4" />}
-                    </div>
-                  ))}
-               </div>
-             )}
           </div>
 
           <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 px-4 py-2 rounded-2xl border-2 border-transparent h-[52px]">
@@ -395,7 +382,7 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
       </div>
       
       <div className="text-zinc-500 text-[10px] font-black uppercase text-center py-4 tracking-[0.5em] no-print">
-        {settings?.companyName} INVENTORY AUDIT SYSTEM v4.1
+        {settings?.companyName} INVENTORY AUDIT SYSTEM v4.2
       </div>
     </div>
   );
