@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Printer, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check } from 'lucide-react';
+import { ArrowRight, Printer, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check, X } from 'lucide-react';
 import { SalesInvoice, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -18,6 +18,7 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack }) => {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [showItemDropdown, setShowItemDropdown] = useState(false);
   const [uniqueItems, setUniqueItems] = useState<string[]>([]);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     const savedInv = localStorage.getItem('sheno_sales_invoices');
@@ -75,6 +76,21 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack }) => {
 
   return (
     <div className="space-y-6">
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 md:p-20 animate-in fade-in duration-300" onClick={() => setPreviewImage(null)}>
+          <button className="absolute top-10 right-10 text-white hover:text-rose-500 transition-colors no-print">
+            <X className="w-10 h-10" />
+          </button>
+          <img 
+            src={previewImage} 
+            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border-4 border-white/10" 
+            onClick={(e) => e.stopPropagation()} 
+            alt="Full Preview"
+          />
+        </div>
+      )}
+
       <div className="print-only print-header flex justify-between items-center bg-rose-700 p-6 rounded-t-xl text-white mb-0 border-b-0">
         <div className="flex items-center gap-4">
           {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
@@ -152,8 +168,8 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack }) => {
                 <th className="p-3 border-l border-rose-800 text-center w-12">العدد</th>
                 <th className="p-3 border-l border-rose-800 text-center w-24">إجمالي الفاتورة</th>
                 <th className="p-3 border-l border-rose-800 text-right w-48">التفقيط</th>
-                <th className="p-3 border-l border-rose-800 text-center w-16">وقت</th>
-                <th className="p-3 border-l border-rose-800 text-center w-20 no-print">إجراءات</th>
+                <th className="p-3 border-l border-zinc-800 text-center w-16">وقت</th>
+                <th className="p-3 border-l border-zinc-800 text-center w-20 no-print">إجراءات</th>
                 <th className="p-3 text-center w-20">المدفوع</th>
               </tr>
             </thead>
@@ -171,7 +187,10 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack }) => {
                       <td className="p-2 border-l border-zinc-100 dark:border-zinc-800">
                         <div className="flex flex-col gap-0.5 max-h-12 overflow-y-auto">
                           {inv.items.map((it, i) => (
-                            <div key={i} className={`truncate ${selectedItems.includes(it.name) || (searchTerm && it.name.toLowerCase().includes(searchTerm.toLowerCase())) ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 rounded px-1 font-black' : ''}`}>• {it.name} ({it.quantity})</div>
+                            <div key={i} className={`flex items-center gap-1 truncate ${selectedItems.includes(it.name) || (searchTerm && it.name.toLowerCase().includes(searchTerm.toLowerCase())) ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 rounded px-1 font-black' : ''}`}>
+                               {it.image && <img src={it.image} className="w-5 h-5 rounded-sm object-cover cursor-zoom-in" onClick={() => setPreviewImage(it.image!)} />}
+                               • {it.name} ({it.quantity})
+                            </div>
                           ))}
                         </div>
                       </td>

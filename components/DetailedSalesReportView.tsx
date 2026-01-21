@@ -20,6 +20,7 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
   const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   
   // خيار الخصوصية: إظهار أو إخفاء المواد المستخدمة
   const [showUsedMaterials, setShowUsedMaterials] = useState(true);
@@ -68,6 +69,21 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
   return (
     <div className="space-y-4 text-right bg-zinc-50 dark:bg-zinc-950 p-4 md:p-8 rounded-3xl shadow-2xl min-h-screen text-readable border border-zinc-200 dark:border-zinc-800 print:bg-white print:border-none print:shadow-none" dir="rtl">
       
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 md:p-20 animate-in fade-in duration-300" onClick={() => setPreviewImage(null)}>
+          <button className="absolute top-10 right-10 text-white hover:text-rose-500 transition-colors no-print">
+            <X className="w-10 h-10" />
+          </button>
+          <img 
+            src={previewImage} 
+            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border-4 border-white/10" 
+            onClick={(e) => e.stopPropagation()} 
+            alt="Full Preview"
+          />
+        </div>
+      )}
+
       {/* Print Header */}
       <div className="print-only print-header flex justify-between items-center bg-rose-900 p-6 rounded-t-xl text-white mb-0 border-b-0">
         <div className="flex items-center gap-4">
@@ -190,7 +206,7 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
                   <td className="p-1 border border-zinc-100 dark:border-zinc-800 font-mono text-center text-zinc-400">{row.invoiceDate}</td>
                   <td className="p-1 border border-zinc-100 dark:border-zinc-800 text-right pr-4">
                     <div className="flex items-center gap-2">
-                       {row.image && <img src={row.image} className="w-6 h-6 object-cover rounded shadow-sm border border-zinc-200" />}
+                       {row.image && <img src={row.image} className="w-6 h-6 object-cover rounded shadow-sm border border-zinc-200 cursor-zoom-in" onClick={() => setPreviewImage(row.image!)} />}
                        <div className="flex flex-col">
                           <span className="text-readable">{row.name}</span>
                           {row.serialNumber && <span className="text-[8px] text-zinc-400 font-mono uppercase">SN: {row.serialNumber}</span>}

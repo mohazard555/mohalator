@@ -21,6 +21,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [selectedCurrencyType, setSelectedCurrencyType] = useState<'primary' | 'secondary'>('primary');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Filter States (Matching Image)
   const [searchTerm, setSearchTerm] = useState('');
@@ -192,6 +193,21 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
 
   return (
     <div className="space-y-6">
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 md:p-20 animate-in fade-in duration-300" onClick={() => setPreviewImage(null)}>
+          <button className="absolute top-10 right-10 text-white hover:text-rose-500 transition-colors no-print">
+            <X className="w-10 h-10" />
+          </button>
+          <img 
+            src={previewImage} 
+            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border-4 border-white/10" 
+            onClick={(e) => e.stopPropagation()} 
+            alt="Full Preview"
+          />
+        </div>
+      )}
+
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors">
@@ -262,7 +278,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                    }} className="bg-zinc-800 dark:bg-zinc-900 text-zinc-400 p-3 rounded-xl border border-zinc-700 hover:text-white transition-all"><Plus className="w-6 h-6"/></button>
                    <input type="number" placeholder="0" className="w-20 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center font-black text-emerald-500 outline-none" value={manualItem.quantity} onChange={e => setManualItem({...manualItem, quantity: Number(e.target.value)})} />
                    <input type="number" placeholder="السعر" className="w-28 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center font-black text-amber-500 outline-none" value={manualItem.price} onChange={e => setManualItem({...manualItem, price: Number(e.target.value)})} />
-                   <div className="relative w-12 h-12 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center justify-center cursor-pointer hover:border-zinc-600 transition-all overflow-hidden shrink-0">
+                   <div className="relative w-12 h-12 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center justify-center cursor-pointer hover:border-zinc-600 transition-all overflow-hidden shrink-0" onClick={() => manualItem.image && setPreviewImage(manualItem.image)}>
                       {manualItem.image ? <><img src={manualItem.image} className="w-full h-full object-cover" /><button onClick={(e) => { e.stopPropagation(); setManualItem(prev => ({ ...prev, image: '' })); }} className="absolute top-0 right-0 bg-rose-600 text-white p-0.5 rounded-bl shadow-lg hover:bg-rose-500 z-10"><X className="w-3 h-3" /></button></> : <><ImageIcon className="w-5 h-5 text-zinc-600" /><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageUpload} accept="image/*" /></>}
                    </div>
                    <input type="text" placeholder="اسم الصنف..." className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-right font-black text-white outline-none focus:border-zinc-600" value={manualItem.name} onChange={e => setManualItem({...manualItem, name: e.target.value})} />
@@ -270,7 +286,17 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack }) => {
                 <div className="space-y-2 mt-4 max-h-40 overflow-y-auto custom-scrollbar">
                    {newInvoice.items?.map((it, idx) => (
                       <div key={it.id} className="flex items-center justify-between bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                         <div className="flex items-center gap-3"><span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-[10px] font-black">#{idx + 1}</span><span className="font-bold text-sm">{it.name}</span></div>
+                         <div className="flex items-center gap-3">
+                           <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-[10px] font-black">#{idx + 1}</span>
+                           {it.image && (
+                             <img 
+                               src={it.image} 
+                               className="w-8 h-8 object-cover rounded cursor-zoom-in border border-zinc-200 dark:border-zinc-700" 
+                               onClick={() => setPreviewImage(it.image!)} 
+                             />
+                           )}
+                           <span className="font-bold text-sm">{it.name}</span>
+                         </div>
                          <div className="flex items-center gap-4"><span className="font-mono text-zinc-500">{it.quantity} x {it.price.toLocaleString()}</span><button onClick={() => setNewInvoice({...newInvoice, items: newInvoice.items?.filter(i => i.id !== it.id)})} className="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button></div>
                       </div>
                    ))}

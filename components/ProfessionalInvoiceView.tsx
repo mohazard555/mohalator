@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Printer, ChevronDown, Globe, FileText, RotateCcw, Truck, ShoppingBag } from 'lucide-react';
+import { ArrowRight, Printer, ChevronDown, Globe, FileText, RotateCcw, Truck, ShoppingBag, X } from 'lucide-react';
 import { SalesInvoice, AppSettings } from '../types';
 
 interface ProfessionalInvoiceViewProps {
@@ -15,6 +15,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
   const [selectedId, setSelectedId] = useState('');
   const [document, setDocument] = useState<any | null>(null);
   const [list, setList] = useState<any[]>([]);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -77,6 +78,21 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto" dir="rtl">
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 md:p-20 animate-in fade-in duration-300" onClick={() => setPreviewImage(null)}>
+          <button className="absolute top-10 right-10 text-white hover:text-rose-500 transition-colors no-print">
+            <X className="w-10 h-10" />
+          </button>
+          <img 
+            src={previewImage} 
+            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border-4 border-white/10" 
+            onClick={(e) => e.stopPropagation()} 
+            alt="Full Preview"
+          />
+        </div>
+      )}
+
       {/* Selection Control Panel */}
       <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl no-print space-y-4">
          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -206,7 +222,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                         <tr key={idx} className="h-10 border-b">
                            <td className="p-2 font-black text-zinc-800 flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                {item.image && <img src={item.image} className="w-8 h-8 object-contain rounded border bg-white" />}
+                                {item.image && <img src={item.image} className="w-8 h-8 object-contain rounded border bg-white cursor-zoom-in" onClick={() => setPreviewImage(item.image)} />}
                                 <span>{item.name}</span>
                               </div>
                               {item.serialNumber && <span className="text-[8px] text-zinc-400 font-mono ml-4">SN: {item.serialNumber}</span>}
