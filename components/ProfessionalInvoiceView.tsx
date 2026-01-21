@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Printer, ChevronDown, Globe, FileText, RotateCcw, Truck, ShoppingBag, X, FileDown } from 'lucide-react';
+import { ArrowRight, Printer, ChevronDown, Globe, FileText, RotateCcw, Truck, ShoppingBag, X, FileDown, MessageSquare, Coins } from 'lucide-react';
 import { AppSettings } from '../types';
 
 interface ProfessionalInvoiceViewProps {
@@ -16,6 +16,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
   const [document, setDocument] = useState<any | null>(null);
   const [list, setList] = useState<any[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [customNotes, setCustomNotes] = useState('');
 
   useEffect(() => {
     loadData();
@@ -35,21 +36,27 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
       if (parsed.length > 0) {
         setSelectedId(parsed[0].id);
         setDocument(parsed[0]);
+        setCustomNotes(parsed[0].notes || '');
       } else {
         setDocument(null);
         setSelectedId('');
+        setCustomNotes('');
       }
     } else {
       setList([]);
       setDocument(null);
       setSelectedId('');
+      setCustomNotes('');
     }
   };
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
     const match = list.find(i => i.id === id);
-    if (match) setDocument(match);
+    if (match) {
+      setDocument(match);
+      setCustomNotes(match.notes || '');
+    }
   };
 
   const getDocTitle = () => {
@@ -66,6 +73,8 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
     if (docType === 'SALES_RETURN' || docType === 'PURCHASE_RETURN') return '#be123c'; // Rose
     return '#18181b';
   };
+
+  const totalAmount = document?.totalAmount || document?.totalReturnAmount || 0;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto" dir="rtl">
@@ -94,7 +103,6 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
             display: flex;
             flex-direction: column;
           }
-          /* التأكد من طباعة الحدود السوداء بوضوح */
           table, th, td {
             border-color: black !important;
           }
@@ -111,32 +119,66 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
       )}
 
       {/* Selection Panel */}
-      <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl no-print space-y-4">
-         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl no-print space-y-8">
+         <div className="flex flex-col md:flex-row items-center justify-between gap-6 border-b dark:border-zinc-800 pb-6">
             <div className="flex items-center gap-4">
-               <button onClick={onBack} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 rounded-xl">
+               <button onClick={onBack} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 rounded-xl transition-all">
                  <ArrowRight className="w-6 h-6" />
                </button>
-               <h2 className="text-2xl font-black text-readable">تصدير واختيار الفاتورة</h2>
+               <div>
+                  <h2 className="text-2xl font-black text-readable">تصدير واختيار الفاتورة</h2>
+                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">تخصيص وطباعة المستندات المالية الاحترافية</p>
+               </div>
             </div>
-            <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded-2xl border flex-wrap gap-1">
+            <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded-2xl border dark:border-zinc-700 flex-wrap gap-1 shadow-inner">
                <button onClick={() => setDocType('SALES')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${docType === 'SALES' ? 'bg-[#881337] text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-700'}`}>مبيعات</button>
                <button onClick={() => setDocType('PURCHASE')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${docType === 'PURCHASE' ? 'bg-emerald-700 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-700'}`}>مشتريات</button>
                <button onClick={() => setDocType('SALES_RETURN')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${docType === 'SALES_RETURN' ? 'bg-rose-600 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-700'}`}>مرتجع مبيعات</button>
                <button onClick={() => setDocType('PURCHASE_RETURN')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${docType === 'PURCHASE_RETURN' ? 'bg-rose-900 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-700'}`}>مرتجع مشتريات</button>
             </div>
          </div>
-         <div className="relative">
-            <select value={selectedId} onChange={e => handleSelect(e.target.value)} className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-800 text-readable rounded-2xl py-4 pr-14 pl-4 outline-none w-full text-xl font-black appearance-none cursor-pointer focus:border-primary transition-colors">
-               <option value="">-- اختر السند من السجل ({getDocTitle()}) --</option>
-               {list.map(i => <option key={i.id} value={i.id}>#{i.invoiceNumber} - {i.customerName || i.supplierName} ({i.date})</option>)}
-            </select>
-            <FileText className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-400 w-6 h-6" />
-            <ChevronDown className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400 w-6 h-6 pointer-events-none" />
+         
+         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-end">
+            <div className="lg:col-span-1 flex flex-col gap-2">
+               <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-1">1. اختر المستند المطلوب</label>
+               <div className="relative">
+                  <select value={selectedId} onChange={e => handleSelect(e.target.value)} className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-800 text-readable rounded-2xl py-4 pr-14 pl-4 outline-none w-full text-lg font-black appearance-none cursor-pointer focus:border-primary transition-all shadow-inner">
+                     <option value="">-- اختر السند ({getDocTitle()}) --</option>
+                     {list.map(i => <option key={i.id} value={i.id}>#{i.invoiceNumber} - {i.customerName || i.supplierName}</option>)}
+                  </select>
+                  <FileText className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-400 w-6 h-6" />
+                  <ChevronDown className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5 pointer-events-none" />
+               </div>
+            </div>
+
+            <div className="lg:col-span-1 flex flex-col gap-2">
+               <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-1">2. ملاحظات الفاتورة (بجانب الإجمالي)</label>
+               <div className="relative group">
+                  <textarea 
+                    value={customNotes}
+                    onChange={e => setCustomNotes(e.target.value)}
+                    placeholder="اكتب أي ملاحظات إضافية هنا..."
+                    className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-800 text-readable rounded-2xl py-4 pr-12 pl-4 outline-none w-full h-[62px] font-bold text-sm resize-none focus:border-primary transition-all shadow-inner group-hover:border-zinc-400"
+                  ></textarea>
+                  <MessageSquare className="absolute right-4 top-5 text-zinc-400 w-5 h-5 group-focus-within:text-primary transition-colors" />
+               </div>
+            </div>
+
+            <div className="lg:col-span-1">
+               <div className="bg-zinc-950 rounded-2xl border border-zinc-800 p-4 flex items-center justify-between shadow-xl">
+                  <div className="flex flex-col">
+                     <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">إجمالي المبلغ المختار</span>
+                     <span className="text-2xl font-black font-mono text-white">{totalAmount.toLocaleString()} <span className="text-xs opacity-50">{settings.currencySymbol}</span></span>
+                  </div>
+                  <div className="w-12 h-12 bg-zinc-800 rounded-xl flex items-center justify-center">
+                     <Coins className="text-primary w-6 h-6" />
+                  </div>
+               </div>
+            </div>
          </div>
       </div>
 
-      <div className="flex justify-center p-0 md:p-10 bg-zinc-200 dark:bg-zinc-800/50 rounded-[3rem] overflow-hidden border-4 border-white dark:border-zinc-800">
+      <div className="flex justify-center p-0 md:p-10 bg-zinc-200 dark:bg-zinc-800/50 rounded-[4rem] overflow-hidden border-4 border-white dark:border-zinc-800 shadow-inner">
          {/* Document Body (210mm x 148.5mm) */}
          <div className="professional-invoice-box bg-white text-zinc-900 w-[210mm] min-h-[148.5mm] max-h-[148.5mm] shadow-2xl flex flex-col relative overflow-hidden p-8" id="professional-document">
             
@@ -155,7 +197,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                </div>
 
                <div className="flex flex-col items-end gap-2">
-                  <div className="text-white px-10 py-2 font-black text-xl tracking-wider min-w-[220px] text-center rounded-sm" style={{ backgroundColor: getAccentColor() }}>
+                  <div className="text-white px-10 py-2 font-black text-xl tracking-wider min-w-[220px] text-center rounded-sm shadow-md" style={{ backgroundColor: getAccentColor() }}>
                     {getDocTitle().toUpperCase()}
                   </div>
                   <div className="text-right">
@@ -186,7 +228,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                </div>
 
                <div className="flex-shrink-0 px-4">
-                  <div className="border-2 border-black rounded-[2rem] px-8 py-2 flex flex-col items-center justify-center bg-zinc-50 shadow-inner">
+                  <div className="border-2 border-black rounded-full px-10 py-2 flex flex-col items-center justify-center bg-zinc-50 shadow-inner">
                      <span className="text-[9px] font-black text-zinc-400 uppercase mb-0">إجمالي القطع</span>
                      <span className="text-4xl font-black font-mono leading-none" style={{ color: getAccentColor() }}>
                         {document?.items?.reduce((s:number,c:any) => s + c.quantity, 0) || '00'}
@@ -238,31 +280,31 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                </table>
             </div>
 
-            {/* Totals & Notes Section */}
+            {/* Totals & Notes Section - Updated Layout to match user request */}
             <div className="mt-4 flex items-start justify-between border-t-2 border-black pt-4">
-               <div className="flex-1 space-y-4">
+               <div className="flex-1 space-y-4 pr-2">
                   <div>
                     <span className="text-[9px] font-black uppercase tracking-widest block mb-1" style={{ color: getAccentColor() }}>المبلغ كتابةً / IN WORDS</span>
                     <div className="text-xs font-black italic text-zinc-500">
                       {document?.totalAmountLiteral || '................................................'}
                     </div>
                   </div>
-                  {document?.notes && (
-                    <div className="bg-zinc-50 p-2 border border-black/10 rounded-sm max-w-md">
-                       <span className="text-[8px] font-black text-zinc-400 uppercase block mb-1">ملاحظات الفاتورة / NOTES</span>
-                       <p className="text-[10px] font-bold text-zinc-600 leading-tight">{document.notes}</p>
-                    </div>
-                  )}
+                  
+                  {/* Notes Field next to total area visually */}
+                  <div className="bg-zinc-50 p-3 border-2 border-black rounded-lg min-h-[50px] relative">
+                     <span className="text-[8px] font-black text-zinc-400 uppercase absolute -top-2 right-4 bg-white px-2">ملاحظات الفاتورة / NOTES</span>
+                     <p className="text-[10px] font-black text-zinc-700 leading-snug whitespace-pre-wrap">
+                        {customNotes || '................................................................................................'}
+                     </p>
+                  </div>
                </div>
 
-               <div className="flex items-center gap-6">
-                  <span className="text-sm font-black text-zinc-400">الإجمالي / TOTAL</span>
-                  <div className="flex flex-col items-end">
-                     <div className="text-3xl font-black font-mono tracking-tighter leading-none" style={{ color: getAccentColor() }}>
-                        {(document?.totalAmount || document?.totalReturnAmount || 0).toLocaleString()}
-                     </div>
-                     <span className="text-[8px] font-bold text-zinc-400 uppercase mt-1">{settings.currency}</span>
+               <div className="flex-shrink-0 flex flex-col items-center justify-center bg-zinc-900 text-white rounded-2xl px-8 py-4 ml-2 shadow-lg min-w-[200px]" style={{ backgroundColor: getAccentColor() }}>
+                  <span className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70">الإجمالي / TOTAL</span>
+                  <div className="text-4xl font-black font-mono tracking-tighter leading-none">
+                     {totalAmount.toLocaleString()}
                   </div>
+                  <span className="text-[8px] font-bold uppercase mt-1">{settings.currency}</span>
                </div>
             </div>
 
@@ -286,8 +328,8 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
       </div>
 
       <div className="flex justify-center gap-4 no-print pb-20">
-         <button onClick={() => window.print()} className="bg-zinc-900 text-white px-12 py-4 rounded-2xl font-black shadow-2xl flex items-center gap-3 hover:scale-105 transition-all text-lg">
-            <Printer className="w-6 h-6" /> طباعة / تصدير PDF
+         <button onClick={() => window.print()} className="bg-zinc-900 text-white px-16 py-5 rounded-[2rem] font-black shadow-2xl flex items-center gap-4 hover:scale-105 transition-all text-xl">
+            <Printer className="w-7 h-7" /> طباعة المستند الاحترافي
          </button>
       </div>
     </div>

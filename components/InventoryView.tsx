@@ -15,8 +15,8 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [formData, setFormData] = useState<Partial<InventoryItem>>({
-    code: '', name: '', category: 'عام', unit: 'قطعة', price: 0, openingStock: 0, warehouse: 'المستودع الرئيسي'
+  const [formData, setFormData] = useState<any>({
+    code: '', name: '', category: 'عام', unit: 'قطعة', price: 0, openingStock: 0, warehouse: 'المستودع الرئيسي', movementType: 'إدخال'
   });
 
   useEffect(() => {
@@ -71,7 +71,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
     localStorage.setItem('sheno_inventory_list', JSON.stringify(all));
     setIsAdding(false);
     setEditingId(null);
-    setFormData({ code: '', name: '', category: 'عام', unit: 'قطعة', price: 0, openingStock: 0, warehouse: warehouses[0]?.name || 'المستودع الرئيسي' });
+    setFormData({ code: '', name: '', category: 'عام', unit: 'قطعة', price: 0, openingStock: 0, warehouse: warehouses[0]?.name || 'المستودع الرئيسي', movementType: 'إدخال' });
     loadData();
   };
 
@@ -160,7 +160,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
               </div>
            </div>
 
-           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+           <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
               <div className="flex flex-col gap-1">
                  <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">وحدة القياس</label>
                  <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-black outline-none" value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value})}>
@@ -177,6 +177,14 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
                     <Coins className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500" />
                     <input type="number" className="w-full bg-zinc-50 dark:bg-zinc-800 p-3 pr-10 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-mono font-black text-amber-600 outline-none" value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} />
                  </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">نوع الحركة</label>
+                 <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-black outline-none" value={formData.movementType} onChange={e => setFormData({...formData, movementType: e.target.value})}>
+                    <option value="إدخال">إدخال</option>
+                    <option value="صرف">صرف</option>
+                    <option value="مرتجع">مرتجع</option>
+                 </select>
               </div>
               <div className="flex flex-col gap-1">
                  <label className="text-[10px] text-emerald-600 font-black uppercase tracking-widest mr-1">رصيد أول المدة (الكمية)</label>
