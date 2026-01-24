@@ -75,6 +75,8 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
   };
 
   const totalAmount = document?.totalAmount || document?.totalReturnAmount || 0;
+  // Use the currency symbol from the document or fallback to settings
+  const activeCurrencySymbol = document?.currencySymbol || settings.currencySymbol;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto" dir="rtl">
@@ -232,22 +234,22 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                   </thead>
                   <tbody className="text-[10px] font-black">
                      {(document?.items || Array.from({ length: 5 })).map((item: any, idx: number) => (
-                        <tr key={idx} className="h-12 border border-black">
-                           <td className="p-1.5 pr-3 text-zinc-800 border border-black align-middle">
+                        <tr key={idx} className="h-14 border border-black">
+                           <td className="p-1 pr-3 text-zinc-800 border border-black align-middle">
                               {item ? (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-3">
                                    {item.image && (
-                                     <img src={item.image} className="w-10 h-10 object-contain rounded border border-zinc-100 shadow-sm bg-white" alt="الصنف" />
+                                     <img src={item.image} className="w-12 h-12 object-contain rounded-md border border-zinc-200 shadow-sm bg-zinc-50" alt="الصنف" />
                                    )}
                                    <div className="flex flex-col">
-                                      <span className="text-xs">{item.name}</span>
+                                      <span className="text-[11px] font-black">{item.name}</span>
                                       {item.serialNumber && <span className="text-[7px] text-zinc-400 font-mono">SN: {item.serialNumber}</span>}
                                    </div>
                                 </div>
                               ) : '..........................'}
                            </td>
-                           <td className="p-1.5 text-center font-mono text-sm border border-black align-middle text-zinc-900">{item?.quantity || ''}</td>
-                           <td className="p-1.5 text-center font-mono text-sm border border-black align-middle text-zinc-900">{item?.price?.toLocaleString() || ''}</td>
+                           <td className="p-1.5 text-center font-mono text-base border border-black align-middle text-zinc-900">{item?.quantity || ''}</td>
+                           <td className="p-1.5 text-center font-mono text-base border border-black align-middle text-zinc-900">{item?.price?.toLocaleString() || ''}</td>
                            <td className="p-1.5 text-center font-mono border border-black align-middle text-zinc-900 bg-zinc-50" style={{ color: getAccentColor() }}>{item ? (item.quantity * item.price).toLocaleString() : ''}</td>
                            <td className="p-1.5 text-center text-zinc-500 font-bold border border-black italic align-middle">
                               {item?.notes || (item ? '---' : '...................')}
@@ -277,7 +279,9 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                <div className="flex-shrink-0 flex flex-col items-center justify-center bg-zinc-900 text-white rounded-2xl px-8 py-3 ml-2 min-w-[180px]" style={{ backgroundColor: getAccentColor() }}>
                   <span className="text-[9px] font-black uppercase tracking-widest mb-0.5 opacity-70">الإجمالي / TOTAL</span>
                   <div className="text-3xl font-black font-mono tracking-tighter leading-none">{totalAmount.toLocaleString()}</div>
-                  <span className="text-[7px] font-bold uppercase mt-1">{settings.currency}</span>
+                  <span className="text-[8px] font-bold uppercase mt-1">
+                     {activeCurrencySymbol}
+                  </span>
                </div>
             </div>
 
