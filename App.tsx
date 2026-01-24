@@ -28,6 +28,7 @@ import ArchivesView from './components/ArchivesView';
 import ProfessionalInvoiceView from './components/ProfessionalInvoiceView';
 import CustomerInvoiceCostsView from './components/CustomerInvoiceCostsView';
 import InvestmentReportsView from './components/InvestmentReportsView';
+import AccountingCategoriesView from './components/AccountingCategoriesView';
 import LoginView from './components/LoginView';
 
 const App: React.FC = () => {
@@ -165,7 +166,6 @@ const App: React.FC = () => {
                 onEdit={handleEditFromHistory}
               />
             );
-            case AppView.SALES_HISTORY: return <SalesHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.SALES_RETURN_HISTORY: return <SalesReturnHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.PURCHASE_HISTORY: return <PurchaseHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.PURCHASE_RETURN_HISTORY: return <PurchaseReturnHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
@@ -190,6 +190,7 @@ const App: React.FC = () => {
             case AppView.WAREHOUSE_MANAGEMENT: return <WarehouseManagementView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.ARCHIVES: return <ArchivesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.INVESTMENT_REPORTS: return <InvestmentReportsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.ACCOUNTING_CATEGORIES: return <AccountingCategoriesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             default: return <Dashboard setView={setCurrentView} />;
           }
         })()}

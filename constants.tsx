@@ -9,6 +9,7 @@ export const MENU_GROUPS = [
     icon: <Wallet className="w-5 h-5" />,
     items: [
       { label: 'ملف الصندوق اليومي', view: AppView.CASH_FILE },
+      { label: 'إدارة البنود والأقسام', view: AppView.ACCOUNTING_CATEGORIES },
       { label: 'سندات القبض', view: AppView.RECEIPT_VOUCHER },
       { label: 'سندات الدفع', view: AppView.PAYMENT_VOUCHER },
       { label: 'دفتر اليومية الشامل', view: AppView.CASH_JOURNAL },

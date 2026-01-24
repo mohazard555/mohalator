@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Save, X, TrendingUp, TrendingDown, Search, Calendar, Filter, Coins, CreditCard, Printer } from 'lucide-react';
-import { CashEntry, AppSettings } from '../types';
+import { ArrowRight, Plus, Trash2, Edit2, Save, X, TrendingUp, TrendingDown, Search, Calendar, Filter, Coins, CreditCard, Printer, Tags } from 'lucide-react';
+import { CashEntry, AppSettings, AccountingCategory } from '../types';
 
 interface CashJournalViewProps {
   onBack: () => void;
@@ -9,6 +9,7 @@ interface CashJournalViewProps {
 
 const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
   const [entries, setEntries] = useState<CashEntry[]>([]);
+  const [categories, setCategories] = useState<AccountingCategory[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -25,11 +26,13 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
     paidSYP: 0,
     receivedUSD: 0,
     paidUSD: 0,
-    notes: ''
+    notes: '',
+    categoryId: ''
   });
 
   useEffect(() => {
     const saved = localStorage.getItem('sheno_cash_journal');
+    const savedCats = localStorage.getItem('sheno_accounting_categories');
     const savedSettings = localStorage.getItem('sheno_settings');
     if (saved) {
       try {
@@ -38,6 +41,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
         console.error("Failed to parse saved entries");
       }
     }
+    if (savedCats) setCategories(JSON.parse(savedCats));
     if (savedSettings) setSettings(JSON.parse(savedSettings));
   }, []);
 
@@ -85,7 +89,8 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
       paidSYP: 0,
       receivedUSD: 0,
       paidUSD: 0,
-      notes: ''
+      notes: '',
+      categoryId: ''
     });
   };
 
@@ -183,9 +188,28 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
               <input type="text" value={formData.statement} onChange={e => setFormData({...formData, statement: e.target.value})} placeholder="مثلاً: دفعة من حساب زبون، مصاريف نثرية..." className="bg-zinc-50 dark:bg-zinc-800 border-2 border-transparent focus:border-primary p-3 rounded-2xl font-bold outline-none transition-all" />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">ملاحظات إضافية</label>
-              <input type="text" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="bg-zinc-50 dark:bg-zinc-800 border-2 border-transparent focus:border-primary p-3 rounded-2xl font-bold outline-none transition-all" />
+              <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">القسم / بند التصنيف (جديد)</label>
+              <div className="relative">
+                <Tags className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                <select 
+                  value={formData.categoryId} 
+                  onChange={e => setFormData({...formData, categoryId: e.target.value})}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border-2 border-transparent focus:border-primary p-3 pr-10 rounded-2xl font-bold outline-none transition-all appearance-none"
+                >
+                   <option value="">-- اختر القسم --</option>
+                   {categories.map(cat => (
+                     <option key={cat.id} value={cat.id}>{cat.name} ({cat.type})</option>
+                   ))}
+                </select>
+              </div>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+             <div className="flex flex-col gap-1 md:col-span-4">
+                <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">ملاحظات إضافية</label>
+                <input type="text" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="bg-zinc-50 dark:bg-zinc-800 border-2 border-transparent focus:border-primary p-3 rounded-2xl font-bold outline-none transition-all" />
+             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -235,7 +259,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
           <div className="flex gap-3 pt-6 border-t border-zinc-100 dark:border-zinc-800">
             <button 
               onClick={editingId ? handleSaveEdit : handleAdd}
-              className="bg-primary text-white px-12 py-4 rounded-2xl font-black shadow-2xl shadow-primary/30 flex items-center gap-3 hover:brightness-110 active:scale-95 transition-all text-lg"
+              className="bg-primary text-white px-12 py-4 rounded-2xl font-black shadow-2xl shadow-primary/30 flex items-center gap-3 hover:brightness-110 active:scale-95 transition-all text-xl"
             >
               <Save className="w-6 h-6" /> {editingId ? 'تحديث بيانات الحركة' : 'تثبيت الحركة المالية'}
             </button>
@@ -274,6 +298,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
             <thead>
               <tr className="bg-blue-800 text-white text-[10px] font-black uppercase tracking-widest border-b border-blue-900">
                 <th rowSpan={2} className="p-4 border-l border-blue-900">التاريخ</th>
+                <th rowSpan={2} className="p-4 border-l border-blue-900">البند / القسم</th>
                 <th rowSpan={2} className="p-4 border-l border-blue-900">البيان</th>
                 <th rowSpan={2} className="p-4 border-l border-blue-900">الملاحظات</th>
                 <th colSpan={2} className="p-3 border-l border-blue-900 text-center bg-blue-900/20">الأساسية: {settings?.currency} ({settings?.currencySymbol})</th>
@@ -289,25 +314,35 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:divide-zinc-300">
               {filteredEntries.length === 0 ? (
-                <tr><td colSpan={8} className="p-20 text-center italic text-zinc-400 font-bold">لا توجد حركات مالية مسجلة تتوافق مع البحث</td></tr>
+                <tr><td colSpan={9} className="p-20 text-center italic text-zinc-400 font-bold">لا توجد حركات مالية مسجلة تتوافق مع البحث</td></tr>
               ) : (
-                filteredEntries.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-blue-50 dark:hover:bg-zinc-800/30 transition-colors group">
-                    <td className="p-4 font-mono text-zinc-400 border-l border-zinc-100 dark:border-zinc-800">{entry.date}</td>
-                    <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">{entry.statement}</td>
-                    <td className="p-4 text-zinc-500 font-normal italic border-l border-zinc-100 dark:border-zinc-800">{entry.notes || '-'}</td>
-                    <td className="p-4 text-center text-emerald-600 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-emerald-50/30 print:bg-transparent">{entry.receivedSYP > 0 ? entry.receivedSYP.toLocaleString() : '-'}</td>
-                    <td className="p-4 text-center text-rose-500 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-rose-50/30 print:bg-transparent">{entry.paidSYP > 0 ? entry.paidSYP.toLocaleString() : '-'}</td>
-                    <td className="p-4 text-center text-amber-600 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-amber-500/5 print:bg-transparent">{entry.receivedUSD > 0 ? entry.receivedUSD.toLocaleString() : '-'}</td>
-                    <td className="p-4 text-center text-zinc-500 font-mono border-l border-zinc-100 dark:border-zinc-800">{entry.paidUSD > 0 ? entry.paidUSD.toLocaleString() : '-'}</td>
-                    <td className="p-4 no-print">
-                      <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleEdit(entry)} className="p-2 text-zinc-400 hover:text-primary transition-all"><Edit2 className="w-4 h-4" /></button>
-                        <button onClick={() => handleDelete(entry.id)} className="p-2 text-zinc-400 hover:text-rose-500 transition-all"><Trash2 className="w-4 h-4" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                filteredEntries.map((entry) => {
+                  const category = categories.find(c => c.id === entry.categoryId);
+                  return (
+                    <tr key={entry.id} className="hover:bg-blue-50 dark:hover:bg-zinc-800/30 transition-colors group">
+                      <td className="p-4 font-mono text-zinc-400 border-l border-zinc-100 dark:border-zinc-800">{entry.date}</td>
+                      <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">
+                         {category ? (
+                           <span className={`px-2 py-1 rounded-lg text-[10px] font-black border ${category.type === 'مصروفات' ? 'text-rose-500 border-rose-500/20 bg-rose-500/5' : 'text-emerald-500 border-emerald-500/20 bg-emerald-500/5'}`}>
+                              {category.name}
+                           </span>
+                         ) : '-'}
+                      </td>
+                      <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">{entry.statement}</td>
+                      <td className="p-4 text-zinc-500 font-normal italic border-l border-zinc-100 dark:border-zinc-800">{entry.notes || '-'}</td>
+                      <td className="p-4 text-center text-emerald-600 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-emerald-50/30 print:bg-transparent">{entry.receivedSYP > 0 ? entry.receivedSYP.toLocaleString() : '-'}</td>
+                      <td className="p-4 text-center text-rose-500 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-rose-50/30 print:bg-transparent">{entry.paidSYP > 0 ? entry.paidSYP.toLocaleString() : '-'}</td>
+                      <td className="p-4 text-center text-amber-600 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-amber-500/5 print:bg-transparent">{entry.receivedUSD > 0 ? entry.receivedUSD.toLocaleString() : '-'}</td>
+                      <td className="p-4 text-center text-zinc-500 font-mono border-l border-zinc-100 dark:border-zinc-800">{entry.paidUSD > 0 ? entry.paidUSD.toLocaleString() : '-'}</td>
+                      <td className="p-4 no-print">
+                        <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleEdit(entry)} className="p-2 text-zinc-400 hover:text-primary transition-all"><Edit2 className="w-4 h-4" /></button>
+                          <button onClick={() => handleDelete(entry.id)} className="p-2 text-zinc-400 hover:text-rose-500 transition-all"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

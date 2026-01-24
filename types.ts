@@ -28,13 +28,21 @@ export enum AppView {
   WAREHOUSE_MANAGEMENT = 'WAREHOUSE_MANAGEMENT',
   ARCHIVES = 'ARCHIVES',
   CASH_FILE = 'CASH_FILE',
-  INVESTMENT_REPORTS = 'INVESTMENT_REPORTS'
+  INVESTMENT_REPORTS = 'INVESTMENT_REPORTS',
+  ACCOUNTING_CATEGORIES = 'ACCOUNTING_CATEGORIES'
 }
 
 export enum PartyType {
   CUSTOMER = 'عميل',
   SUPPLIER = 'مورد',
   BOTH = 'عميل ومورد'
+}
+
+export interface AccountingCategory {
+  id: string;
+  name: string;
+  type: 'مصروفات' | 'إيرادات';
+  notes?: string;
 }
 
 export interface AppSettings {
@@ -162,6 +170,7 @@ export interface CashEntry {
   partyName?: string;
   amount?: number;
   amountLiteral?: string;
+  categoryId?: string; // ربط القيد بالقسم
 }
 
 export interface ArchiveEntry {
