@@ -36,7 +36,8 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
       if (parsed.length > 0) {
         setSelectedId(parsed[0].id);
         setDocument(parsed[0]);
-        setCustomNotes(parsed[0].notes || '');
+        // ملاحظة: نجعل الملاحظات العامة فارغة عند التحميل لمنع التكرار
+        setCustomNotes(''); 
       } else {
         setDocument(null);
         setSelectedId('');
@@ -55,7 +56,8 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
     const match = list.find(i => i.id === id);
     if (match) {
       setDocument(match);
-      setCustomNotes(match.notes || '');
+      // نجعل ملاحظات التصدير فارغة عند اختيار فاتورة جديدة
+      setCustomNotes('');
     }
   };
 
@@ -75,7 +77,6 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
   };
 
   const totalAmount = document?.totalAmount || document?.totalReturnAmount || 0;
-  // Use the currency symbol from the document or fallback to settings
   const activeCurrencySymbol = document?.currencySymbol || settings.currencySymbol;
 
   return (
@@ -154,11 +155,11 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
             </div>
 
             <div className="lg:col-span-2 flex flex-col gap-2">
-               <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-1">2. ملاحظات الفاتورة العامة</label>
+               <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-1">2. ملاحظات الطباعة الإضافية (اختياري)</label>
                <textarea 
                  value={customNotes}
                  onChange={e => setCustomNotes(e.target.value)}
-                 placeholder="اكتب ملاحظات الفاتورة هنا..."
+                 placeholder="اكتب ملاحظات إضافية لتظهر في أسفل الفاتورة..."
                  className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-800 text-readable rounded-2xl py-4 px-4 outline-none w-full h-[62px] font-bold text-sm resize-none focus:border-primary transition-all shadow-inner"
                ></textarea>
             </div>
@@ -198,7 +199,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
 
             <div className="border-b-4 mb-4" style={{ borderColor: getAccentColor() }}></div>
 
-            {/* Info Section: MESSRS on Left, Total Pieces on Right */}
+            {/* Info Section */}
             <div className="flex items-center justify-between mb-4">
                <div className="flex-1">
                   <div className="flex items-center gap-3">
@@ -251,8 +252,9 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                            <td className="p-1.5 text-center font-mono text-base border border-black align-middle text-zinc-900">{item?.quantity || ''}</td>
                            <td className="p-1.5 text-center font-mono text-base border border-black align-middle text-zinc-900">{item?.price?.toLocaleString() || ''}</td>
                            <td className="p-1.5 text-center font-mono border border-black align-middle text-zinc-900 bg-zinc-50" style={{ color: getAccentColor() }}>{item ? (item.quantity * item.price).toLocaleString() : ''}</td>
-                           <td className="p-1.5 text-center text-zinc-500 font-bold border border-black italic align-middle">
-                              {item?.notes || (item ? '---' : '...................')}
+                           <td className="p-1.5 text-center text-zinc-600 font-bold border border-black italic align-middle">
+                              {/* نعرض ملاحظات الفاتورة الأصلية هنا في السطر الأول */}
+                              {idx === 0 ? (document?.notes || item?.notes || '---') : (item?.notes || '---')}
                            </td>
                         </tr>
                      ))}
@@ -269,7 +271,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                   </div>
                   
                   <div className="bg-zinc-50 p-2 border border-black rounded-lg min-h-[40px] relative">
-                     <span className="text-[7px] font-black text-zinc-400 uppercase absolute -top-2 right-4 bg-white px-2">ملاحظات الفاتورة / NOTES</span>
+                     <span className="text-[7px] font-black text-zinc-400 uppercase absolute -top-2 right-4 bg-white px-2">ملاحظات إضافية / NOTES</span>
                      <p className="text-[9px] font-black text-zinc-700 leading-snug whitespace-pre-wrap">
                         {customNotes || '................................................................................................'}
                      </p>
