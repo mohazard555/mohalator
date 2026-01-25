@@ -3,11 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowRight, Search, Save, Trash2, Edit2, RotateCcw, Printer, FileDown, X } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, StockEntry, CashEntry } from '../types';
 import { exportToCSV } from '../utils/export';
-
-const tafqeet = (n: number, prefix: string = ""): string => {
-  if (n === 0) return "صفر";
-  return `${prefix} ${n.toLocaleString()} ليرة سورية فقط لا غير`;
-};
+import { tafqeet } from '../utils/tafqeet';
 
 interface SalesReturnViewProps {
   onBack: () => void;
@@ -87,7 +83,7 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack }) => {
       date: returnDate,
       items: returnItems.filter(i => i.quantity > 0),
       totalReturnAmount: totalReturnAmount,
-      totalAmountLiteral: tafqeet(totalReturnAmount, "قيمة المرتجع"),
+      totalAmountLiteral: tafqeet(totalReturnAmount, "ليرة سورية"),
       notes: editingReturnId ? 'تعديل مرتجع مبيعات' : 'مرتجع مبيعات'
     };
 

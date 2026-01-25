@@ -2,13 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Printer, Search, FileOutput, X, Users, Box, HardDrive, Calendar, Eye, EyeOff, FileDown } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, CashEntry, Party, PartyType, AppSettings } from '../types';
+import { tafqeet } from '../utils/tafqeet';
 
 declare var html2pdf: any;
-
-const tafqeet = (n: number, currencyName: string): string => {
-  if (n === 0) return "صفر";
-  return `${n.toLocaleString()} ${currencyName} فقط لا غير`;
-};
 
 interface DetailedSalesReportViewProps {
   onBack: () => void;

@@ -2,14 +2,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, FileDown, FileText, Search, Calendar, User, Coins, CreditCard } from 'lucide-react';
 import { CashEntry, Party, AppSettings, SalesInvoice, PurchaseInvoice, PartyType } from '../types';
+import { tafqeet } from '../utils/tafqeet';
 
 // تعريف html2pdf كمتغير عالمي لتجنب أخطاء TypeScript
 declare var html2pdf: any;
-
-const tafqeet = (n: number, currencyName: string): string => {
-  if (n === 0) return "صفر";
-  return `${n.toLocaleString()} ${currencyName} فقط لا غير`;
-};
 
 interface VoucherListViewProps {
   onBack: () => void;
@@ -106,7 +102,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
       html2canvas: { 
         scale: 2, 
         useCORS: true, 
-        letterRendering: false, // هام جداً لحل مشكلة الأحرف العربية المقلوبة
+        letterRendering: false, 
         backgroundColor: '#ffffff'
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -245,11 +241,10 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
 
   return (
     <div className="space-y-6">
-      {/* نافذة كشف حساب العميل - مطهرة من عناصر التحكم للطباعة والـ PDF */}
+      {/* نافذة كشف حساب العميل */}
       {showCustomerReport && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex flex-col items-center justify-center p-2 md:p-8 overflow-y-auto animate-in fade-in">
            
-           {/* 1. لوحة التحكم (خارج حاوية الـ Ref لكي لا تظهر في الـ PDF أو الطباعة) */}
            <div className="w-full max-w-5xl mb-4 flex flex-wrap justify-between items-end gap-4 bg-zinc-800 p-6 rounded-3xl border border-zinc-700 shadow-xl no-print">
               <div className="flex-1 flex gap-4 min-w-[300px]">
                 <div className="flex flex-col gap-1 flex-1">
@@ -280,10 +275,8 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
               </div>
            </div>
 
-           {/* 2. منطقة التقرير الصافية - الـ Ref الموجه للـ PDF (بيضاء ونقية وبدون مدخلات) */}
            <div ref={reportRef} className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col text-zinc-900 border border-zinc-200 print:shadow-none print:border-none print:m-0 print:rounded-none">
               
-              {/* ترويسة الهوية (مطابقة للصورة الأصلية) */}
               <div className="p-8 flex justify-between items-start border-b-2 border-rose-600">
                  <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-3">
@@ -302,11 +295,9 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  </div>
               </div>
 
-              {/* خط تزييني عريض تحت الترويسة */}
               <div className="mx-8 h-1 bg-rose-600 rounded-full mt-2 opacity-80"></div>
 
               <div className="px-8 py-8 space-y-8">
-                 {/* بطاقات الملخص المالي - تم تصغير حجم الخط (3xl) لضمان عدم التداخل */}
                  <div className="grid grid-cols-3 gap-6">
                     <div className="bg-white border-t-4 border-zinc-800 p-6 rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm border border-zinc-100">
                        <span className="text-[10px] font-black text-zinc-400 uppercase text-center leading-tight">إجمالي المسحوبات<br/>(الديون)</span>
@@ -322,7 +313,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                     </div>
                  </div>
 
-                 {/* جدول حركات الحساب */}
                  <div className="rounded-xl border border-zinc-200 overflow-hidden shadow-sm">
                     <table className="w-full text-right border-collapse">
                        <thead>
@@ -349,7 +339,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  </div>
               </div>
 
-              {/* تذييل الكشف المطبوع */}
               <div className="p-8 bg-zinc-50 border-t border-zinc-200 flex justify-between items-center mt-auto">
                  <div className="flex flex-col">
                     <span className="text-[9px] font-black text-zinc-400 tracking-[0.2em] uppercase leading-none">Accounting Ledger System</span>
@@ -361,7 +350,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
         </div>
       )}
 
-      {/* الواجهة الرئيسية للقائمة (كما كانت) */}
       <div className="flex flex-col md:flex-row items-center justify-between no-print gap-4">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-3 bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-rose-900 rounded-xl transition-all shadow-lg"><ArrowRight className="w-6 h-6" /></button>

@@ -3,11 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, Box, Clock, FileDown, User, Hash, HardDrive, ScrollText, Image as ImageIcon, CreditCard, Coins, Upload, Search, Filter, Calendar, Package, ChevronDown, Check } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, StockEntry, Party, PartyType, InventoryItem, CashEntry, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
-
-const tafqeet = (n: number, currencyName: string): string => {
-  if (n === 0) return "صفر";
-  return `${n.toLocaleString()} ${currencyName} فقط لا غير`;
-};
+import { tafqeet } from '../utils/tafqeet';
 
 interface SalesInvoiceViewProps {
   onBack: () => void;
