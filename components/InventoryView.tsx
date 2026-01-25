@@ -60,9 +60,9 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
     if (!reportRef.current) return;
     const element = reportRef.current;
     const opt = {
-      margin: 10,
+      margin: 0,
       filename: `جرد_المخزن_${new Date().toLocaleDateString('ar-SA')}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'jpeg', quality: 1.0 },
       html2canvas: { scale: 2, useCORS: true, letterRendering: false },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
     };
@@ -141,21 +141,42 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
 
   return (
     <div className="space-y-6">
+      <style>{`
+        @media print {
+          @page { size: A4 landscape; margin: 0 !important; }
+          body { background: white !important; margin: 0 !important; padding: 0 !important; }
+          .no-print { display: none !important; }
+          .inventory-report-container { 
+            width: 100% !important; 
+            margin: 0 !important; 
+            padding: 10mm !important; 
+            border: none !important; 
+            box-shadow: none !important;
+          }
+          table { width: 100% !important; border-collapse: collapse !important; }
+          th, td { border: 1px solid #e5e7eb !important; font-size: 10px !important; }
+          .print-header-xo { display: flex !important; }
+        }
+      `}</style>
+
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors">
             <ArrowRight className="w-6 h-6" />
           </button>
-          <h2 className="text-2xl font-black text-emerald-600">قائمة المواد والجرد</h2>
+          <h2 className="text-2xl font-black text-emerald-600">قائمة المواد والجرد العام</h2>
         </div>
         <div className="flex gap-2">
           <button onClick={() => { setIsAdding(true); setEditingId(null); }} className="bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110 active:scale-95 transition-all">
-             <Plus className="w-5 h-5" /> إضافة مادة جديدة
+             <Plus className="w-5 h-5" /> إضافة صنف
           </button>
-          <button onClick={handleExportPDF} className="bg-rose-900 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:bg-rose-800 transition-all">
+          <button onClick={() => window.print()} className="bg-rose-900 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:bg-rose-800 transition-all">
+             <Printer className="w-5 h-5" /> طباعة الجرد
+          </button>
+          <button onClick={handleExportPDF} className="bg-zinc-100 dark:bg-zinc-800 text-readable px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-zinc-200 shadow-sm">
              <FileText className="w-5 h-5" /> تصدير PDF
           </button>
-          <button onClick={() => exportToCSV(filteredItems, 'inventory_report')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 hover:bg-zinc-700 transition-all shadow-lg">
+          <button onClick={() => exportToCSV(filteredItems, 'inventory_report')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 hover:bg-zinc-700 transition-all">
              <FileSpreadsheet className="w-5 h-5" /> تصدير XLSX
           </button>
         </div>
@@ -229,30 +250,43 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
       )}
 
       {/* Main Container for PDF Ref */}
-      <div ref={reportRef} className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl p-4 md:p-8">
-        {/* Print Only Header */}
-        <div className="print-only mb-8 border-b-2 border-emerald-600 pb-4 flex justify-between items-center bg-zinc-50 p-6 rounded-xl">
-           <div className="flex items-center gap-4">
-              {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain" alt="Logo" />}
-              <div>
-                 <h1 className="text-2xl font-black text-zinc-900">{settings?.companyName}</h1>
-                 <p className="text-xs text-zinc-500">{settings?.companyType}</p>
+      <div ref={reportRef} className="inventory-report-container bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl p-4 md:p-8 print:p-0 print:border-none print:shadow-none">
+        
+        {/* Professional Print Header (XO Style) */}
+        <div className="hidden print:flex flex-row justify-between items-start mb-6 border-b-2 border-emerald-600 pb-4 print-header-xo">
+           <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-3">
+                 {settings?.logoUrl ? (
+                   <img src={settings.logoUrl} className="w-16 h-16 object-contain" alt="Logo" />
+                 ) : (
+                   <div className="w-12 h-12 bg-rose-600 rounded-full flex items-center justify-center text-white font-black text-xl">XO</div>
+                 )}
+                 <div className="flex flex-col">
+                    <h1 className="text-xl font-black text-rose-900 leading-none">{settings?.companyName || 'XO COMPANY'}</h1>
+                    <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest mt-1">SAMLATOR SECURED LEDGER SYSTEM</span>
+                 </div>
+              </div>
+              <div className="text-[10px] font-bold text-zinc-400 mt-2">
+                 {settings?.phone || '093XXXXXXX'} | {settings?.address || 'دمشق، سوريا'}
               </div>
            </div>
-           <div className="text-center">
-              <h2 className="text-3xl font-black text-emerald-700 underline underline-offset-8 decoration-emerald-200">تقرير جرد المخزون العام</h2>
-              <p className="text-[10px] mt-3 font-bold text-zinc-400 tracking-widest">تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
-           </div>
-           <div className="text-left text-xs font-bold text-zinc-500">
-              <p>{settings?.address}</p>
-              <p>{settings?.phone}</p>
+
+           <div className="flex flex-col items-end gap-1">
+              <h2 className="text-2xl font-black text-rose-900">تقرير جرد المخزون العام</h2>
+              <div className="flex items-center gap-4">
+                 <span className="text-[10px] font-black text-zinc-400 uppercase">النوع: جرد كلي</span>
+                 <div className="w-px h-3 bg-zinc-200"></div>
+                 <span className="text-[10px] font-black text-zinc-400 uppercase flex items-center gap-1">
+                    <Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}
+                 </span>
+              </div>
            </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse text-sm">
             <thead>
-              <tr className="bg-emerald-600 text-[10px] text-white font-black uppercase tracking-widest border-b border-emerald-700 h-12 print:bg-emerald-600 print:text-white">
+              <tr className="bg-emerald-600 text-[10px] text-white font-black uppercase tracking-widest border-b border-emerald-700 h-12 print:bg-emerald-700 print:text-white">
                 <th className="p-4 border-l border-emerald-700">كود</th>
                 <th className="p-4 border-l border-emerald-700">المادة</th>
                 <th className="p-4 border-l border-emerald-700">المستودع</th>
@@ -262,11 +296,11 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
                 <th className="p-4 border-l border-emerald-700 text-center">الإضافات</th>
                 <th className="p-4 border-l border-emerald-700 text-center">الصرف</th>
                 <th className="p-4 border-l border-emerald-700 text-center">المرتجع</th>
-                <th className="p-4 text-center font-black bg-emerald-700">الرصيد الكلي</th>
+                <th className="p-4 text-center font-black bg-emerald-700 print:bg-emerald-900">الرصيد الكلي</th>
                 <th className="p-4 text-center no-print">إجراءات</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:divide-zinc-200 print:text-zinc-900">
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:divide-zinc-300 print:text-zinc-900 bg-white">
               {filteredItems.map((item) => (
                 <tr key={item.id} className="hover:bg-emerald-50 dark:hover:bg-zinc-800/30 transition-colors">
                   <td className="p-4 font-mono text-emerald-600 border-l dark:border-zinc-800 print:border-zinc-200">{item.code}</td>
@@ -289,6 +323,18 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Footer for print */}
+        <div className="hidden print:flex flex-row justify-between items-end mt-12 pt-6 border-t border-zinc-100 text-zinc-400">
+           <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-widest">المسؤول عن الجرد | SIGNATURE</span>
+              <div className="w-48 border-b-2 border-zinc-200 mt-8"></div>
+           </div>
+           <div className="flex flex-col items-end gap-1">
+              <span className="text-[9px] font-black uppercase tracking-[0.4em] opacity-30">ACCOUNTING LEDGER SYSTEM</span>
+              <span className="text-[11px] font-black text-rose-900 italic">SAMLATOR2026 Secured Terminal</span>
+           </div>
         </div>
       </div>
     </div>
