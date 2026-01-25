@@ -130,27 +130,27 @@ const SalesReturnHistoryView: React.FC<SalesReturnHistoryViewProps> = ({ onBack 
             <tbody className="divide-y font-bold">
               {filtered.map((ret, idx) => (
                 <tr key={ret.id} className="hover:bg-rose-50 transition-colors h-12">
-                  <td className="p-3 border-l text-center font-mono text-zinc-400">{filtered.length - idx}</td>
+                  <td className="p-3 border-l text-center font-mono text-zinc-900">{filtered.length - idx}</td>
                   <td className="p-3 border-l text-center text-rose-700 font-black">#{ret.invoiceNumber}</td>
-                  <td className="p-3 border-l text-center font-mono">{ret.date}</td>
-                  <td className="p-3 border-l truncate max-w-[120px]">{ret.customerName}</td>
+                  <td className="p-3 border-l text-center font-mono text-zinc-900">{ret.date}</td>
+                  <td className="p-3 border-l truncate max-w-[120px] text-zinc-900">{ret.customerName}</td>
                   <td className="p-3 border-l">
                     <div className="flex flex-col gap-1">
                       {ret.items.map((it: any, i: number) => (
-                        <div key={i} className="text-[8px]">• {it.name} ({it.quantity})</div>
+                        <div key={i} className="text-[9px] text-zinc-900">• {it.name} ({it.quantity})</div>
                       ))}
                     </div>
                   </td>
-                  <td className="p-3 border-l text-center font-mono font-black">{ret.items.reduce((s: number,i: any) => s + i.quantity, 0)}</td>
+                  <td className="p-3 border-l text-center font-mono font-black text-zinc-900">{ret.items.reduce((s: number,i: any) => s + i.quantity, 0)}</td>
                   <td className="p-3 border-l text-center font-black text-rose-600 font-mono">{ret.totalReturnAmount.toLocaleString()}</td>
-                  <td className="p-3 text-zinc-400 font-normal italic truncate max-w-[100px]">{ret.notes || '-'}</td>
+                  <td className="p-3 text-zinc-700 font-normal italic truncate max-w-[100px]">{ret.notes || '-'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         
-        <div className="mt-10 pt-6 border-t border-zinc-100 flex justify-between items-end text-[9px] font-black text-zinc-400">
+        <div className="mt-10 pt-6 border-t border-zinc-100 flex justify-between items-end text-[9px] font-black text-zinc-900">
            <div className="flex flex-col">
               <span>SAMLATOR SYSTEM | SECURED FINANCIAL LOG</span>
               <span>تاريخ الطباعة: {new Date().toLocaleString('ar-SA')}</span>

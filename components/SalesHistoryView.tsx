@@ -209,30 +209,30 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
             <tbody className="divide-y font-bold">
               {filteredInvoices.map((inv, idx) => (
                 <tr key={inv.id} className="hover:bg-zinc-50 transition-colors h-12">
-                  <td className="p-2 border-l text-center font-mono text-zinc-400">{filteredInvoices.length - idx}</td>
+                  <td className="p-2 border-l text-center font-mono text-zinc-900">{filteredInvoices.length - idx}</td>
                   <td className="p-2 border-l text-center text-rose-700 font-black">#{inv.invoiceNumber}</td>
-                  <td className="p-2 border-l text-center font-mono">{inv.date}</td>
-                  <td className="p-2 border-l truncate max-w-[120px]">{inv.customerName}</td>
+                  <td className="p-2 border-l text-center font-mono text-zinc-900">{inv.date}</td>
+                  <td className="p-2 border-l truncate max-w-[120px] text-zinc-900">{inv.customerName}</td>
                   <td className="p-2 border-l">
                     <div className="flex flex-col gap-0.5">
                       {inv.items.map((it, i) => (
-                        <div key={i} className="truncate text-[8px]">• {it.name} ({it.quantity})</div>
+                        <div key={i} className="truncate text-[9px] text-zinc-900">• {it.name} ({it.quantity})</div>
                       ))}
                     </div>
                   </td>
                   <td className="p-2 border-l">
                     <div className="flex flex-wrap gap-1">
                       {inv.usedMaterials?.map((m, i) => (
-                        <span key={i} className="px-1 py-0.5 rounded-sm text-[8px] border bg-rose-50 text-rose-600">{m.name} ({m.quantity})</span>
+                        <span key={i} className="px-1 py-0.5 rounded-sm text-[8px] border bg-rose-50 text-rose-800">{m.name} ({m.quantity})</span>
                       ))}
                     </div>
                   </td>
-                  <td className="p-2 border-l text-center font-mono font-black">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
+                  <td className="p-2 border-l text-center font-mono font-black text-zinc-900">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
                   <td className="p-2 border-l text-center font-black text-rose-600 font-mono">{inv.totalAmount.toLocaleString()}</td>
                   <td className="p-2 border-l text-center no-print">
                     <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => onEdit?.(inv)} className="text-zinc-400 hover:text-amber-500 transition-all"><Edit2 className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => handleDelete(inv.id, inv.invoiceNumber)} className="text-zinc-400 hover:text-rose-500 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => onEdit?.(inv)} className="text-zinc-500 hover:text-amber-500 transition-all"><Edit2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => handleDelete(inv.id, inv.invoiceNumber)} className="text-zinc-500 hover:text-rose-500 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   </td>
                   <td className="p-2 text-center text-emerald-600 font-mono text-xs font-black">{inv.paidAmount?.toLocaleString() || '0'}</td>
@@ -242,7 +242,7 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
           </table>
         </div>
         
-        <div className="mt-8 flex justify-between items-center text-[10px] font-black text-zinc-400 italic">
+        <div className="mt-8 flex justify-between items-center text-[10px] font-black text-zinc-900 italic">
            <span>نظام SAMLATOR المحاسبي - تقارير ذكية</span>
            <span>توقيع المدير: .................................</span>
         </div>

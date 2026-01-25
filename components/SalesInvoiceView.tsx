@@ -465,14 +465,14 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
             <tbody className="divide-y divide-zinc-900 font-bold bg-zinc-950 text-zinc-300 print:bg-white print:text-zinc-900 print:divide-zinc-200">
               {filteredInvoices.map((inv, idx) => (
                 <tr key={inv.id} className="hover:bg-zinc-900 transition-colors h-14 print:hover:bg-white">
-                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-600 print:border-zinc-200">{filteredInvoices.length - idx}</td>
+                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-900 print:border-zinc-200">{filteredInvoices.length - idx}</td>
                   <td className="p-2 border-l border-zinc-900 text-center text-rose-500 font-black print:border-zinc-200">#{inv.invoiceNumber}</td>
-                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-500 print:border-zinc-200">{inv.date}</td>
+                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-900 print:border-zinc-200">{inv.date}</td>
                   <td className="p-2 border-l border-zinc-900 text-white truncate max-w-[100px] print:text-zinc-900 print:border-zinc-200">{inv.customerName}</td>
                   <td className="p-2 border-l border-zinc-900 print:border-zinc-200">
                     <div className="flex flex-col gap-0.5 max-h-12 overflow-y-auto">
                       {inv.items.map((it, i) => ( 
-                        <div key={i} className="flex items-center gap-1 truncate text-[9px]">
+                        <div key={i} className="flex items-center gap-1 truncate text-[10px] text-zinc-900">
                           • {it.name} ({it.quantity})
                         </div>
                       ))}
@@ -480,17 +480,17 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                   </td>
                   <td className="p-2 border-l border-zinc-900 print:border-zinc-200">
                     <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
-                       {inv.usedMaterials?.map((m, i) => ( <span key={i} className="bg-rose-900/30 text-rose-400 px-1 py-0.5 rounded-sm text-[8px] font-black print:bg-zinc-100 print:text-zinc-700">{m.name} ({m.quantity})</span> ))}
+                       {inv.usedMaterials?.map((m, i) => ( <span key={i} className="bg-rose-900/30 text-rose-700 px-1 py-0.5 rounded-sm text-[8px] font-black print:bg-zinc-100 print:text-rose-900">{m.name} ({m.quantity})</span> ))}
                     </div>
                   </td>
                   <td className="p-2 border-l border-zinc-900 text-center font-mono text-white print:text-zinc-900 print:border-zinc-200">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
                   <td className="p-2 border-l border-zinc-900 text-center font-black text-rose-500 font-mono text-sm bg-rose-900/10 print:bg-transparent print:border-zinc-200">
                     {inv.totalAmount.toLocaleString()}
                   </td>
-                  <td className="p-2 border-l border-zinc-900 text-[8px] font-normal text-zinc-500 leading-tight print:border-zinc-200">
+                  <td className="p-2 border-l border-zinc-900 text-[10px] font-black text-zinc-800 leading-tight print:border-zinc-200">
                     {inv.totalAmountLiteral}
                   </td>
-                  <td className="p-2 border-l border-zinc-900 text-zinc-600 font-normal italic truncate max-w-[100px] print:border-zinc-200">
+                  <td className="p-2 border-l border-zinc-900 text-zinc-800 font-bold italic truncate max-w-[100px] print:border-zinc-200">
                     {inv.notes || '-'}
                   </td>
                   <td className="p-2 border-l border-zinc-900 text-center no-print">
