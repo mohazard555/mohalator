@@ -1,14 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
-/* Added Search to the imports below */
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, FileDown, Calendar as CalendarIcon, FileText, User, Coins, CreditCard, Filter, ChevronDown, CheckCircle2, Search } from 'lucide-react';
 import { CashEntry, Party, AppSettings, SalesInvoice, PurchaseInvoice, PartyType } from '../types';
 import { exportToCSV } from '../utils/export';
+import { tafqeet } from '../utils/tafqeet';
 
-const tafqeet = (n: number, currencyName: string): string => {
-  if (n === 0) return "صفر";
-  return `${n.toLocaleString()} ${currencyName} فقط لا غير`;
-};
+declare var html2pdf: any;
 
 interface VoucherListViewProps {
   onBack: () => void;
@@ -16,6 +13,7 @@ interface VoucherListViewProps {
 }
 
 const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
+  const printableRef = useRef<HTMLDivElement>(null);
   const [vouchers, setVouchers] = useState<CashEntry[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -143,6 +141,19 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     }
   };
 
+  const handleExportPDF = () => {
+    if (!printableRef.current || !printingVoucher) return;
+    const element = printableRef.current;
+    const opt = {
+      margin: 0,
+      filename: `Voucher_${printingVoucher.voucherNumber || 'receipt'}.pdf`,
+      image: { type: 'jpeg', quality: 1.0 },
+      html2canvas: { scale: 3, useCORS: true, letterRendering: false },
+      jsPDF: { unit: 'mm', format: [105, 148.5], orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
+  };
+
   const [formData, setFormData] = useState<Partial<CashEntry>>({
     voucherNumber: '',
     date: new Date().toISOString().split('T')[0],
@@ -166,117 +177,121 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     const displayCurrencyName = isVoucherPrimary ? (settings?.currency || 'ليرة سورية') : (settings?.secondaryCurrency || 'دولار');
 
     return (
-      <div className="min-h-screen bg-zinc-100 flex flex-col items-center justify-center p-4 animate-in fade-in" dir="rtl">
+      <div className="min-h-screen bg-zinc-100 flex flex-col items-center p-4 md:p-10 animate-in fade-in" dir="rtl">
         <style>{`
           @media print {
-            @page { size: 148mm 105mm; margin: 0; }
-            body { margin: 0; padding: 0; background: white; }
-            .no-print { display: none !important; }
-            .print-area { 
-              width: 148mm !important; 
-              height: 105mm !important; 
-              padding: 5mm !important; 
-              margin: 0 !important;
-              border: none !important;
-              box-shadow: none !important;
+            @page { 
+              size: 105mm 148.5mm portrait; 
+              margin: 0 !important; 
             }
+            body { 
+              margin: 0 !important; 
+              padding: 0 !important; 
+              background: white !important; 
+            }
+            .no-print { display: none !important; }
+            .print-receipt-portrait { 
+              width: 105mm !important; 
+              height: 148.5mm !important; 
+              margin: 0 !important; 
+              padding: 8mm !important; 
+              border: none !important; 
+              box-shadow: none !important;
+              display: flex !important;
+              flex-direction: column !important;
+              box-sizing: border-box !important;
+              border-radius: 0 !important;
+              background: white !important;
+            }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           }
         `}</style>
-
-        <div className="max-w-xl w-full mb-6 no-print flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border">
+        
+        <div className="w-full max-w-xl mb-6 no-print flex justify-between items-center bg-white p-5 rounded-3xl shadow-xl border border-zinc-200 mx-4">
            <button onClick={() => setPrintingVoucher(null)} className="flex items-center gap-2 text-zinc-500 font-black hover:text-rose-900 transition-colors">
-             <ArrowRight className="w-5 h-5" /> العودة للقائمة
+              <ArrowRight className="w-5 h-5" /> رجوع
            </button>
-           <button onClick={() => window.print()} className="bg-rose-900 text-white px-8 py-3 rounded-2xl font-black flex items-center gap-2 hover:scale-105 transition-all">
-             <Printer className="w-5 h-5" /> طباعة (ربع A4)
-           </button>
+           <div className="flex gap-2">
+              <button onClick={handleExportPDF} className="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg hover:brightness-110 transition-all">
+                <FileDown className="w-5 h-5" /> تصدير PDF
+              </button>
+              <button onClick={() => window.print()} className="bg-rose-900 text-white px-6 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg hover:brightness-110 transition-all">
+                <Printer className="w-5 h-5" /> طباعة
+              </button>
+           </div>
         </div>
 
-        {/* وثيقة السند - قياس ربع A4 عرضي */}
-        <div className="print-area bg-white text-zinc-900 border-2 border-zinc-200 shadow-2xl flex flex-col relative overflow-hidden" 
-             style={{ width: '148mm', height: '105mm', padding: '8mm' }}>
+        <div ref={printableRef} className="print-receipt-portrait bg-white text-zinc-900 w-[105mm] h-[148.5mm] shadow-2xl flex flex-col p-8 relative overflow-hidden">
           
-          {/* خلفية مائية خفيفة */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none -rotate-12 select-none">
-             <span className="text-[60px] font-black uppercase">{settings?.companyName}</span>
+          <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none -rotate-12">
+             <span className="text-[40px] font-black uppercase text-rose-900">{settings?.companyName}</span>
           </div>
 
-          {/* الترويسة - Header */}
-          <div className="flex justify-between items-start border-b-2 border-rose-900 pb-2 relative z-10">
-             <div className="flex flex-col gap-0.5">
-                <div className="text-rose-900 font-black text-sm uppercase tracking-tighter">
-                   سند {type} مالي
-                </div>
-                <div className="bg-zinc-900 text-white px-2 py-0.5 rounded text-[10px] font-mono font-bold w-fit">
-                   NO: {printingVoucher.voucherNumber || printingVoucher.id.slice(0, 6).toUpperCase()}
-                </div>
-                <div className="text-zinc-500 font-bold text-[9px] mt-0.5">
-                   DATE: {printingVoucher.date}
-                </div>
+          <div className="flex justify-between items-start mb-6 border-b-2 border-rose-900 pb-2">
+             <div className="flex flex-col gap-1">
+                <h1 className="text-sm font-black text-rose-900 leading-none">{settings?.companyName || 'XO COMPANY'}</h1>
+                <div className="text-[7px] font-bold text-zinc-400" dir="ltr">{settings?.phone}</div>
              </div>
+             {settings?.logoUrl ? (
+               <img src={settings.logoUrl} className="w-10 h-10 object-contain" alt="Logo" />
+             ) : (
+               <div className="w-8 h-8 bg-rose-600 rounded-lg flex items-center justify-center text-white font-black text-xs">XO</div>
+             )}
+          </div>
 
-             <div className="flex flex-col items-center">
-                {settings?.logoUrl ? (
-                   <img src={settings.logoUrl} className="h-10 w-auto object-contain mb-1" alt="Logo" />
-                ) : (
-                   <div className="text-lg font-black text-rose-900 leading-none">SHENO</div>
-                )}
-                <div className="text-zinc-400 font-black text-[7px] tracking-widest uppercase">{settings?.companyType}</div>
-             </div>
-
-             <div className="text-left flex flex-col items-end">
-                <h1 className="text-sm font-black text-rose-900 leading-none">{settings?.companyName}</h1>
-                <div className="text-zinc-400 text-[8px] font-bold mt-1" dir="ltr">{settings?.phone}</div>
+          <div className="text-center mb-6">
+             <h2 className="text-xl font-black text-rose-900">سند {type} مالي</h2>
+             <div className="flex items-center justify-center gap-4 mt-1">
+                <span className="text-[9px] font-black text-zinc-400">رقم السند: {printingVoucher.voucherNumber || printingVoucher.id.slice(0, 6).toUpperCase()}</span>
+                <span className="text-[9px] font-black text-zinc-400">التاريخ: {printingVoucher.date}</span>
              </div>
           </div>
 
-          {/* المحتوى - Content */}
-          <div className="flex-1 pt-4 space-y-3 relative z-10">
-             <div className="flex items-baseline gap-2 border-b border-zinc-100 pb-1">
-                <span className="text-rose-900 font-black text-[11px] whitespace-nowrap">{type === 'قبض' ? 'استلمنا من' : 'دفعنا إلى'}:</span>
-                <span className="flex-1 text-sm font-black italic text-zinc-800">{printingVoucher.partyName}</span>
-             </div>
-             
-             <div className="flex items-baseline gap-2 border-b border-zinc-100 pb-1">
-                <span className="text-rose-900 font-black text-[11px] whitespace-nowrap">مبلغاً وقدره:</span>
-                <span className="flex-1 text-xs font-bold text-zinc-700">{tafqeet(displayAmount || 0, displayCurrencyName)}</span>
+          <div className="flex-1 space-y-6 pt-2">
+             <div className="space-y-1">
+                <span className="text-rose-900 font-black text-[10px] uppercase">استلمنا من / {type === 'قبض' ? 'Received From' : 'Paid To'}:</span>
+                <div className="text-lg font-black text-zinc-800 italic border-b border-zinc-100 pb-1">{printingVoucher.partyName}</div>
              </div>
 
-             <div className="flex items-baseline gap-2 border-b border-zinc-100 pb-1">
-                <span className="text-rose-900 font-black text-[11px] whitespace-nowrap">وذلك عن:</span>
-                <span className="flex-1 text-xs font-bold text-zinc-600">{printingVoucher.statement}</span>
+             <div className="space-y-1">
+                <span className="text-rose-900 font-black text-[10px] uppercase">مبلغاً وقدره / Amount in words:</span>
+                <div className="text-[11px] font-black text-zinc-600 border-b border-zinc-100 pb-1 leading-relaxed">
+                   {tafqeet(displayAmount || 0, displayCurrencyName)}
+                </div>
              </div>
 
-             {/* صندوق المبلغ - Amount Box */}
-             <div className="flex justify-center pt-2">
-                <div className="bg-zinc-900 p-[1px] rounded-lg">
-                   <div className="bg-white border border-rose-900 rounded-md px-6 py-1 flex items-center gap-4">
-                      <div className="flex flex-col items-center">
-                         <span className="text-[7px] font-black text-rose-900 leading-none">AMOUNT | المبلغ</span>
-                         <div className="text-xl font-black font-mono tracking-tighter leading-none mt-1">
-                            {displayAmount?.toLocaleString()}
-                         </div>
-                      </div>
-                      <div className="h-6 w-px bg-zinc-200"></div>
-                      <span className="text-[10px] font-black text-zinc-400">{displayCurrencySymbol}</span>
+             <div className="space-y-1">
+                <span className="text-rose-900 font-black text-[10px] uppercase">وذلك عن / Statement:</span>
+                <div className="text-[11px] font-bold text-zinc-500 border-b border-zinc-100 pb-1 leading-relaxed">
+                   {printingVoucher.statement}
+                </div>
+             </div>
+
+             <div className="flex justify-center pt-4">
+                <div className="bg-zinc-50 border-2 border-rose-900 rounded-xl px-10 py-3 flex flex-col items-center min-w-[200px] shadow-sm">
+                   <div className="text-[8px] font-black text-rose-900 uppercase tracking-widest mb-1">المبلغ / Amount</div>
+                   <div className="flex items-center gap-2">
+                      <span className="text-3xl font-black font-mono tracking-tighter text-zinc-900">{displayAmount?.toLocaleString()}</span>
+                      <span className="text-[10px] font-black text-zinc-400 uppercase">{displayCurrencySymbol}</span>
                    </div>
                 </div>
              </div>
           </div>
 
-          {/* التواقيع - Footer */}
-          <div className="flex justify-between px-4 pt-2 border-t border-zinc-100 relative z-10">
+          <div className="mt-8 pt-4 border-t border-zinc-100 flex justify-between items-end">
              <div className="flex flex-col items-center">
-                <span className="text-zinc-400 font-bold text-[8px] mb-4 uppercase">{type === 'قبض' ? 'المسلم' : 'المستلم'}</span>
-                <div className="w-20 border-b border-zinc-200"></div>
+                <div className="w-20 border-b border-zinc-200 mb-1"></div>
+                <span className="text-[7px] font-black text-zinc-400 uppercase">{type === 'قبض' ? 'المسلم' : 'المستلم'}</span>
              </div>
-             <div className="flex flex-col items-center">
-                <span className="text-zinc-400 font-bold text-[8px] mb-4 uppercase">المحاسب</span>
-                <div className="flex flex-col items-center">
-                   <div className="w-20 border-b border-zinc-200"></div>
-                   <span className="text-[8px] font-black text-zinc-800 mt-0.5">{settings?.accountantName}</span>
-                </div>
+             <div className="flex flex-col items-center text-center">
+                <div className="text-[9px] font-black text-zinc-800 mb-0.5">{settings?.accountantName}</div>
+                <div className="w-20 border-b border-rose-900 mb-1"></div>
+                <span className="text-[7px] font-black text-rose-900 uppercase">توقيع المحاسب</span>
              </div>
+          </div>
+          
+          <div className="absolute bottom-2 left-0 right-0 text-center">
+             <span className="text-[6px] font-bold text-zinc-300 italic opacity-50 uppercase tracking-[0.3em]">SAMLATOR SECURED LEDGER V3.1</span>
           </div>
         </div>
       </div>
@@ -285,7 +300,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
 
   return (
     <div className="space-y-6">
-      {/* نافذة تقرير العميل */}
       {showCustomerReport && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
            <style>{`
