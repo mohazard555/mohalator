@@ -1,7 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Printer, ChevronDown, Globe, FileText, RotateCcw, Truck, ShoppingBag, X, FileDown, MessageSquare, Coins } from 'lucide-react';
 import { AppSettings } from '../types';
+
+declare var html2pdf: any;
 
 interface ProfessionalInvoiceViewProps {
   onBack: () => void;
@@ -11,6 +13,7 @@ interface ProfessionalInvoiceViewProps {
 type DocType = 'SALES' | 'SALES_RETURN' | 'PURCHASE_RETURN' | 'PURCHASE';
 
 const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBack, settings }) => {
+  const invoiceRef = useRef<HTMLDivElement>(null);
   const [docType, setDocType] = useState<DocType>('SALES');
   const [selectedId, setSelectedId] = useState('');
   const [document, setDocument] = useState<any | null>(null);
@@ -36,7 +39,6 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
       if (parsed.length > 0) {
         setSelectedId(parsed[0].id);
         setDocument(parsed[0]);
-        // ملاحظة: نجعل الملاحظات العامة فارغة عند التحميل لمنع التكرار
         setCustomNotes(''); 
       } else {
         setDocument(null);
@@ -56,9 +58,37 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
     const match = list.find(i => i.id === id);
     if (match) {
       setDocument(match);
-      // نجعل ملاحظات التصدير فارغة عند اختيار فاتورة جديدة
       setCustomNotes('');
     }
+  };
+
+  const handleExportPDF = () => {
+    if (!invoiceRef.current || !document) return;
+    
+    // إعداد اسم الملف
+    const fileName = `${getDocTitle()}_${document.invoiceNumber || 'document'}.pdf`;
+    
+    const element = invoiceRef.current;
+    const opt = {
+      margin: 0,
+      filename: fileName,
+      image: { type: 'jpeg', quality: 1.0 },
+      html2canvas: { 
+        scale: 3, 
+        useCORS: true, 
+        letterRendering: false,
+        logging: false
+      },
+      jsPDF: { 
+        unit: 'mm', 
+        format: 'a5', 
+        orientation: 'landscape',
+        compress: true
+      }
+    };
+
+    // تشغيل التصدير
+    html2pdf().set(opt).from(element).save();
   };
 
   const getDocTitle = () => {
@@ -84,7 +114,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
       <style>{`
         @media print {
           @page { 
-            size: A4 portrait; 
+            size: 210mm 148.5mm landscape; 
             margin: 0 !important; 
           }
           body { 
@@ -101,18 +131,17 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
             border: none !important; 
             box-shadow: none !important;
             overflow: hidden;
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
             background: white !important;
             display: flex !important;
             flex-direction: column !important;
             box-sizing: border-box !important;
             justify-content: center;
+            border-radius: 0 !important;
           }
           table, th, td {
             border-color: black !important;
           }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
 
@@ -154,7 +183,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                </select>
             </div>
 
-            <div className="lg:col-span-2 flex flex-col gap-2">
+            <div className="lg:col-span-1 flex flex-col gap-2">
                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-1">2. ملاحظات الطباعة الإضافية (اختياري)</label>
                <textarea 
                  value={customNotes}
@@ -163,12 +192,21 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                  className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-800 text-readable rounded-2xl py-4 px-4 outline-none w-full h-[62px] font-bold text-sm resize-none focus:border-primary transition-all shadow-inner"
                ></textarea>
             </div>
+
+            <div className="lg:col-span-1 flex gap-2">
+                <button onClick={handleExportPDF} className="flex-1 bg-rose-800 text-white px-4 py-4 rounded-2xl font-black shadow-lg flex items-center justify-center gap-2 hover:brightness-110 transition-all">
+                   <FileDown className="w-5 h-5" /> تصدير PDF
+                </button>
+                <button onClick={() => window.print()} className="flex-1 bg-zinc-900 text-white px-4 py-4 rounded-2xl font-black shadow-lg flex items-center justify-center gap-2 hover:brightness-110 transition-all">
+                   <Printer className="w-5 h-5" /> طباعة فورية
+                </button>
+            </div>
          </div>
       </div>
 
       {/* Document View */}
       <div className="flex justify-center p-0 md:p-10 bg-zinc-200 dark:bg-zinc-800/50 rounded-[4rem] overflow-hidden border-4 border-white dark:border-zinc-800 shadow-inner">
-         <div className="professional-invoice-box bg-white text-zinc-900 w-[210mm] h-[148.5mm] shadow-2xl flex flex-col relative overflow-hidden p-8" id="professional-document">
+         <div ref={invoiceRef} className="professional-invoice-box bg-white text-zinc-900 w-[210mm] h-[148.5mm] shadow-2xl flex flex-col relative overflow-hidden p-8" id="professional-document">
             
             {/* Header */}
             <div className="flex justify-between items-start mb-4">
@@ -215,7 +253,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                   <div className="border-2 border-black rounded-3xl px-6 py-2 flex flex-col items-center justify-center bg-zinc-50">
                      <span className="text-[8px] font-black text-zinc-400 uppercase mb-0">إجمالي القطع</span>
                      <span className="text-2xl font-black font-mono leading-none" style={{ color: getAccentColor() }}>
-                        {document?.items?.reduce((s:number,c:any) => s + c.quantity, 0) || '00'}
+                        {document?.items?.reduce((s:number,c:any) => s + (c.quantity || 0), 0) || '00'}
                      </span>
                   </div>
                </div>
@@ -253,7 +291,6 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                            <td className="p-1.5 text-center font-mono text-base border border-black align-middle text-zinc-900">{item?.price?.toLocaleString() || ''}</td>
                            <td className="p-1.5 text-center font-mono border border-black align-middle text-zinc-900 bg-zinc-50" style={{ color: getAccentColor() }}>{item ? (item.quantity * item.price).toLocaleString() : ''}</td>
                            <td className="p-1.5 text-center text-zinc-600 font-bold border border-black italic align-middle">
-                              {/* نعرض ملاحظات الفاتورة الأصلية هنا في السطر الأول */}
                               {idx === 0 ? (document?.notes || item?.notes || '---') : (item?.notes || '---')}
                            </td>
                         </tr>
@@ -301,8 +338,11 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
          </div>
       </div>
 
-      <div className="flex justify-center gap-4 no-print pb-20">
-         <button onClick={() => window.print()} className="bg-zinc-900 text-white px-16 py-5 rounded-[2rem] font-black shadow-2xl flex items-center gap-4 hover:scale-105 transition-all text-xl">
+      <div className="flex justify-center gap-6 no-print pb-20 pt-4">
+         <button onClick={handleExportPDF} className="bg-rose-800 text-white px-12 py-5 rounded-[2rem] font-black shadow-2xl flex items-center gap-4 hover:scale-105 transition-all text-xl">
+            <FileDown className="w-7 h-7" /> تصدير نسخة PDF
+         </button>
+         <button onClick={() => window.print()} className="bg-zinc-900 text-white px-12 py-5 rounded-[2rem] font-black shadow-2xl flex items-center gap-4 hover:scale-105 transition-all text-xl">
             <Printer className="w-7 h-7" /> طباعة المستند الاحترافي
          </button>
       </div>
