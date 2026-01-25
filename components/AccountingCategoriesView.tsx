@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Save, X, Tags, TrendingDown, TrendingUp, Search, Calendar, FileText, Printer, FileDown } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Edit2, Save, X, Tags, TrendingDown, TrendingUp, Search, Calendar, FileText, Printer, FileDown, FileSpreadsheet } from 'lucide-react';
 import { AccountingCategory, CashEntry, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -64,6 +64,22 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
     ? journal.filter(j => j.categoryId === selectedCategory.id) 
     : [];
 
+  const handleExportCategoryExcel = () => {
+    if (!selectedCategory) return;
+    
+    const exportData = categoryMovements.map(m => ({
+      'التاريخ': m.date,
+      'البيان': m.statement,
+      'مقبوض (ل.س)': m.receivedSYP,
+      'مدفوع (ل.س)': m.paidSYP,
+      'مقبوض ($)': m.receivedUSD,
+      'مدفوع ($)': m.paidUSD,
+      'الملاحظات': m.notes || '-'
+    }));
+    
+    exportToCSV(exportData, `كشف_حركات_${selectedCategory.name}`);
+  };
+
   const totalPrimary = categoryMovements.reduce((acc, curr) => acc + (curr.receivedSYP - curr.paidSYP), 0);
   const totalSecondary = categoryMovements.reduce((acc, curr) => acc + (curr.receivedUSD - curr.paidUSD), 0);
 
@@ -122,12 +138,20 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
               </button>
             </>
           ) : (
-            <button 
-              onClick={() => setSelectedCategory(null)} 
-              className="bg-zinc-800 text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2"
-            >
-              <ArrowRight className="w-5 h-5" /> العودة للقائمة
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={handleExportCategoryExcel}
+                className="bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 hover:brightness-110 shadow-lg transition-all"
+              >
+                <FileSpreadsheet className="w-5 h-5" /> تصدير كشف القسم (Excel)
+              </button>
+              <button 
+                onClick={() => setSelectedCategory(null)} 
+                className="bg-zinc-800 text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2"
+              >
+                <ArrowRight className="w-5 h-5" /> العودة للقائمة
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -308,10 +332,16 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
               </table>
            </div>
            
-           <div className="flex justify-center no-print pb-10">
+           <div className="flex justify-center no-print pb-10 gap-4">
+              <button 
+                onClick={handleExportCategoryExcel}
+                className="bg-emerald-600 text-white px-10 py-4 rounded-2xl font-black flex items-center gap-3 shadow-xl hover:scale-105 transition-all"
+              >
+                 <FileSpreadsheet className="w-5 h-5" /> تصدير حركات القسم Excel
+              </button>
               <button 
                 onClick={() => window.print()} 
-                className="bg-zinc-900 text-white px-16 py-4 rounded-2xl font-black flex items-center gap-3 shadow-xl hover:scale-105 transition-all"
+                className="bg-zinc-900 text-white px-12 py-4 rounded-2xl font-black flex items-center gap-3 shadow-xl hover:scale-105 transition-all"
               >
                  <Printer className="w-5 h-5" /> طباعة كشف حركات البند
               </button>

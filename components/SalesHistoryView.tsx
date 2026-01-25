@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
-/* Added HardDrive to imports */
-import { ArrowRight, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check, X, HardDrive } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowRight, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check, X, HardDrive, Printer, FileText } from 'lucide-react';
 import { SalesInvoice, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
+
+declare var html2pdf: any;
 
 interface SalesHistoryViewProps {
   onBack: () => void;
@@ -11,6 +12,7 @@ interface SalesHistoryViewProps {
 }
 
 const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) => {
+  const reportRef = useRef<HTMLDivElement>(null);
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -54,7 +56,6 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
   const totalFilteredPieces = filteredInvoices.reduce((sum, inv) => sum + inv.items.reduce((s,i) => s + i.quantity, 0), 0);
   const totalFilteredAmount = filteredInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
 
-  // Aggregate used materials by unit for the summary
   const usedMaterialsByUnit = filteredInvoices.reduce((acc: Record<string, number>, inv) => {
     inv.usedMaterials?.forEach(m => {
       const unit = m.unit || 'قطعة';
@@ -62,6 +63,19 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
     });
     return acc;
   }, {});
+
+  const handleExportPDF = () => {
+    if (!reportRef.current) return;
+    const element = reportRef.current;
+    const opt = {
+      margin: 10,
+      filename: `سجل_مبيعات_${new Date().toLocaleDateString('ar-SA')}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: false },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+    html2pdf().set(opt).from(element).save();
+  };
 
   const toggleItemSelection = (name: string) => {
     setSelectedItems(prev => prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]);
@@ -77,60 +91,28 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
 
   return (
     <div className="space-y-6">
-      {/* Image Preview Modal */}
       {previewImage && (
-        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 md:p-20 animate-in fade-in duration-300" onClick={() => setPreviewImage(null)}>
+        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => setPreviewImage(null)}>
           <button className="absolute top-10 right-10 text-white hover:text-rose-500 transition-colors no-print">
             <X className="w-10 h-10" />
           </button>
-          <img 
-            src={previewImage} 
-            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border-4 border-white/10" 
-            onClick={(e) => e.stopPropagation()} 
-            alt="Full Preview"
-          />
+          <img src={previewImage} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border-4 border-white/10" onClick={(e) => e.stopPropagation()} alt="Full Preview" />
         </div>
       )}
-
-      <div className="print-only print-header flex justify-between items-center bg-rose-700 p-6 rounded-t-xl text-white mb-0 border-b-0">
-        <div className="flex items-center gap-4">
-          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
-          <div>
-            <h1 className="text-2xl font-black">{settings?.companyName}</h1>
-            <p className="text-xs opacity-80">{settings?.companyType}</p>
-          </div>
-        </div>
-        <div className="text-center">
-          <h2 className="text-2xl font-black underline decoration-white/30 underline-offset-8">سجل المبيعات المفلتر</h2>
-          <div className="flex flex-col gap-1 justify-center mt-2">
-            <div className="flex gap-4 justify-center">
-              <p className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">إجمالي القطع: {totalFilteredPieces.toLocaleString()}</p>
-              <p className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">إجمالي القيمة: {totalFilteredAmount.toLocaleString()}</p>
-            </div>
-            {/* Totals by Unit displayed in print header too */}
-            <div className="flex gap-2 justify-center flex-wrap mt-1">
-              {Object.entries(usedMaterialsByUnit).map(([unit, total]) => (
-                <span key={unit} className="text-[8px] font-bold bg-white/10 px-2 py-0.5 rounded border border-white/20">
-                  إجمالي ({unit}): {total.toLocaleString()}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="text-left text-xs font-bold space-y-1">
-          <p>{settings?.address}</p>
-          <p>{startDate || 'البداية'} ← {endDate || 'اليوم'}</p>
-        </div>
-      </div>
 
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors"><ArrowRight className="w-6 h-6" /></button>
-          <h2 className="text-2xl font-black text-rose-700">سجل المبيعات العام والتحليل</h2>
+          <h2 className="text-2xl font-black text-rose-700">سجل المبيعات المفلتر</h2>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => exportToCSV(filteredInvoices, 'full_sales_history')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg"><FileDown className="w-5 h-5" /> تصدير XLSX</button>
-          <button onClick={() => window.print()} className="bg-rose-100 text-rose-700 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-rose-200">طباعة السجل الكامل</button>
+          <button onClick={handleExportPDF} className="bg-rose-700 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
+             <FileText className="w-5 h-5" /> تصدير PDF
+          </button>
+          <button onClick={() => exportToCSV(filteredInvoices, 'full_sales_history')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
+             <FileDown className="w-5 h-5" /> تصدير XLSX
+          </button>
+          <button onClick={() => window.print()} className="bg-rose-100 text-rose-700 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-rose-200">طباعة السجل</button>
         </div>
       </div>
 
@@ -165,101 +147,104 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
         </div>
       </div>
 
-      {/* Used Materials Summary Section */}
-      <div className="bg-emerald-500/5 dark:bg-emerald-500/10 p-6 rounded-3xl border border-emerald-500/20 shadow-sm space-y-4">
-        <h3 className="text-sm font-black text-emerald-600 flex items-center gap-2">
-          <HardDrive className="w-4 h-4" /> إجمالي استهلاك المواد (المفلتر)
-        </h3>
-        <div className="flex flex-wrap gap-4">
-           {Object.keys(usedMaterialsByUnit).length === 0 ? (
-             <p className="text-zinc-400 text-xs italic font-bold">لا يوجد استهلاك مواد مخزنية في هذه الفترة.</p>
-           ) : (
-             Object.entries(usedMaterialsByUnit).map(([unit, total]) => (
-               <div key={unit} className="bg-white dark:bg-zinc-800 px-6 py-3 rounded-2xl border border-emerald-200 dark:border-emerald-900 shadow-sm flex flex-col items-center min-w-[120px]">
-                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">وحدة ({unit})</span>
-                 <span className="text-2xl font-mono font-black text-emerald-600">{total.toLocaleString()}</span>
-               </div>
-             ))
-           )}
+      {/* Report Section for PDF and Print */}
+      <div ref={reportRef} className="bg-white p-4 md:p-8 rounded-3xl border border-zinc-200 shadow-sm print:shadow-none print:border-rose-700 print:rounded-none">
+        {/* Report Header (Visible in PDF and Print) */}
+        <div className="flex justify-between items-center bg-rose-700 p-6 rounded-t-xl text-white mb-6 border-b-0 print:m-0">
+          <div className="flex items-center gap-4">
+            {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
+            <div>
+              <h1 className="text-2xl font-black">{settings?.companyName || 'SAMLATOR'}</h1>
+              <p className="text-xs opacity-80">{settings?.companyType}</p>
+            </div>
+          </div>
+          <div className="text-center">
+            <h2 className="text-2xl font-black underline underline-offset-8">سجل مبيعات المنشأة</h2>
+            <div className="flex flex-col gap-1 mt-2">
+              <p className="text-[10px] font-black">الفترة: {startDate || 'البداية'} ← {endDate || 'اليوم'}</p>
+            </div>
+          </div>
+          <div className="text-left text-xs font-bold space-y-1">
+            <p>{settings?.address}</p>
+            <p>{new Date().toLocaleDateString('ar-SA')}</p>
+          </div>
         </div>
-      </div>
 
-      <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl print:border-rose-700 print:rounded-none">
-        <div className="overflow-x-auto">
+        {/* Aggregate Summary */}
+        <div className="bg-emerald-500/5 p-4 rounded-2xl border border-emerald-500/20 mb-6 flex flex-wrap gap-8 items-center justify-center">
+          <div className="flex flex-col items-center">
+             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">إجمالي القطع</span>
+             <span className="text-2xl font-mono font-black text-emerald-600">{totalFilteredPieces.toLocaleString()}</span>
+          </div>
+          <div className="flex flex-col items-center">
+             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">إجمالي المبيعات</span>
+             <span className="text-2xl font-mono font-black text-rose-600">{totalFilteredAmount.toLocaleString()} {settings?.currencySymbol}</span>
+          </div>
+          <div className="h-10 w-px bg-zinc-200"></div>
+          {Object.entries(usedMaterialsByUnit).map(([unit, total]) => (
+            <div key={unit} className="flex flex-col items-center">
+              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">استهلاك ({unit})</span>
+              <span className="text-xl font-mono font-black text-zinc-700">{total.toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Table Data */}
+        <div className="overflow-x-auto border rounded-xl">
           <table className="w-full text-right border-collapse text-[10px]">
             <thead>
-              <tr className="bg-rose-700 text-white font-black uppercase tracking-tighter border-b border-rose-800 h-14">
-                <th className="p-3 border-l border-rose-800 text-center w-12">تسلسل</th>
-                <th className="p-3 border-l border-rose-800 text-center w-16">رقم</th>
-                <th className="p-3 border-l border-rose-800 text-center w-20">تاريخ</th>
-                <th className="p-3 border-l border-rose-800 text-center">العميل</th>
-                <th className="p-3 border-l border-rose-800 text-right w-48">الأصناف المباعة</th>
-                <th className="p-3 border-l border-rose-800 text-right w-40">المواد المستخدمة</th>
-                <th className="p-3 border-l border-rose-800 text-center w-12">العدد</th>
-                <th className="p-3 border-l border-rose-800 text-center w-24">إجمالي الفاتورة</th>
-                <th className="p-3 border-l border-rose-800 text-right w-48">التفقيط</th>
-                <th className="p-3 border-l border-zinc-800 text-center w-16">وقت</th>
-                <th className="p-3 border-l border-zinc-800 text-center w-20 no-print">إجراءات</th>
-                <th className="p-3 text-center w-20">المدفوع</th>
+              <tr className="bg-zinc-100 text-zinc-700 font-black uppercase tracking-tighter border-b h-12">
+                <th className="p-2 border-l w-12 text-center">م</th>
+                <th className="p-2 border-l w-16 text-center">رقم</th>
+                <th className="p-2 border-l w-20 text-center">تاريخ</th>
+                <th className="p-2 border-l">العميل</th>
+                <th className="p-2 border-l text-right w-48">الأصناف</th>
+                <th className="p-2 border-l text-right w-40">المواد المستخدمة</th>
+                <th className="p-2 border-l text-center w-12">العدد</th>
+                <th className="p-2 border-l text-center w-24">الإجمالي</th>
+                <th className="p-2 text-center w-20 no-print">إجراءات</th>
+                <th className="p-2 text-center w-20">المدفوع</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:divide-zinc-300">
-              {filteredInvoices.length === 0 ? (
-                <tr><td colSpan={12} className="p-16 text-center italic text-zinc-400">لا يوجد سجلات مبيعات تطابق الفلترة</td></tr>
-              ) : (
-                <>
-                  {filteredInvoices.map((inv, idx) => (
-                    <tr key={inv.id} className="hover:bg-rose-50 dark:hover:bg-zinc-800/30 transition-colors h-12">
-                      <td className="p-2 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono text-zinc-400">{filteredInvoices.length - idx}</td>
-                      <td className="p-2 border-l border-zinc-100 dark:border-zinc-800 text-center text-rose-700 font-black">#{inv.invoiceNumber}</td>
-                      <td className="p-2 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono">{inv.date}</td>
-                      <td className="p-2 border-l border-zinc-100 dark:border-zinc-800 text-readable truncate max-w-[120px]">{inv.customerName}</td>
-                      <td className="p-2 border-l border-zinc-100 dark:border-zinc-800">
-                        <div className="flex flex-col gap-0.5 max-h-12 overflow-y-auto">
-                          {inv.items.map((it, i) => (
-                            <div key={i} className={`flex items-center gap-1 truncate ${selectedItems.includes(it.name) || (searchTerm && it.name.toLowerCase().includes(searchTerm.toLowerCase())) ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 rounded px-1 font-black' : ''}`}>
-                               {it.image && <img src={it.image} className="w-5 h-5 rounded-sm object-cover cursor-zoom-in" onClick={() => setPreviewImage(it.image!)} />}
-                               • {it.name} ({it.quantity})
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="p-2 border-l border-zinc-100 dark:border-zinc-800">
-                        <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
-                          {inv.usedMaterials?.map((m, i) => (
-                            <span key={i} className={`px-1 py-0.5 rounded-sm text-[8px] border ${selectedItems.includes(m.name) ? 'bg-emerald-600 text-white border-emerald-700 font-black' : 'bg-rose-500/10 text-rose-600 border-rose-200 dark:border-rose-900'}`}>{m.name} ({m.quantity})</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="p-2 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono font-black text-rose-700">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
-                      <td className="p-2 border-l border-zinc-100 dark:border-zinc-800 text-center font-black text-rose-600 font-mono text-xs bg-rose-50/30 dark:bg-rose-950/20 print:bg-transparent">{inv.totalAmount.toLocaleString()} {inv.currencySymbol}</td>
-                      <td className="p-2 border-l border-zinc-100 dark:border-zinc-800 text-[8px] font-normal text-zinc-500 leading-tight">{inv.totalAmountLiteral}</td>
-                      <td className="p-2 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono text-[8px] text-zinc-400">{inv.time}</td>
-                      <td className="p-2 border-l border-zinc-100 dark:border-zinc-800 text-center no-print">
-                        <div className="flex items-center justify-center gap-1">
-                          <button 
-                            onClick={() => onEdit?.(inv)} 
-                            className="p-1 text-zinc-400 hover:text-amber-500 transition-all"
-                            title="تعديل الفاتورة"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => handleDelete(inv.id, inv.invoiceNumber)} className="p-1 text-zinc-400 hover:text-rose-500 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                      </td>
-                      <td className="p-2 text-center text-emerald-600 font-mono text-xs font-black">{inv.paidAmount?.toLocaleString() || '0'}</td>
-                    </tr>
-                  ))}
-                  <tr className="bg-zinc-50 dark:bg-zinc-800 h-12 border-t-2 border-rose-700">
-                    <td colSpan={6} className="p-2 text-center font-black uppercase tracking-widest text-zinc-500">إجمالي السجل المفلتر</td>
-                    <td className="p-2 text-center font-mono font-black text-rose-700 text-sm">{totalFilteredPieces.toLocaleString()}</td>
-                    <td className="p-2 text-center font-mono font-black text-rose-700 text-sm bg-rose-100/50 dark:bg-rose-900/30">{totalFilteredAmount.toLocaleString()} {settings?.currencySymbol}</td>
-                    <td colSpan={4} className="p-2"></td>
-                  </tr>
-                </>
-              )}
+            <tbody className="divide-y font-bold">
+              {filteredInvoices.map((inv, idx) => (
+                <tr key={inv.id} className="hover:bg-zinc-50 transition-colors h-12">
+                  <td className="p-2 border-l text-center font-mono text-zinc-400">{filteredInvoices.length - idx}</td>
+                  <td className="p-2 border-l text-center text-rose-700 font-black">#{inv.invoiceNumber}</td>
+                  <td className="p-2 border-l text-center font-mono">{inv.date}</td>
+                  <td className="p-2 border-l truncate max-w-[120px]">{inv.customerName}</td>
+                  <td className="p-2 border-l">
+                    <div className="flex flex-col gap-0.5">
+                      {inv.items.map((it, i) => (
+                        <div key={i} className="truncate text-[8px]">• {it.name} ({it.quantity})</div>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="p-2 border-l">
+                    <div className="flex flex-wrap gap-1">
+                      {inv.usedMaterials?.map((m, i) => (
+                        <span key={i} className="px-1 py-0.5 rounded-sm text-[8px] border bg-rose-50 text-rose-600">{m.name} ({m.quantity})</span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="p-2 border-l text-center font-mono font-black">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
+                  <td className="p-2 border-l text-center font-black text-rose-600 font-mono">{inv.totalAmount.toLocaleString()}</td>
+                  <td className="p-2 border-l text-center no-print">
+                    <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => onEdit?.(inv)} className="text-zinc-400 hover:text-amber-500 transition-all"><Edit2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => handleDelete(inv.id, inv.invoiceNumber)} className="text-zinc-400 hover:text-rose-500 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
+                  </td>
+                  <td className="p-2 text-center text-emerald-600 font-mono text-xs font-black">{inv.paidAmount?.toLocaleString() || '0'}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
+        </div>
+        
+        <div className="mt-8 flex justify-between items-center text-[10px] font-black text-zinc-400 italic">
+           <span>نظام SAMLATOR المحاسبي - تقارير ذكية</span>
+           <span>توقيع المدير: .................................</span>
         </div>
       </div>
     </div>
