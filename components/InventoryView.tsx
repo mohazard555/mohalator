@@ -1,14 +1,17 @@
 
-import React, { useState, useEffect } from 'react';
-import { ArrowRight, Search, Package, Plus, Trash2, Edit2, FileDown, Printer, Box, Save, X, Warehouse as WarehouseIcon, Calendar, Coins, Hash } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowRight, Search, Package, Plus, Trash2, Edit2, FileDown, Printer, Box, Save, X, Warehouse as WarehouseIcon, Calendar, Coins, Hash, FileSpreadsheet, FileText } from 'lucide-react';
 import { StockEntry, InventoryItem, WarehouseEntity, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
+
+declare var html2pdf: any;
 
 interface InventoryViewProps {
   onBack: () => void;
 }
 
 const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
+  const reportRef = useRef<HTMLDivElement>(null);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [warehouses, setWarehouses] = useState<WarehouseEntity[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,6 +54,19 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
     });
 
     setItems(updatedItems);
+  };
+
+  const handleExportPDF = () => {
+    if (!reportRef.current) return;
+    const element = reportRef.current;
+    const opt = {
+      margin: 10,
+      filename: `جرد_المخزن_${new Date().toLocaleDateString('ar-SA')}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: false },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+    html2pdf().set(opt).from(element).save();
   };
 
   const handleSaveItem = () => {
@@ -133,11 +149,14 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
           <h2 className="text-2xl font-black text-emerald-600">قائمة المواد والجرد</h2>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => { setIsAdding(true); setEditingId(null); }} className="bg-emerald-600 text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110 active:scale-95 transition-all">
+          <button onClick={() => { setIsAdding(true); setEditingId(null); }} className="bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110 active:scale-95 transition-all">
              <Plus className="w-5 h-5" /> إضافة مادة جديدة
           </button>
-          <button onClick={() => exportToCSV(items, 'inventory_report')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 hover:bg-zinc-700 transition-all">
-             <FileDown className="w-5 h-5" /> تصدير XLSX
+          <button onClick={handleExportPDF} className="bg-rose-900 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:bg-rose-800 transition-all">
+             <FileText className="w-5 h-5" /> تصدير PDF
+          </button>
+          <button onClick={() => exportToCSV(filteredItems, 'inventory_report')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 hover:bg-zinc-700 transition-all shadow-lg">
+             <FileSpreadsheet className="w-5 h-5" /> تصدير XLSX
           </button>
         </div>
       </div>
@@ -209,11 +228,31 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
         </div>
       )}
 
-      <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl">
+      {/* Main Container for PDF Ref */}
+      <div ref={reportRef} className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl p-4 md:p-8">
+        {/* Print Only Header */}
+        <div className="print-only mb-8 border-b-2 border-emerald-600 pb-4 flex justify-between items-center bg-zinc-50 p-6 rounded-xl">
+           <div className="flex items-center gap-4">
+              {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain" alt="Logo" />}
+              <div>
+                 <h1 className="text-2xl font-black text-zinc-900">{settings?.companyName}</h1>
+                 <p className="text-xs text-zinc-500">{settings?.companyType}</p>
+              </div>
+           </div>
+           <div className="text-center">
+              <h2 className="text-3xl font-black text-emerald-700 underline underline-offset-8 decoration-emerald-200">تقرير جرد المخزون العام</h2>
+              <p className="text-[10px] mt-3 font-bold text-zinc-400 tracking-widest">تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
+           </div>
+           <div className="text-left text-xs font-bold text-zinc-500">
+              <p>{settings?.address}</p>
+              <p>{settings?.phone}</p>
+           </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse text-sm">
             <thead>
-              <tr className="bg-emerald-600 text-[10px] text-white font-black uppercase tracking-widest border-b border-emerald-700 h-12">
+              <tr className="bg-emerald-600 text-[10px] text-white font-black uppercase tracking-widest border-b border-emerald-700 h-12 print:bg-emerald-600 print:text-white">
                 <th className="p-4 border-l border-emerald-700">كود</th>
                 <th className="p-4 border-l border-emerald-700">المادة</th>
                 <th className="p-4 border-l border-emerald-700">المستودع</th>
@@ -227,19 +266,19 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
                 <th className="p-4 text-center no-print">إجراءات</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold">
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:divide-zinc-200 print:text-zinc-900">
               {filteredItems.map((item) => (
                 <tr key={item.id} className="hover:bg-emerald-50 dark:hover:bg-zinc-800/30 transition-colors">
-                  <td className="p-4 font-mono text-emerald-600 border-l dark:border-zinc-800">{item.code}</td>
-                  <td className="p-4 border-l dark:border-zinc-800">{item.name}</td>
-                  <td className="p-4 border-l dark:border-zinc-800 text-xs text-zinc-500">{item.warehouse}</td>
-                  <td className="p-4 border-l dark:border-zinc-800 text-xs text-zinc-500">{item.unit}</td>
-                  <td className="p-4 text-center font-mono border-l dark:border-zinc-800 text-amber-600">{item.price.toLocaleString()}</td>
-                  <td className="p-4 text-center font-mono border-l dark:border-zinc-800">{item.openingStock.toLocaleString()}</td>
-                  <td className="p-4 text-center font-mono text-emerald-600 border-l dark:border-zinc-800">+{item.added.toLocaleString()}</td>
-                  <td className="p-4 text-center font-mono text-rose-600 border-l dark:border-zinc-800">-{item.issued.toLocaleString()}</td>
-                  <td className="p-4 text-center font-mono text-amber-500 border-l dark:border-zinc-800">+{item.returned.toLocaleString()}</td>
-                  <td className={`p-4 text-center font-mono text-lg ${item.currentBalance < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>{item.currentBalance.toLocaleString()}</td>
+                  <td className="p-4 font-mono text-emerald-600 border-l dark:border-zinc-800 print:border-zinc-200">{item.code}</td>
+                  <td className="p-4 border-l dark:border-zinc-800 print:border-zinc-200">{item.name}</td>
+                  <td className="p-4 border-l dark:border-zinc-800 print:border-zinc-200 text-xs text-zinc-500">{item.warehouse}</td>
+                  <td className="p-4 border-l dark:border-zinc-800 print:border-zinc-200 text-xs text-zinc-500">{item.unit}</td>
+                  <td className="p-4 text-center font-mono border-l dark:border-zinc-800 print:border-zinc-200 text-amber-600">{item.price.toLocaleString()}</td>
+                  <td className="p-4 text-center font-mono border-l dark:border-zinc-800 print:border-zinc-200">{item.openingStock.toLocaleString()}</td>
+                  <td className="p-4 text-center font-mono text-emerald-600 border-l dark:border-zinc-800 print:border-zinc-200">+{item.added.toLocaleString()}</td>
+                  <td className="p-4 text-center font-mono text-rose-600 border-l dark:border-zinc-800 print:border-zinc-200">-{item.issued.toLocaleString()}</td>
+                  <td className="p-4 text-center font-mono text-amber-500 border-l dark:border-zinc-800 print:border-zinc-200">+{item.returned.toLocaleString()}</td>
+                  <td className={`p-4 text-center font-mono text-lg border-l dark:border-zinc-800 print:border-zinc-200 ${item.currentBalance < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>{item.currentBalance.toLocaleString()}</td>
                   <td className="p-4 no-print">
                      <div className="flex justify-center gap-2">
                         <button onClick={() => { setEditingId(item.id); setFormData({...item, currentInputQty: 0}); setIsAdding(true); }} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-500"><Edit2 className="w-4 h-4" /></button>

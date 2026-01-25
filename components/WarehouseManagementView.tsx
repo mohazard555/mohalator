@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Warehouse, MapPin, Save, X, Printer, ArrowLeftRight, Package, Calendar } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Edit2, Warehouse, MapPin, Save, X, Printer, ArrowLeftRight, Package, Calendar, FileSpreadsheet } from 'lucide-react';
 import { WarehouseEntity, InventoryItem, StockEntry, AppSettings } from '../types';
+import { exportToCSV } from '../utils/export';
 
 interface WarehouseManagementViewProps {
   onBack: () => void;
@@ -46,6 +47,16 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
       localStorage.setItem('sheno_warehouses', JSON.stringify(defaultW));
     }
   }, []);
+
+  const handleExportExcel = () => {
+    const dataToExport = warehouses.map((w, idx) => ({
+      'م': idx + 1,
+      'اسم المستودع': w.name,
+      'الموقع': w.location,
+      'الحالة': w.isMain ? 'مستودع رئيسي' : 'مستودع فرعي'
+    }));
+    exportToCSV(dataToExport, 'warehouses_list');
+  };
 
   const handleSave = () => {
     if (!formData.name) return;
@@ -162,6 +173,9 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
         <div className="flex gap-2">
            <button onClick={() => setIsTransferring(true)} className="bg-amber-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:brightness-110 transition-all">
               <ArrowLeftRight className="w-5 h-5" /> نقل مادة
+           </button>
+           <button onClick={handleExportExcel} className="bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:bg-emerald-700 transition-all">
+              <FileSpreadsheet className="w-5 h-5" /> تصدير XLSX
            </button>
            <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-zinc-200 dark:border-zinc-700">
               <Printer className="w-5 h-5" /> طباعة

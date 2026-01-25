@@ -1,13 +1,17 @@
 
-import React, { useState, useEffect } from 'react';
-import { ArrowRight, Search, Printer, Filter, Calendar as CalendarIcon, LayoutPanelLeft, Calendar, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowRight, Search, Printer, Filter, Calendar as CalendarIcon, LayoutPanelLeft, Calendar, RotateCcw, FileDown, FileSpreadsheet } from 'lucide-react';
 import { StockEntry, AppSettings } from '../types';
+import { exportToCSV } from '../utils/export';
+
+declare var html2pdf: any;
 
 interface DetailedItemMovementViewProps {
   onBack: () => void;
 }
 
 const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onBack }) => {
+  const reportRef = useRef<HTMLDivElement>(null);
   const [entries, setEntries] = useState<StockEntry[]>([]);
   const [itemSearch, setItemSearch] = useState('');
   const [moveType, setMoveType] = useState('الكل');
@@ -36,29 +40,59 @@ const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onB
     return acc;
   }, { in: 0, out: 0, ret: 0 });
 
+  const handleExportPDF = () => {
+    if (!reportRef.current) return;
+    const element = reportRef.current;
+    const opt = {
+      margin: 10,
+      filename: `حركة_مادة_${itemSearch || 'تفصيلي'}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: false },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+    html2pdf().set(opt).from(element).save();
+  };
+
+  const handleExportExcel = () => {
+    const dataToExport = filtered.map(e => ({
+      'التاريخ': e.date,
+      'المادة': e.itemName,
+      'الكود': e.itemCode,
+      'الوحدة': e.unit,
+      'السعر': e.price,
+      'الحركة': e.movementType,
+      'الكمية': e.quantity,
+      'المستودع': e.warehouse,
+      'البيان': e.statement
+    }));
+    exportToCSV(dataToExport, `حركة_مادة_${itemSearch || 'تفصيلي'}`);
+  };
+
   return (
     <div className="space-y-6" dir="rtl">
-      {/* Print Header */}
-      <div className="print-only print-header flex justify-between items-center bg-rose-900 p-6 rounded-t-xl text-white mb-0 border-b-0">
-        <div className="flex items-center gap-4">
-          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
-          <div>
-            <h1 className="text-2xl font-black">{settings?.companyName}</h1>
-            <p className="text-xs opacity-80">{settings?.companyType}</p>
+      {/* Print Header inside PDF Ref */}
+      <div className="print-only">
+        <div className="flex justify-between items-center bg-rose-900 p-6 rounded-t-xl text-white mb-0 border-b-0">
+          <div className="flex items-center gap-4">
+            {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
+            <div>
+              <h1 className="text-2xl font-black">{settings?.companyName}</h1>
+              <p className="text-xs opacity-80">{settings?.companyType}</p>
+            </div>
           </div>
-        </div>
-        <div className="text-center">
-          <h2 className="text-3xl font-black underline decoration-white/30 underline-offset-8">كشف حركة مادة تفصيلي</h2>
-          <div className="flex gap-3 justify-center mt-2">
-            <span className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">إدخال: {totals.in.toLocaleString()}</span>
-            <span className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">صرف: {totals.out.toLocaleString()}</span>
-            <span className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">مرتجع: {totals.ret.toLocaleString()}</span>
+          <div className="text-center">
+            <h2 className="text-3xl font-black underline decoration-white/30 underline-offset-8">كشف حركة مادة تفصيلي</h2>
+            <div className="flex gap-3 justify-center mt-2">
+              <span className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">إدخال: {totals.in.toLocaleString()}</span>
+              <span className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">صرف: {totals.out.toLocaleString()}</span>
+              <span className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded">مرتجع: {totals.ret.toLocaleString()}</span>
+            </div>
+            <p className="text-[9px] mt-2 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
           </div>
-          <p className="text-[9px] mt-2 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
-        </div>
-        <div className="text-left text-xs font-bold space-y-1">
-          <p>{settings?.address}</p>
-          <p>{settings?.phone}</p>
+          <div className="text-left text-xs font-bold space-y-1">
+            <p>{settings?.address}</p>
+            <p>{settings?.phone}</p>
+          </div>
         </div>
       </div>
 
@@ -127,11 +161,32 @@ const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onB
          </div>
       </div>
 
-      <div className="bg-zinc-950 rounded-3xl border border-zinc-800 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] print:border-rose-900 print:rounded-none">
+      <div ref={reportRef} className="bg-zinc-950 rounded-3xl border border-zinc-800 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] print:border-rose-900 print:rounded-none">
+         {/* Print Only Header (Inside Ref) */}
+         <div className="print-only p-8 bg-white border-b-2 border-rose-900">
+           <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                 {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain" alt="Logo" />}
+                 <div>
+                    <h1 className="text-2xl font-black text-zinc-900">{settings?.companyName}</h1>
+                    <p className="text-xs text-zinc-500">{settings?.companyType}</p>
+                 </div>
+              </div>
+              <div className="text-center">
+                 <h2 className="text-3xl font-black text-rose-900 underline underline-offset-8">كشف حركة مادة تفصيلي</h2>
+                 <p className="text-xs mt-2 text-zinc-600">الفترة: {startDate || 'البداية'} - {endDate || 'اليوم'}</p>
+              </div>
+              <div className="text-left text-xs font-bold text-zinc-500">
+                 <p>{settings?.address}</p>
+                 <p>{new Date().toLocaleDateString('ar-SA')}</p>
+              </div>
+           </div>
+         </div>
+
          <div className="overflow-x-auto">
             <table className="w-full text-right border-collapse text-xs">
                <thead>
-                  <tr className="bg-rose-900 text-white font-black h-14 text-center border-b border-rose-950">
+                  <tr className="bg-rose-900 text-white font-black h-14 text-center border-b border-rose-950 print:bg-rose-900 print:text-white">
                      <th className="p-2 border-l border-rose-800 w-32 text-center">التاريخ</th>
                      <th className="p-2 border-l border-rose-800">الصنف / المادة</th>
                      <th className="p-2 border-l border-rose-800 w-20 text-center">الوحدة</th>
@@ -142,32 +197,32 @@ const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onB
                      <th className="p-2 text-right pr-6">البيان / الملاحظات</th>
                   </tr>
                </thead>
-               <tbody className="font-bold text-center divide-y divide-zinc-800 print:divide-zinc-300">
+               <tbody className="font-bold text-center divide-y divide-zinc-800 print:divide-zinc-200 bg-white print:text-zinc-900">
                   {filtered.length === 0 ? (
                     Array.from({ length: 12 }).map((_, i) => (
-                      <tr key={i} className="h-12 bg-zinc-900/20">
-                         {Array.from({ length: 8 }).map((__, j) => <td key={j} className="border-x border-zinc-800"></td>)}
+                      <tr key={i} className="h-12 bg-zinc-900/20 print:bg-white">
+                         {Array.from({ length: 8 }).map((__, j) => <td key={j} className="border-x border-zinc-800 print:border-zinc-200"></td>)}
                       </tr>
                     ))
                   ) : (
                     filtered.map(e => (
-                      <tr key={e.id} className="h-14 hover:bg-rose-50 dark:hover:bg-rose-900/10 transition-colors group">
-                         <td className="p-2 font-mono text-zinc-500 border-l border-zinc-200">{e.date}</td>
-                         <td className="p-2 text-right pr-6 border-l border-zinc-200 text-readable">{e.itemName}</td>
-                         <td className="p-2 text-zinc-500 border-l border-zinc-200">{e.unit}</td>
-                         <td className="p-2 font-mono text-zinc-600 border-l border-zinc-200">{e.price.toLocaleString()}</td>
+                      <tr key={e.id} className="h-14 hover:bg-rose-50 transition-colors group">
+                         <td className="p-2 font-mono text-zinc-500 border-l border-zinc-200 print:text-zinc-500">{e.date}</td>
+                         <td className="p-2 text-right pr-6 border-l border-zinc-200 text-readable print:text-zinc-900">{e.itemName}</td>
+                         <td className="p-2 text-zinc-500 border-l border-zinc-200 print:text-zinc-500">{e.unit}</td>
+                         <td className="p-2 font-mono text-zinc-600 border-l border-zinc-200 print:text-zinc-600">{e.price.toLocaleString()}</td>
                          <td className="p-2 border-l border-zinc-200">
                             <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest ${
-                              e.movementType === 'إدخال' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 
-                              e.movementType === 'صرف' ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20' : 
-                              'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+                              e.movementType === 'إدخال' ? 'bg-emerald-500/10 text-emerald-600' : 
+                              e.movementType === 'صرف' ? 'bg-rose-500/10 text-rose-600' : 
+                              'bg-amber-500/10 text-amber-600'
                             }`}>
                                {e.movementType}
                             </span>
                          </td>
                          <td className="p-2 font-mono text-xl text-rose-700 border-l border-zinc-200 bg-rose-50 print:bg-transparent">{e.quantity.toLocaleString()}</td>
-                         <td className="p-2 text-[10px] text-zinc-400 border-l border-zinc-200 uppercase">{e.warehouse}</td>
-                         <td className="p-2 text-right pr-6 text-zinc-500 font-normal italic">{e.statement || '-'}</td>
+                         <td className="p-2 text-[10px] text-zinc-400 border-l border-zinc-200 uppercase print:text-zinc-400">{e.warehouse}</td>
+                         <td className="p-2 text-right pr-6 text-zinc-500 font-normal italic print:text-zinc-500">{e.statement || '-'}</td>
                       </tr>
                     ))
                   )}
@@ -176,9 +231,15 @@ const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onB
          </div>
       </div>
       
-      <div className="flex justify-end no-print pt-6 pb-12">
-         <button onClick={() => window.print()} className="bg-rose-900 text-white px-16 py-4 rounded-2xl font-black shadow-2xl flex items-center gap-4 hover:bg-rose-800 hover:-translate-y-1 transition-all active:scale-95">
-            <Printer className="w-6 h-6" /> طباعة تقرير الحركة المفصلة
+      <div className="flex justify-center no-print pt-6 pb-12 gap-4">
+         <button onClick={handleExportExcel} className="bg-emerald-600 text-white px-10 py-4 rounded-2xl font-black shadow-xl flex items-center gap-3 hover:brightness-110 active:scale-95 transition-all">
+            <FileSpreadsheet className="w-6 h-6" /> تصدير Excel
+         </button>
+         <button onClick={handleExportPDF} className="bg-rose-900 text-white px-10 py-4 rounded-2xl font-black shadow-xl flex items-center gap-3 hover:bg-rose-800 transition-all active:scale-95">
+            <FileDown className="w-6 h-6" /> تصدير PDF
+         </button>
+         <button onClick={() => window.print()} className="bg-zinc-800 text-white px-10 py-4 rounded-2xl font-black shadow-xl flex items-center gap-3 hover:bg-zinc-700 transition-all active:scale-95">
+            <Printer className="w-6 h-6" /> طباعة فورية
          </button>
       </div>
     </div>
