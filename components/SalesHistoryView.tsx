@@ -1,10 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check, X, HardDrive, Printer, FileText } from 'lucide-react';
-import { SalesInvoice, AppSettings } from '../types';
+import { ArrowRight, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check, X, HardDrive, Printer, FileText, Upload } from 'lucide-react';
+import { SalesInvoice, AppSettings, InvoiceItem } from '../types';
 import { exportToCSV } from '../utils/export';
-
-declare var html2pdf: any;
+import { PdfExportService } from '../utils/PdfExportService';
+import { tafqeet } from '../utils/tafqeet';
+// استيراد مكتبة Excel برمجياً عبر esm.sh لضمان التوافق
+import * as XLSX from 'https://esm.sh/xlsx';
 
 interface SalesHistoryViewProps {
   onBack: () => void;
@@ -13,6 +15,7 @@ interface SalesHistoryViewProps {
 
 const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) => {
   const reportRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -23,10 +26,16 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
   const [showItemDropdown, setShowItemDropdown] = useState(false);
   const [uniqueItems, setUniqueItems] = useState<string[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   useEffect(() => {
-    const savedInv = localStorage.getItem('sheno_sales_invoices');
+    loadInvoices();
     const savedSettings = localStorage.getItem('sheno_settings');
+    if (savedSettings) setSettings(JSON.parse(savedSettings));
+  }, []);
+
+  const loadInvoices = () => {
+    const savedInv = localStorage.getItem('sheno_sales_invoices');
     if (savedInv) {
       const parsedInv: SalesInvoice[] = JSON.parse(savedInv);
       setInvoices(parsedInv);
@@ -37,8 +46,7 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
       });
       setUniqueItems(Array.from(itemsSet).sort());
     }
-    if (savedSettings) setSettings(JSON.parse(savedSettings));
-  }, []);
+  };
 
   const filteredInvoices = invoices.filter(inv => {
     const matchSearch = inv.customerName.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -53,28 +61,86 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
     return matchSearch && matchDate && matchItems;
   });
 
-  const totalFilteredPieces = filteredInvoices.reduce((sum, inv) => sum + inv.items.reduce((s,i) => s + i.quantity, 0), 0);
-  const totalFilteredAmount = filteredInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
-
-  const usedMaterialsByUnit = filteredInvoices.reduce((acc: Record<string, number>, inv) => {
-    inv.usedMaterials?.forEach(m => {
-      const unit = m.unit || 'قطعة';
-      acc[unit] = (acc[unit] || 0) + m.quantity;
-    });
-    return acc;
-  }, {});
-
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!reportRef.current) return;
-    const element = reportRef.current;
-    const opt = {
-      margin: 10,
-      filename: `سجل_مبيعات_${new Date().toLocaleDateString('ar-SA')}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: false },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    await PdfExportService.export({
+      element: reportRef.current,
+      fileName: `سجل_مبيعات_${new Date().toLocaleDateString('ar-SA')}`,
+      orientation: 'landscape',
+      format: 'a4'
+    });
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    const reader = new FileReader();
+    
+    reader.onload = async (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+        if (jsonData.length === 0) throw new Error("الملف فارغ");
+
+        const importedInvoices: SalesInvoice[] = jsonData.map((row, idx) => {
+          const rawItems = row['الأصناف'] || row['Items'] || "";
+          const items: InvoiceItem[] = String(rawItems).split('|').map(itemStr => {
+            const cleanStr = itemStr.replace('•', '').trim();
+            const name = cleanStr.split('(')[0].trim();
+            const qtyMatch = cleanStr.match(/\(([^)]+)\)/);
+            const quantity = qtyMatch ? parseFloat(qtyMatch[1]) : 1;
+            return {
+              id: crypto.randomUUID(),
+              code: 'IMPORTED',
+              name: name || 'صنف مستورد',
+              quantity: isNaN(quantity) ? 1 : quantity,
+              price: 0,
+              unit: 'قطعة',
+              total: 0,
+              date: row['التاريخ'] || row['Date'] || new Date().toISOString().split('T')[0],
+              notes: 'مستورد'
+            };
+          }).filter(it => it.name !== 'صنف مستورد' || it.quantity > 0);
+
+          const total = parseFloat(String(row['الإجمالي'] || row['Total'] || "0").replace(/,/g, ''));
+
+          return {
+            id: crypto.randomUUID(),
+            invoiceNumber: String(row['رقم'] || row['InvoiceNo'] || (Date.now() + idx)),
+            date: row['التاريخ'] || row['Date'] || new Date().toISOString().split('T')[0],
+            time: new Date().toLocaleTimeString('ar-SA'),
+            customerName: row['العميل'] || row['Customer'] || 'عميل مستورد',
+            items: items.length > 0 ? items : [{ id: crypto.randomUUID(), code: 'IMP', name: 'بضاعة عامة', quantity: 1, price: total, unit: 'قطعة', total: total, date: '', notes: '' }],
+            totalAmount: total,
+            totalAmountLiteral: tafqeet(total, settings?.currency || "ليرة سورية"),
+            notes: row['ملاحظات'] || row['Notes'] || 'مستورد',
+            paidAmount: parseFloat(String(row['المدفوع'] || row['Paid'] || "0").replace(/,/g, '')),
+            paymentType: 'نقداً',
+            currencySymbol: settings?.currencySymbol || 'ل.س'
+          };
+        });
+
+        if (window.confirm(`تم العثور على ${importedInvoices.length} سجل. دمج البيانات؟`)) {
+          const merged = [...importedInvoices, ...invoices];
+          const unique = Array.from(new Map(merged.map(inv => [inv.invoiceNumber, inv])).values());
+          localStorage.setItem('sheno_sales_invoices', JSON.stringify(unique));
+          setInvoices(unique);
+          alert('تم الاستيراد بنجاح!');
+        }
+      } catch (err) {
+        alert('خطأ في قراءة الملف.');
+      } finally {
+        setIsImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
     };
-    html2pdf().set(opt).from(element).save();
+    reader.readAsArrayBuffer(file);
   };
 
   const toggleItemSelection = (name: string) => {
@@ -103,16 +169,20 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors"><ArrowRight className="w-6 h-6" /></button>
-          <h2 className="text-2xl font-black text-rose-700">سجل المبيعات المفلتر</h2>
+          <h2 className="text-2xl font-black text-rose-700">سجل المبيعات العام</h2>
         </div>
         <div className="flex gap-2">
+          <input type="file" ref={fileInputRef} onChange={handleImportFile} accept=".xlsx, .xls, .csv" className="hidden" />
+          <button onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg transition-all">
+             {isImporting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Upload className="w-5 h-5" />}
+             استيراد Excel
+          </button>
           <button onClick={handleExportPDF} className="bg-rose-700 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
              <FileText className="w-5 h-5" /> تصدير PDF
           </button>
-          <button onClick={() => exportToCSV(filteredInvoices, 'full_sales_history')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
+          <button onClick={() => exportToCSV(filteredInvoices, 'sales_history')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
              <FileDown className="w-5 h-5" /> تصدير XLSX
           </button>
-          <button onClick={() => window.print()} className="bg-rose-100 text-rose-700 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-rose-200">طباعة السجل</button>
         </div>
       </div>
 
@@ -122,18 +192,18 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
             <label className="text-[10px] font-black text-zinc-500 uppercase mr-1">بحث نصي (فاتورة، عميل، صنف)</label>
             <div className="relative">
               <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
-              <input type="text" placeholder="ابحث برقم الفاتورة، العميل، أو الصنف..." className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-3 pr-12 outline-none font-bold focus:border-rose-700 transition-all text-readable" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              <input type="text" placeholder="ابحث..." className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-3 pr-12 outline-none font-bold text-readable" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
           </div>
           <div className="flex-1 min-w-[200px] flex flex-col gap-1 relative">
-            <label className="text-[10px] font-black text-zinc-500 uppercase mr-1">تحديد أصناف معينة للتحليل</label>
-            <button onClick={() => setShowItemDropdown(!showItemDropdown)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-3 px-4 flex items-center justify-between font-bold text-readable hover:bg-zinc-100 transition-all overflow-hidden">
-              <div className="flex items-center gap-2 truncate"><Package className="w-4 h-4 text-rose-500 shrink-0" /><span className="truncate">{selectedItems.length > 0 ? `مختار (${selectedItems.length}) أصناف` : 'جميع المواد'}</span></div>
+            <label className="text-[10px] font-black text-zinc-500 uppercase mr-1">تحديد مواد</label>
+            <button onClick={() => setShowItemDropdown(!showItemDropdown)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-3 px-4 flex items-center justify-between font-bold text-readable">
+              <div className="flex items-center gap-2 truncate"><Package className="w-4 h-4 text-rose-500 shrink-0" /><span className="truncate">{selectedItems.length > 0 ? `مختار (${selectedItems.length})` : 'جميع المواد'}</span></div>
               <ChevronDown className={`w-4 h-4 transition-transform ${showItemDropdown ? 'rotate-180' : ''}`} />
             </button>
             {showItemDropdown && (
-              <div className="absolute top-full right-0 left-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50 max-h-60 overflow-y-auto p-2 animate-in slide-in-from-top-2">
-                <button onClick={() => setSelectedItems([])} className="w-full text-right p-2 text-[10px] font-black text-rose-500 border-b mb-1 hover:bg-rose-50 rounded-lg">إعادة تعيين (الكل)</button>
+              <div className="absolute top-full right-0 left-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50 max-h-60 overflow-y-auto p-2">
+                <button onClick={() => setSelectedItems([])} className="w-full text-right p-2 text-[10px] font-black text-rose-500 border-b mb-1 hover:bg-rose-50 rounded-lg">إعادة تعيين</button>
                 {uniqueItems.map(item => (
                   <div key={item} onClick={() => toggleItemSelection(item)} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${selectedItems.includes(item) ? 'bg-rose-500/10 text-rose-600' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}><span className="font-bold text-xs">{item}</span>{selectedItems.includes(item) && <Check className="w-4 h-4" />}</div>
                 ))}
@@ -147,10 +217,8 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
         </div>
       </div>
 
-      {/* Report Section for PDF and Print */}
       <div ref={reportRef} className="bg-white p-4 md:p-8 rounded-3xl border border-zinc-200 shadow-sm print:shadow-none print:border-rose-700 print:rounded-none">
-        {/* Report Header (Visible in PDF and Print) */}
-        <div className="flex justify-between items-center bg-rose-700 p-6 rounded-t-xl text-white mb-6 border-b-0 print:m-0">
+        <div className="flex justify-between items-center bg-rose-700 p-6 rounded-t-xl text-white mb-6 print:m-0">
           <div className="flex items-center gap-4">
             {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
             <div>
@@ -170,36 +238,15 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
           </div>
         </div>
 
-        {/* Aggregate Summary */}
-        <div className="bg-emerald-500/5 p-4 rounded-2xl border border-emerald-500/20 mb-6 flex flex-wrap gap-8 items-center justify-center">
-          <div className="flex flex-col items-center">
-             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">إجمالي القطع</span>
-             <span className="text-2xl font-mono font-black text-emerald-600">{totalFilteredPieces.toLocaleString()}</span>
-          </div>
-          <div className="flex flex-col items-center">
-             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">إجمالي المبيعات</span>
-             <span className="text-2xl font-mono font-black text-rose-600">{totalFilteredAmount.toLocaleString()} {settings?.currencySymbol}</span>
-          </div>
-          <div className="h-10 w-px bg-zinc-200"></div>
-          {Object.entries(usedMaterialsByUnit).map(([unit, total]) => (
-            <div key={unit} className="flex flex-col items-center">
-              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">استهلاك ({unit})</span>
-              <span className="text-xl font-mono font-black text-zinc-700">{total.toLocaleString()}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Table Data */}
         <div className="overflow-x-auto border rounded-xl">
           <table className="w-full text-right border-collapse text-[10px]">
             <thead>
-              <tr className="bg-zinc-100 text-zinc-700 font-black uppercase tracking-tighter border-b h-12">
+              <tr className="bg-zinc-100 text-zinc-700 font-black border-b h-12">
                 <th className="p-2 border-l w-12 text-center">م</th>
                 <th className="p-2 border-l w-16 text-center">رقم</th>
                 <th className="p-2 border-l w-20 text-center">تاريخ</th>
                 <th className="p-2 border-l">العميل</th>
                 <th className="p-2 border-l text-right w-48">الأصناف</th>
-                <th className="p-2 border-l text-right w-40">المواد المستخدمة</th>
                 <th className="p-2 border-l text-center w-12">العدد</th>
                 <th className="p-2 border-l text-center w-24">الإجمالي</th>
                 <th className="p-2 text-center w-20 no-print">إجراءات</th>
@@ -209,25 +256,18 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
             <tbody className="divide-y font-bold">
               {filteredInvoices.map((inv, idx) => (
                 <tr key={inv.id} className="hover:bg-zinc-50 transition-colors h-12">
-                  <td className="p-2 border-l text-center font-mono text-zinc-900">{filteredInvoices.length - idx}</td>
+                  <td className="p-2 border-l text-center font-mono">{filteredInvoices.length - idx}</td>
                   <td className="p-2 border-l text-center text-rose-700 font-black">#{inv.invoiceNumber}</td>
-                  <td className="p-2 border-l text-center font-mono text-zinc-900">{inv.date}</td>
-                  <td className="p-2 border-l truncate max-w-[120px] text-zinc-900">{inv.customerName}</td>
+                  <td className="p-2 border-l text-center font-mono">{inv.date}</td>
+                  <td className="p-2 border-l truncate max-w-[120px]">{inv.customerName}</td>
                   <td className="p-2 border-l">
                     <div className="flex flex-col gap-0.5">
                       {inv.items.map((it, i) => (
-                        <div key={i} className="truncate text-[9px] text-zinc-900">• {it.name} ({it.quantity})</div>
+                        <div key={i} className="truncate text-[9px]">• {it.name} ({it.quantity})</div>
                       ))}
                     </div>
                   </td>
-                  <td className="p-2 border-l">
-                    <div className="flex flex-wrap gap-1">
-                      {inv.usedMaterials?.map((m, i) => (
-                        <span key={i} className="px-1 py-0.5 rounded-sm text-[8px] border bg-rose-50 text-rose-800">{m.name} ({m.quantity})</span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="p-2 border-l text-center font-mono font-black text-zinc-900">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
+                  <td className="p-2 border-l text-center font-mono">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
                   <td className="p-2 border-l text-center font-black text-rose-600 font-mono">{inv.totalAmount.toLocaleString()}</td>
                   <td className="p-2 border-l text-center no-print">
                     <div className="flex items-center justify-center gap-1">
@@ -240,11 +280,6 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
               ))}
             </tbody>
           </table>
-        </div>
-        
-        <div className="mt-8 flex justify-between items-center text-[10px] font-black text-zinc-900 italic">
-           <span>نظام SAMLATOR المحاسبي - تقارير ذكية</span>
-           <span>توقيع المدير: .................................</span>
         </div>
       </div>
     </div>

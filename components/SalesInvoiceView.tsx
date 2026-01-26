@@ -74,7 +74,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     
     if (savedSettings) setSettings(JSON.parse(savedSettings));
 
-    // Handle initial invoice for editing from history
     if (initialInvoice) {
       setEditingId(initialInvoice.id);
       setNewInvoice(initialInvoice);
@@ -291,7 +290,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                <input type="number" className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-black text-emerald-500 text-xl" value={newInvoice.paidAmount} onChange={e => setNewInvoice({...newInvoice, paidAmount: Number(e.target.value)})} />
             </div>
 
-            {/* General Invoice Notes Field */}
             <div className="flex flex-col gap-1 md:col-span-5">
                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">ملاحظات الفاتورة العامة</label>
                <input 
@@ -388,7 +386,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
               <input 
                 type="text" 
                 placeholder="ابحث برقم الفاتورة، العميل، أو الصنف..." 
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl py-3 pr-12 outline-none font-bold text-readable focus:border-rose-900 transition-all shadow-inner" 
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl py-3 pr-12 outline-none font-bold text-white focus:border-rose-900 transition-all shadow-inner" 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
               />
@@ -399,7 +397,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
             <label className="text-[10px] font-black text-zinc-500 uppercase mr-1 tracking-widest">تحديد أصناف معينة للتحليل</label>
             <button 
               onClick={() => setShowItemDropdown(!showItemDropdown)} 
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl py-3 px-6 flex items-center justify-between font-black text-readable hover:bg-zinc-900 transition-all overflow-hidden shadow-inner"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl py-3 px-6 flex items-center justify-between font-black text-white hover:bg-zinc-900 transition-all overflow-hidden shadow-inner"
             >
               <div className="flex items-center gap-2 truncate">
                 <Package className="w-5 h-5 text-rose-500 shrink-0" />
@@ -435,9 +433,9 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
             <Calendar className="w-4 h-4 text-zinc-500" />
             <div className="flex items-center gap-3">
               <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">من</span>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-readable focus:text-primary transition-colors" />
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-white focus:text-primary transition-colors" />
               <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">إلى</span>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-readable focus:text-primary transition-colors" />
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-white focus:text-primary transition-colors" />
             </div>
           </div>
         </div>
@@ -453,6 +451,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                 <th className="p-3 border-l border-zinc-800 text-center w-20 print:border-zinc-300">تاريخ</th>
                 <th className="p-3 border-l border-zinc-800 text-center print:border-zinc-300">العميل</th>
                 <th className="p-3 border-l border-zinc-800 text-right w-48 print:border-zinc-300">الأصناف</th>
+                <th className="p-3 border-l border-zinc-800 text-center w-20 text-amber-500 print:border-zinc-300">سعر الوحدة</th>
                 <th className="p-3 border-l border-zinc-800 text-right w-40 print:border-zinc-300">المواد المستخدمة</th>
                 <th className="p-3 border-l border-zinc-800 text-center w-12 print:border-zinc-300">العدد</th>
                 <th className="p-3 border-l border-zinc-800 text-center w-24 print:border-zinc-300">الإجمالي</th>
@@ -465,32 +464,35 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
             <tbody className="divide-y divide-zinc-900 font-bold bg-zinc-950 text-zinc-300 print:bg-white print:text-zinc-900 print:divide-zinc-200">
               {filteredInvoices.map((inv, idx) => (
                 <tr key={inv.id} className="hover:bg-zinc-900 transition-colors h-14 print:hover:bg-white">
-                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-900 print:border-zinc-200">{filteredInvoices.length - idx}</td>
+                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-500 print:border-zinc-200">{filteredInvoices.length - idx}</td>
                   <td className="p-2 border-l border-zinc-900 text-center text-rose-500 font-black print:border-zinc-200">#{inv.invoiceNumber}</td>
-                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-900 print:border-zinc-200">{inv.date}</td>
-                  <td className="p-2 border-l border-zinc-900 text-white truncate max-w-[100px] print:text-zinc-900 print:border-zinc-200">{inv.customerName}</td>
+                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-400 print:border-zinc-200">{inv.date}</td>
+                  <td className="p-2 border-l border-zinc-900 text-zinc-100 truncate max-w-[100px] print:text-zinc-900 print:border-zinc-200">{inv.customerName}</td>
                   <td className="p-2 border-l border-zinc-900 print:border-zinc-200">
                     <div className="flex flex-col gap-0.5 max-h-12 overflow-y-auto">
                       {inv.items.map((it, i) => ( 
-                        <div key={i} className="flex items-center gap-1 truncate text-[10px] text-zinc-900">
+                        <div key={i} className="flex items-center gap-1 truncate text-[10px] text-zinc-100 print:text-zinc-900">
                           • {it.name} ({it.quantity})
                         </div>
                       ))}
                     </div>
                   </td>
+                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-amber-500 print:border-zinc-200">
+                    {inv.items.length === 1 ? inv.items[0].price.toLocaleString() : <span className="text-[8px] text-zinc-500 uppercase">متعدد</span>}
+                  </td>
                   <td className="p-2 border-l border-zinc-900 print:border-zinc-200">
                     <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
-                       {inv.usedMaterials?.map((m, i) => ( <span key={i} className="bg-rose-900/30 text-rose-700 px-1 py-0.5 rounded-sm text-[8px] font-black print:bg-zinc-100 print:text-rose-900">{m.name} ({m.quantity})</span> ))}
+                       {inv.usedMaterials?.map((m, i) => ( <span key={i} className="bg-rose-900/30 text-rose-400 px-1 py-0.5 rounded-sm text-[8px] font-black print:bg-zinc-100 print:text-rose-900">{m.name} ({m.quantity})</span> ))}
                     </div>
                   </td>
-                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-white print:text-zinc-900 print:border-zinc-200">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
+                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-100 print:text-zinc-900 print:border-zinc-200">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
                   <td className="p-2 border-l border-zinc-900 text-center font-black text-rose-500 font-mono text-sm bg-rose-900/10 print:bg-transparent print:border-zinc-200">
                     {inv.totalAmount.toLocaleString()}
                   </td>
-                  <td className="p-2 border-l border-zinc-900 text-[10px] font-black text-zinc-800 leading-tight print:border-zinc-200">
+                  <td className="p-2 border-l border-zinc-900 text-[10px] font-black text-zinc-400 leading-tight print:text-zinc-900 print:border-zinc-200">
                     {inv.totalAmountLiteral}
                   </td>
-                  <td className="p-2 border-l border-zinc-900 text-zinc-800 font-bold italic truncate max-w-[100px] print:border-zinc-200">
+                  <td className="p-2 border-l border-zinc-900 text-zinc-400 font-bold italic truncate max-w-[100px] print:text-zinc-700 print:border-zinc-200">
                     {inv.notes || '-'}
                   </td>
                   <td className="p-2 border-l border-zinc-900 text-center no-print">

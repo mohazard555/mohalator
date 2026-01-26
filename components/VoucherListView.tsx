@@ -74,11 +74,8 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
 
   const handleEdit = (v: CashEntry) => {
     setEditingId(v.id);
-    const amount = (v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD || 0);
-    setFormData({
-      ...v,
-      amount: amount
-    });
+    const amountVal = (v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD || 0);
+    setFormData({ ...v, amount: amountVal });
     const isPrimary = (v.receivedSYP || 0) > 0 || (v.paidSYP || 0) > 0;
     setSelectedCurrencyType(isPrimary ? 'primary' : 'secondary');
     setIsAdding(true);
@@ -120,15 +117,13 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     setEditingId(null);
     loadData();
     resetForm();
-    alert('تم حفظ السند بنجاح');
   };
 
   const handleDelete = (id: string) => {
     if (window.confirm('هل أنت متأكد من حذف هذا السند نهائياً؟')) {
-      const savedVouchers = localStorage.getItem('sheno_cash_journal');
-      if (savedVouchers) {
-        const all: CashEntry[] = JSON.parse(savedVouchers);
-        const updated = all.filter(v => v.id !== id);
+      const savedAll = localStorage.getItem('sheno_cash_journal');
+      if (savedAll) {
+        const updated = JSON.parse(savedAll).filter((v: CashEntry) => v.id !== id);
         localStorage.setItem('sheno_cash_journal', JSON.stringify(updated));
         loadData();
       }
@@ -195,7 +190,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     const displayCurrencyName = isVoucherPrimary ? (settings?.currency || 'ليرة سورية') : (settings?.secondaryCurrency || 'دولار');
 
     return (
-      <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950 flex flex-col items-center p-4 md:p-10 animate-in fade-in" dir="rtl">
+      <div className="min-h-screen bg-zinc-100 flex flex-col items-center p-4 md:p-10 animate-in fade-in" dir="rtl">
         <style>{`
           @media print {
             @page { size: 210mm 148.5mm landscape; margin: 0 !important; }
@@ -209,18 +204,16 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
               display: flex !important;
               flex-direction: column !important;
               background: white !important;
-              border: none !important;
-              box-shadow: none !important;
             }
           }
         `}</style>
         
-        <div className="w-full max-w-xl mb-6 no-print flex justify-between items-center bg-white dark:bg-zinc-900 p-6 rounded-3xl shadow-xl border border-zinc-200 dark:border-zinc-800">
+        <div className="w-full max-w-xl mb-6 no-print flex justify-between items-center bg-white p-6 rounded-3xl shadow-xl border border-zinc-200">
            <button onClick={() => setPrintingVoucher(null)} className="flex items-center gap-2 text-zinc-500 font-black hover:text-rose-900 transition-colors">
               <ArrowRight className="w-5 h-5" /> رجوع
            </button>
            <div className="flex gap-2">
-              <button onClick={handleExportPDF} disabled={isProcessing} className="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg hover:scale-105 transition-all">
+              <button onClick={handleExportPDF} disabled={isProcessing} className="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg">
                 {isProcessing ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <FileDown className="w-5 h-5" />}
                 تصدير PDF
               </button>
@@ -230,7 +223,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
            </div>
         </div>
 
-        <div ref={printableRef} className="print-receipt-half bg-white text-zinc-900 w-[210mm] h-[148.5mm] shadow-2xl flex flex-col p-12 relative overflow-hidden rounded-xl">
+        <div className="print-receipt-half bg-white text-zinc-900 w-[210mm] h-[148.5mm] shadow-2xl flex flex-col p-12 relative overflow-hidden rounded-xl">
           <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none -rotate-12">
              <span className="text-[60px] font-black uppercase text-rose-900">{settings?.companyName}</span>
           </div>
@@ -240,7 +233,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                 <h1 className="text-xl font-black text-rose-900 leading-none">{settings?.companyName}</h1>
                 <div className="text-[10px] font-bold text-zinc-400" dir="ltr">{settings?.phone}</div>
              </div>
-             {settings?.logoUrl ? <img src={settings.logoUrl} className="w-14 h-14 object-contain" alt="Logo" /> : <div className="w-12 h-12 bg-rose-600 rounded-lg flex items-center justify-center text-white font-black text-xl">XO</div>}
+             {settings?.logoUrl && <img src={settings.logoUrl} className="w-14 h-14 object-contain" alt="Logo" />}
           </div>
 
           <div className="text-center mb-8">
@@ -280,7 +273,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
              </div>
           </div>
           <div className="mt-12 pt-6 border-t border-zinc-100 flex justify-between items-end">
-             <div className="flex flex-col items-center">
+             <div className="flex flex-col items-center text-center">
                 <div className="w-32 border-b border-zinc-200 mb-2"></div>
                 <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{type === 'قبض' ? 'المسلم' : 'المستلم'}</span>
              </div>
@@ -297,7 +290,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
 
   return (
     <div className="space-y-6">
-      {/* نموذج الإضافة والتعديل المطور */}
+      {/* نافذة إضافة/تعديل السند */}
       {(isAdding || editingId) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in duration-300">
            <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
@@ -317,11 +310,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div className="flex flex-col gap-1.5">
                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2 flex items-center gap-1"><User className="w-3 h-3" /> الحساب / الطرف</label>
-                       <select 
-                         value={formData.partyName} 
-                         onChange={e => setFormData({...formData, partyName: e.target.value})}
-                         className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-black text-readable outline-none focus:border-rose-900 transition-all appearance-none cursor-pointer"
-                       >
+                       <select value={formData.partyName} onChange={e => setFormData({...formData, partyName: e.target.value})} className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-black text-readable outline-none focus:border-rose-900 transition-all appearance-none cursor-pointer">
                           <option value="">-- اختر الحساب --</option>
                           {parties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                        </select>
@@ -329,34 +318,17 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
 
                     <div className="flex flex-col gap-1.5">
                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2 flex items-center gap-1"><Hash className="w-3 h-3" /> رقم السند (اختياري)</label>
-                       <input 
-                         type="text" 
-                         value={formData.voucherNumber} 
-                         onChange={e => setFormData({...formData, voucherNumber: e.target.value})}
-                         placeholder="تلقائي"
-                         className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-black text-readable outline-none focus:border-rose-900 transition-all"
-                       />
+                       <input type="text" value={formData.voucherNumber} onChange={e => setFormData({...formData, voucherNumber: e.target.value})} placeholder="تلقائي" className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-black text-readable outline-none focus:border-rose-900 transition-all" />
                     </div>
 
                     <div className="flex flex-col gap-1.5">
                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2 flex items-center gap-1"><CalendarIcon className="w-3 h-3" /> التاريخ</label>
-                       <input 
-                         type="date" 
-                         value={formData.date} 
-                         onChange={e => setFormData({...formData, date: e.target.value})}
-                         className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-mono text-readable outline-none focus:border-rose-900 transition-all"
-                       />
+                       <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-mono text-readable outline-none focus:border-rose-900 transition-all" />
                     </div>
 
                     <div className="md:col-span-2 flex flex-col gap-1.5">
                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2 flex items-center gap-1"><MessageSquare className="w-3 h-3" /> البيان / التفاصيل</label>
-                       <input 
-                         type="text" 
-                         value={formData.statement} 
-                         onChange={e => setFormData({...formData, statement: e.target.value})}
-                         placeholder="مثلاً: دفعة عن طلبية رقم 45..."
-                         className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-black text-readable outline-none focus:border-rose-900 transition-all"
-                       />
+                       <input type="text" value={formData.statement} onChange={e => setFormData({...formData, statement: e.target.value})} placeholder="مثلاً: دفعة..." className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-black text-readable outline-none focus:border-rose-900 transition-all" />
                     </div>
 
                     <div className="flex flex-col gap-1.5">
@@ -375,25 +347,91 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  <div className="flex flex-col items-center justify-center p-8 bg-zinc-50 dark:bg-zinc-950 border-2 border-dashed dark:border-zinc-800 rounded-[2rem] gap-4">
                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em]">المبلغ الصافي</span>
                     <div className="relative group w-full max-w-sm">
-                       <input 
-                         type="number" 
-                         value={formData.amount} 
-                         onChange={e => setFormData({...formData, amount: Number(e.target.value)})}
-                         className="w-full bg-transparent border-b-4 border-zinc-200 dark:border-zinc-800 text-center text-6xl font-mono font-black text-readable outline-none focus:border-rose-900 transition-all"
-                         autoFocus
-                       />
+                       <input type="number" value={formData.amount} onChange={e => setFormData({...formData, amount: Number(e.target.value)})} className="w-full bg-transparent border-b-4 border-zinc-200 dark:border-zinc-800 text-center text-6xl font-mono font-black text-readable outline-none focus:border-rose-900 transition-all" autoFocus />
                        <div className="absolute right-0 top-1/2 -translate-y-1/2 text-zinc-300 font-black text-2xl uppercase">{selectedCurrencyType === 'primary' ? settings?.currencySymbol : settings?.secondaryCurrencySymbol}</div>
                     </div>
-                    <div className="text-sm font-black text-rose-900 dark:text-rose-500 italic">
+                    <div className="text-sm font-black text-rose-900 dark:text-rose-500 italic text-center">
                        {tafqeet(formData.amount || 0, selectedCurrencyType === 'primary' ? settings?.currency || 'ليرة' : settings?.secondaryCurrency || 'دولار')}
                     </div>
                  </div>
               </div>
 
               <div className="bg-zinc-50 dark:bg-zinc-800/50 p-6 flex justify-end gap-3 border-t dark:border-zinc-800">
-                 <button onClick={handleSave} className="bg-rose-900 text-white px-16 py-4 rounded-2xl font-black shadow-xl hover:scale-105 active:scale-95 transition-all text-lg flex items-center gap-3">
+                 <button onClick={handleSave} className="bg-rose-900 text-white px-16 py-4 rounded-2xl font-black shadow-xl hover:scale-105 transition-all text-lg flex items-center gap-3">
                     <Save className="w-6 h-6" /> {editingId ? 'تحديث السند' : 'حفظ السند المالي'}
                  </button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {showCustomerReport && (
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
+           <div className="bg-zinc-900/50 w-full max-w-6xl rounded-[3rem] border border-zinc-800 shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[95vh]">
+              <div ref={reportRef} className="printable-report flex flex-col bg-white min-h-full">
+                <div className="flex justify-between items-center bg-zinc-900 p-5 text-white border-b-4 border-rose-900 rounded-b-2xl">
+                  <div className="flex items-center gap-4">
+                      {settings?.logoUrl && <img src={settings.logoUrl} className="w-14 h-14 object-contain bg-white p-1 rounded-xl" />}
+                      <div>
+                        <h1 className="text-xl font-black leading-none">{settings?.companyName}</h1>
+                        <p className="text-[8px] font-bold opacity-60 tracking-[0.2em] mt-1 uppercase">{settings?.companyType}</p>
+                      </div>
+                  </div>
+                  <div className="text-center">
+                      <h2 className="text-xl font-black underline underline-offset-4 decoration-rose-600">تقرير كشف حساب مالي</h2>
+                      <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest block mt-1">{reportParty}</span>
+                  </div>
+                  <div className="text-left text-[9px] font-bold space-y-0.5 opacity-70">
+                      <p>{settings?.address}</p>
+                      <p dir="ltr">{new Date().toLocaleDateString('ar-SA')}</p>
+                  </div>
+                </div>
+                <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
+                   {reportParty && (
+                      <>
+                        <div className="flex flex-row items-stretch gap-4">
+                            <div className="flex-1 bg-white border-2 border-zinc-100 p-4 rounded-2xl flex flex-col items-center justify-center">
+                              <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">إجمالي المسحوبات</span>
+                              <span className="text-2xl font-mono font-black text-zinc-900">{due.toLocaleString()}</span>
+                            </div>
+                            <div className="flex-1 bg-white border-2 border-zinc-100 p-4 rounded-2xl flex flex-col items-center justify-center">
+                              <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">إجمالي المدفوعات</span>
+                              <span className="text-2xl font-mono font-black text-emerald-600">{paid.toLocaleString()}</span>
+                            </div>
+                            <div className="flex-1 bg-rose-50 border-2 border-rose-100 p-4 rounded-2xl flex flex-col items-center justify-center">
+                              <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">الرصيد المتبقي</span>
+                              <span className="text-3xl font-mono font-black text-rose-600">{(due - paid).toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <div className="border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
+                            <table className="w-full text-right border-collapse text-xs">
+                              <thead>
+                                  <tr className="bg-zinc-50 text-zinc-500 font-black h-10 border-b">
+                                    <th className="p-3 border-l w-28">التاريخ</th>
+                                    <th className="p-3 border-l w-24 text-center">رقم السند</th>
+                                    <th className="p-3 border-l">البيان / الملاحظات</th>
+                                    <th className="p-3 text-center w-40">القيمة</th>
+                                  </tr>
+                              </thead>
+                              <tbody className="divide-y font-bold">
+                                  {reportVouchers.map(v => (
+                                    <tr key={v.id} className="h-10 hover:bg-zinc-50">
+                                        <td className="p-3 border-l font-mono text-[10px] text-zinc-400">{v.date}</td>
+                                        <td className="p-3 border-l text-center font-black">#{v.voucherNumber || '---'}</td>
+                                        <td className="p-3 border-l text-zinc-600">{v.statement}</td>
+                                        <td className="p-3 text-center font-mono font-black text-base text-emerald-600">{(v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD).toLocaleString()}</td>
+                                    </tr>
+                                  ))}
+                              </tbody>
+                            </table>
+                        </div>
+                      </>
+                   )}
+                </div>
+              </div>
+
+              <div className="bg-zinc-950 p-6 border-t border-zinc-800 flex justify-end gap-3 shrink-0 no-print">
+                 <button onClick={() => window.print()} className="bg-zinc-800 text-zinc-400 px-8 py-3 rounded-2xl font-bold hover:text-zinc-200">إغلاق</button>
               </div>
            </div>
         </div>
@@ -413,13 +451,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
       <div className="bg-zinc-900 p-4 rounded-3xl border border-zinc-800 flex items-center gap-4 no-print">
         <div className="relative flex-1">
           <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-600 w-5 h-5" />
-          <input 
-            type="text" 
-            placeholder="بحث سريع في السندات (رقم، حساب، بيان)..." 
-            className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl py-3.5 pr-14 outline-none font-bold text-white focus:border-rose-900 transition-all" 
-            value={searchTerm} 
-            onChange={e => setSearchTerm(e.target.value)} 
-          />
+          <input type="text" placeholder="بحث سريع..." className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl py-3.5 pr-14 outline-none font-bold text-white focus:border-rose-900 transition-all" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
         </div>
       </div>
 
@@ -437,9 +469,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-900">
-              {currentFilteredList.length === 0 ? (
-                <tr><td colSpan={6} className="p-20 text-center italic text-zinc-700 font-bold">لا يوجد سندات</td></tr>
-              ) : currentFilteredList.map(v => (
+              {currentFilteredList.map(v => (
                   <tr key={v.id} className="hover:bg-rose-900/5 transition-all group h-14">
                     <td className="p-4 text-center font-mono font-black text-rose-900/80">#{v.voucherNumber || v.id.slice(0, 4)}</td>
                     <td className="p-4 text-center font-mono text-zinc-600">{v.date}</td>
