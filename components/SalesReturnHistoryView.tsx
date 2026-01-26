@@ -1,16 +1,17 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Printer, Search, FileDown, Clock, Calendar, Package, FileText } from 'lucide-react';
+import { ArrowRight, Printer, Search, FileDown, Clock, Calendar, Package, FileText, Edit2, Trash2 } from 'lucide-react';
 import { exportToCSV } from '../utils/export';
-import { AppSettings } from '../types';
+import { AppSettings, StockEntry, CashEntry } from '../types';
 
 declare var html2pdf: any;
 
 interface SalesReturnHistoryViewProps {
   onBack: () => void;
+  onEdit?: (ret: any) => void;
 }
 
-const SalesReturnHistoryView: React.FC<SalesReturnHistoryViewProps> = ({ onBack }) => {
+const SalesReturnHistoryView: React.FC<SalesReturnHistoryViewProps> = ({ onBack, onEdit }) => {
   const reportRef = useRef<HTMLDivElement>(null);
   const [returns, setReturns] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,11 +20,38 @@ const SalesReturnHistoryView: React.FC<SalesReturnHistoryViewProps> = ({ onBack 
   const [settings, setSettings] = useState<AppSettings | null>(null);
 
   useEffect(() => {
-    const savedReturns = localStorage.getItem('sheno_sales_returns');
+    loadData();
     const savedSettings = localStorage.getItem('sheno_settings');
-    if (savedReturns) setReturns(JSON.parse(savedReturns));
     if (savedSettings) setSettings(JSON.parse(savedSettings));
   }, []);
+
+  const loadData = () => {
+    const savedReturns = localStorage.getItem('sheno_sales_returns');
+    if (savedReturns) setReturns(JSON.parse(savedReturns));
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('هل أنت متأكد من حذف سجل المرتجع هذا نهائياً؟ سيتم إلغاء أثره المالي والمخزني.')) {
+      // 1. Remove from returns list
+      const updatedReturns = returns.filter(r => r.id !== id);
+      setReturns(updatedReturns);
+      localStorage.setItem('sheno_sales_returns', JSON.stringify(updatedReturns));
+
+      // 2. Remove associated movements from stock
+      const stock = localStorage.getItem('sheno_stock_entries');
+      if (stock) {
+        const entries: StockEntry[] = JSON.parse(stock);
+        localStorage.setItem('sheno_stock_entries', JSON.stringify(entries.filter(e => e.movementCode !== id)));
+      }
+
+      // 3. Remove associated entries from cash
+      const cash = localStorage.getItem('sheno_cash_journal');
+      if (cash) {
+        const entries: CashEntry[] = JSON.parse(cash);
+        localStorage.setItem('sheno_cash_journal', JSON.stringify(entries.filter(e => e.voucherNumber !== id)));
+      }
+    }
+  };
 
   const filtered = returns.filter(ret => {
     const matchSearch = ret.customerName.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -125,11 +153,12 @@ const SalesReturnHistoryView: React.FC<SalesReturnHistoryViewProps> = ({ onBack 
                 <th className="p-3 border-l text-center w-12">العدد</th>
                 <th className="p-3 border-l text-center w-24">إجمالي القيمة</th>
                 <th className="p-3 text-right">ملاحظات</th>
+                <th className="p-3 text-center w-24 no-print">إجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y font-bold">
               {filtered.map((ret, idx) => (
-                <tr key={ret.id} className="hover:bg-rose-50 transition-colors h-12">
+                <tr key={ret.id} className="hover:bg-rose-50 transition-colors h-12 group">
                   <td className="p-3 border-l text-center font-mono text-zinc-900">{filtered.length - idx}</td>
                   <td className="p-3 border-l text-center text-rose-700 font-black">#{ret.invoiceNumber}</td>
                   <td className="p-3 border-l text-center font-mono text-zinc-900">{ret.date}</td>
@@ -144,6 +173,12 @@ const SalesReturnHistoryView: React.FC<SalesReturnHistoryViewProps> = ({ onBack 
                   <td className="p-3 border-l text-center font-mono font-black text-zinc-900">{ret.items.reduce((s: number,i: any) => s + i.quantity, 0)}</td>
                   <td className="p-3 border-l text-center font-black text-rose-600 font-mono">{ret.totalReturnAmount.toLocaleString()}</td>
                   <td className="p-3 text-zinc-700 font-normal italic truncate max-w-[100px]">{ret.notes || '-'}</td>
+                  <td className="p-3 text-center no-print">
+                    <div className="flex justify-center gap-1 opacity-40 group-hover:opacity-100 transition-all">
+                      <button onClick={() => onEdit?.(ret)} className="p-2 text-zinc-400 hover:text-amber-500 transition-colors" title="تعديل"><Edit2 className="w-4 h-4"/></button>
+                      <button onClick={() => handleDelete(ret.id)} className="p-2 text-zinc-400 hover:text-rose-500 transition-colors" title="حذف"><Trash2 className="w-4 h-4"/></button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

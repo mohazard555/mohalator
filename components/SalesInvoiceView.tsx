@@ -41,6 +41,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
   const [manualItem, setManualItem] = useState({ name: '', quantity: 1, price: 0, serialNumber: '', image: '' });
   const [usedMaterial, setUsedMaterial] = useState({ code: '', name: '', quantity: 1 });
 
+  // Load Initial Data
   useEffect(() => {
     const savedInv = localStorage.getItem('sheno_sales_invoices');
     const savedParties = localStorage.getItem('sheno_parties');
@@ -57,29 +58,27 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     if (savedInventory) {
        const baseItems: InventoryItem[] = JSON.parse(savedInventory);
        const entries: StockEntry[] = savedEntries ? JSON.parse(savedEntries) : [];
-
        const updatedInventory = baseItems.map(item => {
          const itemEntries = entries.filter(e => e.itemCode === item.code);
          const added = itemEntries.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
          const issued = itemEntries.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
          const returned = itemEntries.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
-         
-         return {
-           ...item,
-           currentBalance: (item.openingStock || 0) + added - issued + returned
-         };
+         return { ...item, currentBalance: (item.openingStock || 0) + added - issued + returned };
        });
        setInventory(updatedInventory);
     }
-    
     if (savedSettings) setSettings(JSON.parse(savedSettings));
 
-    if (initialInvoice) {
+    // Handle Edit Mode from props once
+    if (initialInvoice && !editingId) {
       setEditingId(initialInvoice.id);
       setNewInvoice(initialInvoice);
       setIsAdding(true);
+      if (initialInvoice.currencySymbol === (JSON.parse(savedSettings || '{}').secondaryCurrencySymbol)) {
+         setSelectedCurrencyType('secondary');
+      }
     }
-  }, [isAdding, initialInvoice]);
+  }, [initialInvoice]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -152,12 +151,16 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     const updated = editingId ? invoices.map(i => i.id === editingId ? invoice : i) : [invoice, ...invoices];
     setInvoices(updated);
     localStorage.setItem('sheno_sales_invoices', JSON.stringify(updated));
+    
+    // Reset and Close
     setIsAdding(false);
     setEditingId(null);
     setNewInvoice({
       invoiceNumber: '', customerName: '', date: new Date().toISOString().split('T')[0],
       items: [], usedMaterials: [], notes: '', paidAmount: 0, paymentType: 'نقداً'
     });
+    
+    if (initialInvoice) onBack(); // الرجوع للسجل إذا كان تعديلاً قادماً من هناك
   };
 
   const handleDelete = (id: string) => {
@@ -192,6 +195,16 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
 
   const toggleItemSelection = (name: string) => {
     setSelectedItems(prev => prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]);
+  };
+
+  const handleCancelEdit = () => {
+    setIsAdding(false);
+    setEditingId(null);
+    setNewInvoice({
+      invoiceNumber: '', customerName: '', date: new Date().toISOString().split('T')[0],
+      items: [], usedMaterials: [], notes: '', paidAmount: 0, paymentType: 'نقداً'
+    });
+    if (initialInvoice) onBack();
   };
 
   return (
@@ -259,7 +272,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
               {editingId ? <Edit2 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
               {editingId ? 'تعديل فاتورة مبيعات' : 'إنشاء فاتورة مبيعات جديدة'}
             </h3>
-            <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="text-zinc-400 hover:text-rose-500 transition-colors"><X className="w-6 h-6" /></button>
+            <button onClick={handleCancelEdit} className="text-zinc-400 hover:text-rose-500 transition-colors"><X className="w-6 h-6" /></button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
@@ -371,7 +384,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
 
           <div className="flex justify-end gap-3 pt-6 border-t border-zinc-100 dark:border-zinc-800">
              <button onClick={handleSaveInvoice} className="bg-primary text-white px-16 py-4 rounded-2xl font-black shadow-2xl hover:scale-105 transition-all text-lg">{editingId ? 'تحديث الفاتورة' : 'تثبيت وحفظ الفاتورة'}</button>
-             <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-10 py-4 rounded-2xl font-bold">إلغاء</button>
+             <button onClick={handleCancelEdit} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-10 py-4 rounded-2xl font-bold">إلغاء</button>
           </div>
         </div>
       )}

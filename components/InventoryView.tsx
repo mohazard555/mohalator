@@ -250,10 +250,10 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
       )}
 
       {/* Main Container for PDF Ref */}
-      <div ref={reportRef} className="inventory-report-container bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl p-4 md:p-8 print:p-0 print:border-none print:shadow-none">
+      <div ref={reportRef} className="inventory-report-container bg-black rounded-3xl border border-zinc-800 overflow-hidden shadow-2xl p-4 md:p-8 print:p-0 print:border-none print:shadow-none">
         
         {/* Professional Print Header (XO Style) */}
-        <div className="hidden print:flex flex-row justify-between items-start mb-6 border-b-2 border-emerald-600 pb-4 print-header-xo">
+        <div className="hidden print:flex flex-row justify-between items-start mb-6 border-b-2 border-emerald-600 pb-4 print-header-xo bg-white p-4 rounded-xl">
            <div className="flex flex-col gap-1">
               <div className="flex items-center gap-3">
                  {settings?.logoUrl ? (
@@ -286,37 +286,37 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse text-sm">
             <thead>
-              <tr className="bg-emerald-600 text-[10px] text-white font-black uppercase tracking-widest border-b border-emerald-700 h-12 print:bg-emerald-700 print:text-white">
-                <th className="p-4 border-l border-emerald-700">كود</th>
-                <th className="p-4 border-l border-emerald-700">المادة</th>
-                <th className="p-4 border-l border-emerald-700">المستودع</th>
-                <th className="p-4 border-l border-emerald-700">الوحدة</th>
-                <th className="p-4 border-l border-emerald-700 text-center">السعر</th>
-                <th className="p-4 border-l border-emerald-700 text-center">أول المدة</th>
-                <th className="p-4 border-l border-emerald-700 text-center">الإضافات</th>
-                <th className="p-4 border-l border-emerald-700 text-center">الصرف</th>
-                <th className="p-4 border-l border-emerald-700 text-center">المرتجع</th>
-                <th className="p-4 text-center font-black bg-emerald-700 print:bg-emerald-900">الرصيد الكلي</th>
-                <th className="p-4 text-center no-print">إجراءات</th>
+              <tr className="bg-zinc-900 text-[10px] text-white font-black uppercase tracking-widest border-b border-zinc-800 h-12 print:bg-emerald-700 print:text-white">
+                <th className="p-4 border-l border-zinc-800">كود</th>
+                <th className="p-4 border-l border-zinc-800">المادة</th>
+                <th className="p-4 border-l border-zinc-800">المستودع</th>
+                <th className="p-4 border-l border-zinc-800">الوحدة</th>
+                <th className="p-4 border-l border-zinc-800 text-center">السعر</th>
+                <th className="p-4 border-l border-zinc-800 text-center">أول المدة</th>
+                <th className="p-4 border-l border-zinc-800 text-center">الإضافات</th>
+                <th className="p-4 border-l border-zinc-800 text-center">الصرف</th>
+                <th className="p-4 border-l border-zinc-800 text-center">المرتجع</th>
+                <th className="p-4 text-center font-black bg-zinc-800 print:bg-emerald-900">الرصيد الكلي</th>
+                <th className="p-4 text-center no-print border-l border-zinc-800">إجراءات</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:divide-zinc-300 print:text-zinc-900 bg-white">
+            <tbody className="divide-y divide-zinc-800 font-bold bg-black text-zinc-300 print:bg-white print:text-zinc-900 print:divide-zinc-300">
               {filteredItems.map((item) => (
-                <tr key={item.id} className="hover:bg-emerald-50 dark:hover:bg-zinc-800/30 transition-colors">
-                  <td className="p-4 font-mono text-emerald-600 border-l dark:border-zinc-800 print:border-zinc-200">{item.code}</td>
-                  <td className="p-4 border-l dark:border-zinc-800 print:border-zinc-200">{item.name}</td>
-                  <td className="p-4 border-l dark:border-zinc-800 print:border-zinc-200 text-xs text-zinc-500">{item.warehouse}</td>
-                  <td className="p-4 border-l dark:border-zinc-800 print:border-zinc-200 text-xs text-zinc-500">{item.unit}</td>
-                  <td className="p-4 text-center font-mono border-l dark:border-zinc-800 print:border-zinc-200 text-amber-600">{item.price.toLocaleString()}</td>
-                  <td className="p-4 text-center font-mono border-l dark:border-zinc-800 print:border-zinc-200">{item.openingStock.toLocaleString()}</td>
-                  <td className="p-4 text-center font-mono text-emerald-600 border-l dark:border-zinc-800 print:border-zinc-200">+{item.added.toLocaleString()}</td>
-                  <td className="p-4 text-center font-mono text-rose-600 border-l dark:border-zinc-800 print:border-zinc-200">-{item.issued.toLocaleString()}</td>
-                  <td className="p-4 text-center font-mono text-amber-500 border-l dark:border-zinc-800 print:border-zinc-200">+{item.returned.toLocaleString()}</td>
-                  <td className={`p-4 text-center font-mono text-lg border-l dark:border-zinc-800 print:border-zinc-200 ${item.currentBalance < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>{item.currentBalance.toLocaleString()}</td>
-                  <td className="p-4 no-print">
+                <tr key={item.id} className="hover:bg-zinc-900/50 transition-colors border-b border-zinc-900">
+                  <td className="p-4 font-mono text-emerald-500 border-l border-zinc-900 print:border-zinc-200">{item.code}</td>
+                  <td className="p-4 border-l border-zinc-900 print:border-zinc-200 text-white">{item.name}</td>
+                  <td className="p-4 border-l border-zinc-900 print:border-zinc-200 text-xs text-zinc-500">{item.warehouse}</td>
+                  <td className="p-4 border-l border-zinc-900 print:border-zinc-200 text-xs text-zinc-500">{item.unit}</td>
+                  <td className="p-4 text-center font-mono border-l border-zinc-900 print:border-zinc-200 text-amber-500">{item.price.toLocaleString()}</td>
+                  <td className="p-4 text-center font-mono border-l border-zinc-900 print:border-zinc-200 text-zinc-400">{item.openingStock.toLocaleString()}</td>
+                  <td className="p-4 text-center font-mono text-emerald-600 border-l border-zinc-900 print:border-zinc-200">+{item.added.toLocaleString()}</td>
+                  <td className="p-4 text-center font-mono text-rose-500 border-l border-zinc-900 print:border-zinc-200">-{item.issued.toLocaleString()}</td>
+                  <td className="p-4 text-center font-mono text-amber-500 border-l border-zinc-900 print:border-zinc-200">+{item.returned.toLocaleString()}</td>
+                  <td className={`p-4 text-center font-mono text-lg border-l border-zinc-900 print:border-zinc-200 ${item.currentBalance < 0 ? 'text-rose-600' : 'text-emerald-400 font-black'}`}>{item.currentBalance.toLocaleString()}</td>
+                  <td className="p-4 no-print border-l border-zinc-900">
                      <div className="flex justify-center gap-2">
-                        <button onClick={() => { setEditingId(item.id); setFormData({...item, currentInputQty: 0}); setIsAdding(true); }} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-500"><Edit2 className="w-4 h-4" /></button>
-                        <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-rose-500/10 rounded-lg text-rose-500"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => { setEditingId(item.id); setFormData({...item, currentInputQty: 0}); setIsAdding(true); }} className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-500 transition-colors"><Edit2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-rose-900/20 rounded-lg text-rose-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                      </div>
                   </td>
                 </tr>
@@ -326,7 +326,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
         </div>
 
         {/* Footer for print */}
-        <div className="hidden print:flex flex-row justify-between items-end mt-12 pt-6 border-t border-zinc-100 text-zinc-400">
+        <div className="hidden print:flex flex-row justify-between items-end mt-12 pt-6 border-t border-zinc-100 text-zinc-400 bg-white">
            <div className="flex flex-col">
               <span className="text-[10px] font-black uppercase tracking-widest">المسؤول عن الجرد | SIGNATURE</span>
               <div className="w-48 border-b-2 border-zinc-200 mt-8"></div>

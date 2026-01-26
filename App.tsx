@@ -166,7 +166,12 @@ const App: React.FC = () => {
                 onEdit={handleEditFromHistory}
               />
             );
-            case AppView.SALES_RETURN_HISTORY: return <SalesReturnHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.SALES_RETURN_HISTORY: return (
+              <SalesReturnHistoryView 
+                onBack={() => setCurrentView(AppView.DASHBOARD)} 
+                onEdit={() => setCurrentView(AppView.SALES_RETURN)}
+              />
+            );
             case AppView.PURCHASE_HISTORY: return <PurchaseHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.PURCHASE_RETURN_HISTORY: return <PurchaseReturnHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.PROFESSIONAL_INVOICE: return <ProfessionalInvoiceView onBack={() => setCurrentView(AppView.DASHBOARD)} settings={settings} />;
