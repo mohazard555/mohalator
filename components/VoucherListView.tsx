@@ -175,7 +175,8 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
         useCORS: true,
         letterRendering: false,
         scrollY: 0,
-        scrollX: 0
+        scrollX: 0,
+        windowWidth: 1200 // ضبط عرض نافذة التصدير لضمان عدم القص
       },
       jsPDF: { 
         unit: 'mm', 
@@ -233,7 +234,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     const displayCurrencyName = isVoucherPrimary ? (settings?.currency || 'ليرة سورية') : (settings?.secondaryCurrency || 'دولار');
 
     return (
-      <div className="min-h-screen bg-zinc-100 flex flex-col items-center p-4 md:p-10 animate-in fade-in" dir="rtl">
+      <div className="min-h-screen bg-zinc-200 flex flex-col items-center p-4 md:p-10 animate-in fade-in" dir="rtl">
         <style>{`
           @media print {
             @page { size: 210mm 148.5mm landscape; margin: 0 !important; }
@@ -243,15 +244,26 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
               width: 210mm !important; 
               height: 148.5mm !important; 
               margin: 0 !important; 
-              padding: 12mm !important; 
+              padding: 0 !important; 
               box-sizing: border-box !important;
               display: flex !important;
               flex-direction: column !important;
               background: white !important;
               border: none !important;
               box-shadow: none !important;
+              position: absolute !important;
+              top: 0 !important;
+              right: 0 !important;
             }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          }
+          .receipt-inner-container {
+             box-sizing: border-box;
+             width: 100%;
+             height: 100%;
+             padding: 10mm;
+             display: flex;
+             flex-direction: column;
           }
         `}</style>
         
@@ -269,72 +281,86 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
            </div>
         </div>
 
-        <div ref={printableRef} className="print-receipt-half bg-white text-zinc-900 w-[210mm] h-[148.5mm] shadow-2xl flex flex-col p-12 relative overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none -rotate-12">
-             <span className="text-[60px] font-black uppercase text-rose-900">{settings?.companyName}</span>
-          </div>
+        <div ref={printableRef} className="print-receipt-half bg-white text-zinc-900 w-[210mm] h-[148.5mm] shadow-2xl flex flex-col relative overflow-hidden">
+          <div className="receipt-inner-container">
+            {/* Watermark */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-[0.04] pointer-events-none -rotate-12">
+               <span className="text-[70px] font-black uppercase text-rose-900 leading-none text-center">
+                 {settings?.companyName}<br/><span className="text-xl">SECURED SYSTEM</span>
+               </span>
+            </div>
 
-          <div className="flex justify-between items-start mb-8 border-b-2 border-rose-900 pb-4">
-             <div className="flex flex-col gap-1">
-                <h1 className="text-xl font-black text-rose-900 leading-none">{settings?.companyName}</h1>
-                <div className="text-[10px] font-bold text-zinc-400" dir="ltr">{settings?.phone}</div>
-             </div>
-             {settings?.logoUrl ? <img src={settings.logoUrl} className="w-14 h-14 object-contain" alt="Logo" /> : <div className="w-12 h-12 bg-rose-600 rounded-lg flex items-center justify-center text-white font-black text-xl">XO</div>}
-          </div>
+            {/* Header */}
+            <div className="flex justify-between items-start mb-6 border-b-2 border-rose-900 pb-4">
+               <div className="flex flex-col gap-1">
+                  <h1 className="text-2xl font-black text-rose-900 leading-none">{settings?.companyName}</h1>
+                  <div className="text-[10px] font-bold text-zinc-400" dir="ltr">{settings?.phone}</div>
+               </div>
+               {settings?.logoUrl ? (
+                 <img src={settings.logoUrl} className="w-14 h-14 object-contain" alt="Logo" />
+               ) : (
+                 <div className="w-12 h-12 bg-rose-600 rounded-lg flex items-center justify-center text-white font-black text-xl shadow-lg">XO</div>
+               )}
+            </div>
 
-          <div className="text-center mb-8">
-             <h2 className="text-3xl font-black text-rose-900">سند {type} مالي</h2>
-             <div className="flex items-center justify-center gap-10 mt-2 border-t border-zinc-50 pt-2">
-                <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">رقم السند: {printingVoucher.voucherNumber || printingVoucher.id.slice(0, 6).toUpperCase()}</span>
-                <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">التاريخ: {printingVoucher.date}</span>
-             </div>
-          </div>
+            {/* Title Section */}
+            <div className="text-center mb-6">
+               <h2 className="text-4xl font-black text-rose-900 tracking-tight">سند {type} مالي</h2>
+               <div className="flex items-center justify-center gap-10 mt-3 border-t border-zinc-100 pt-2">
+                  <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">رقم السند: {printingVoucher.voucherNumber || printingVoucher.id.slice(0, 6).toUpperCase()}</span>
+                  <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">التاريخ: {printingVoucher.date}</span>
+               </div>
+            </div>
 
-          <div className="flex-1 space-y-10 pt-4">
-             <div className="space-y-2 border-b-2 border-zinc-50 pb-2">
-                <span className="text-rose-900 font-black text-sm uppercase">{type === 'قبض' ? 'استلمنا من السيد' : 'دفعنا إلى السيد'}:</span>
-                <div className="text-3xl font-black text-zinc-800 italic leading-none">{printingVoucher.partyName}</div>
-             </div>
+            {/* Main Content Areas */}
+            <div className="flex-1 space-y-8 pt-2">
+               <div className="space-y-1.5 border-b border-zinc-100 pb-2">
+                  <span className="text-rose-900 font-black text-xs uppercase tracking-wider">{type === 'قبض' ? 'استلمنا من السيد' : 'دفعنا إلى السيد'}:</span>
+                  <div className="text-3xl font-black text-zinc-800 italic leading-none">{printingVoucher.partyName}</div>
+               </div>
 
-             <div className="space-y-2 border-b-2 border-zinc-50 pb-2">
-                <span className="text-rose-900 font-black text-sm uppercase">مبلغاً وقدره:</span>
-                <div className="text-lg font-black text-zinc-600 leading-relaxed italic">
-                   {tafqeet(displayAmount || 0, displayCurrencyName)}
-                </div>
-             </div>
+               <div className="space-y-1.5 border-b border-zinc-100 pb-2">
+                  <span className="text-rose-900 font-black text-xs uppercase tracking-wider">مبلغاً وقدره:</span>
+                  <div className="text-lg font-black text-zinc-600 leading-relaxed italic">
+                     {tafqeet(displayAmount || 0, displayCurrencyName)}
+                  </div>
+               </div>
 
-             <div className="space-y-2 border-b-2 border-zinc-50 pb-2">
-                <span className="text-rose-900 font-black text-sm uppercase">وذلك عن:</span>
-                <div className="text-lg font-bold text-zinc-500 leading-relaxed">
-                   {printingVoucher.statement}
-                </div>
-             </div>
-          </div>
+               <div className="space-y-1.5 border-b border-zinc-100 pb-2">
+                  <span className="text-rose-900 font-black text-xs uppercase tracking-wider">وذلك عن:</span>
+                  <div className="text-xl font-bold text-zinc-500 leading-relaxed">
+                     {printingVoucher.statement}
+                  </div>
+               </div>
+            </div>
 
-          <div className="flex justify-center mt-6">
-             <div className="bg-zinc-50 border-2 border-rose-900 rounded-3xl px-16 py-4 flex flex-col items-center min-w-[280px] shadow-sm">
-                <div className="text-[10px] font-black text-rose-900 uppercase tracking-widest mb-1">المبلغ الصافي | TOTAL</div>
-                <div className="flex items-center gap-4">
-                   <span className="text-5xl font-black font-mono tracking-tighter text-zinc-900">{displayAmount?.toLocaleString()}</span>
-                   <span className="text-xl font-black text-zinc-400 uppercase">{displayCurrencySymbol}</span>
-                </div>
-             </div>
-          </div>
+            {/* Amount Box */}
+            <div className="flex justify-center my-4">
+               <div className="bg-zinc-50 border-4 border-rose-900 rounded-[2rem] px-16 py-4 flex flex-col items-center min-w-[320px] shadow-lg">
+                  <div className="text-[10px] font-black text-rose-900 uppercase tracking-[0.2em] mb-1">المبلغ الصافي | TOTAL AMOUNT</div>
+                  <div className="flex items-center gap-4">
+                     <span className="text-6xl font-black font-mono tracking-tighter text-zinc-900">{displayAmount?.toLocaleString()}</span>
+                     <span className="text-2xl font-black text-zinc-400 uppercase">{displayCurrencySymbol}</span>
+                  </div>
+               </div>
+            </div>
 
-          <div className="mt-12 pt-6 border-t border-zinc-100 flex justify-between items-end">
-             <div className="flex flex-col items-center">
-                <div className="w-32 border-b border-zinc-200 mb-2"></div>
-                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{type === 'قبض' ? 'المسلم' : 'المستلم'}</span>
-             </div>
-             <div className="flex flex-col items-center text-center">
-                <div className="text-xs font-black text-zinc-800 mb-1">{settings?.accountantName}</div>
-                <div className="w-32 border-b border-rose-900 mb-2"></div>
-                <span className="text-[9px] font-black text-rose-900 uppercase tracking-widest">توقيع المحاسب</span>
-             </div>
-          </div>
-          
-          <div className="absolute bottom-4 left-0 right-0 text-center">
-             <span className="text-[7px] font-bold text-zinc-300 italic opacity-40 uppercase tracking-[0.6em]">SAMLATOR SECURED LEDGER SYSTEM V3.5</span>
+            {/* Signatures */}
+            <div className="mt-auto pt-6 border-t border-zinc-100 flex justify-between items-end">
+               <div className="flex flex-col items-center">
+                  <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-10">توقيع {type === 'قبض' ? 'المسلم' : 'المستلم'}</span>
+                  <div className="w-32 border-b border-zinc-200"></div>
+               </div>
+               <div className="flex flex-col items-center text-center">
+                  <div className="text-[11px] font-black text-zinc-800 mb-1">{settings?.accountantName}</div>
+                  <div className="w-32 border-b-2 border-rose-900 mb-2"></div>
+                  <span className="text-[9px] font-black text-rose-900 uppercase tracking-widest">توقيع المحاسب المعتمد</span>
+               </div>
+            </div>
+            
+            <div className="absolute bottom-3 left-0 right-0 text-center">
+               <span className="text-[7px] font-bold text-zinc-300 italic opacity-40 uppercase tracking-[0.6em]">SAMLATOR SECURED LEDGER SYSTEM V3.5</span>
+            </div>
           </div>
         </div>
       </div>
@@ -343,7 +369,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
 
   return (
     <div className="space-y-6">
-      {/* نافذة إضافة/تعديل السند المفقودة */}
       {(isAdding || editingId) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in duration-300">
            <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
