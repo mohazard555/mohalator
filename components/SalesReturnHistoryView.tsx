@@ -32,19 +32,16 @@ const SalesReturnHistoryView: React.FC<SalesReturnHistoryViewProps> = ({ onBack,
 
   const handleDelete = (id: string) => {
     if (window.confirm('هل أنت متأكد من حذف سجل المرتجع هذا نهائياً؟ سيتم إلغاء أثره المالي والمخزني.')) {
-      // 1. Remove from returns list
       const updatedReturns = returns.filter(r => r.id !== id);
       setReturns(updatedReturns);
       localStorage.setItem('sheno_sales_returns', JSON.stringify(updatedReturns));
 
-      // 2. Remove associated movements from stock
       const stock = localStorage.getItem('sheno_stock_entries');
       if (stock) {
         const entries: StockEntry[] = JSON.parse(stock);
         localStorage.setItem('sheno_stock_entries', JSON.stringify(entries.filter(e => e.movementCode !== id)));
       }
 
-      // 3. Remove associated entries from cash
       const cash = localStorage.getItem('sheno_cash_journal');
       if (cash) {
         const entries: CashEntry[] = JSON.parse(cash);
@@ -119,7 +116,6 @@ const SalesReturnHistoryView: React.FC<SalesReturnHistoryViewProps> = ({ onBack,
       </div>
 
       <div ref={reportRef} className="bg-white p-6 md:p-8 rounded-3xl border border-zinc-200 shadow-sm print:shadow-none print:border-rose-900 print:rounded-none">
-        {/* Report Header for PDF */}
         <div className="flex justify-between items-center bg-rose-900 p-6 rounded-t-xl text-white mb-6 border-b-0 print:m-0">
           <div className="flex items-center gap-4">
             {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
@@ -144,39 +140,39 @@ const SalesReturnHistoryView: React.FC<SalesReturnHistoryViewProps> = ({ onBack,
         <div className="overflow-x-auto border rounded-xl">
           <table className="w-full text-right border-collapse text-[10px]">
             <thead>
-              <tr className="bg-zinc-100 text-zinc-700 font-black uppercase tracking-tighter border-b h-12">
-                <th className="p-3 border-l text-center w-12">م</th>
-                <th className="p-3 border-l text-center w-16">رقم الفاتورة</th>
-                <th className="p-3 border-l text-center w-20">تاريخ المرتجع</th>
-                <th className="p-3 border-l text-center">العميل</th>
-                <th className="p-3 border-l text-right w-64">الأصناف المرتجعة</th>
-                <th className="p-3 border-l text-center w-12">العدد</th>
-                <th className="p-3 border-l text-center w-24">إجمالي القيمة</th>
-                <th className="p-3 text-right">ملاحظات</th>
-                <th className="p-3 text-center w-24 no-print">إجراءات</th>
+              <tr className="bg-zinc-100 text-zinc-900 font-black uppercase tracking-tighter border-b h-12">
+                <th className="p-3 border-l text-center w-12 border-zinc-200">م</th>
+                <th className="p-3 border-l text-center w-16 border-zinc-200">رقم الفاتورة</th>
+                <th className="p-3 border-l text-center w-20 border-zinc-200">تاريخ المرتجع</th>
+                <th className="p-3 border-l text-center border-zinc-200">العميل</th>
+                <th className="p-3 border-l text-right w-64 border-zinc-200">الأصناف المرتجعة</th>
+                <th className="p-3 border-l text-center w-12 border-zinc-200">العدد</th>
+                <th className="p-3 border-l text-center w-24 border-zinc-200">إجمالي القيمة</th>
+                <th className="p-3 text-right border-zinc-200">ملاحظات</th>
+                <th className="p-3 text-center w-24 no-print border-zinc-200">إجراءات</th>
               </tr>
             </thead>
-            <tbody className="divide-y font-bold">
+            <tbody className="divide-y font-bold divide-zinc-200">
               {filtered.map((ret, idx) => (
-                <tr key={ret.id} className="hover:bg-rose-50 transition-colors h-12 group">
-                  <td className="p-3 border-l text-center font-mono text-zinc-900">{filtered.length - idx}</td>
-                  <td className="p-3 border-l text-center text-rose-700 font-black">#{ret.invoiceNumber}</td>
-                  <td className="p-3 border-l text-center font-mono text-zinc-900">{ret.date}</td>
-                  <td className="p-3 border-l truncate max-w-[120px] text-zinc-900">{ret.customerName}</td>
-                  <td className="p-3 border-l">
+                <tr key={ret.id} className="hover:bg-rose-50 transition-colors h-12 group text-zinc-900">
+                  <td className="p-3 border-l text-center font-mono border-zinc-200">{filtered.length - idx}</td>
+                  <td className="p-3 border-l text-center text-rose-700 font-black border-zinc-200">#{ret.invoiceNumber}</td>
+                  <td className="p-3 border-l text-center font-mono border-zinc-200">{ret.date}</td>
+                  <td className="p-3 border-l truncate max-w-[120px] font-black border-zinc-200">{ret.customerName}</td>
+                  <td className="p-3 border-l border-zinc-200">
                     <div className="flex flex-col gap-1">
                       {ret.items.map((it: any, i: number) => (
-                        <div key={i} className="text-[9px] text-zinc-900">• {it.name} ({it.quantity})</div>
+                        <div key={i} className="text-[10px] font-black">• {it.name} ({it.quantity})</div>
                       ))}
                     </div>
                   </td>
-                  <td className="p-3 border-l text-center font-mono font-black text-zinc-900">{ret.items.reduce((s: number,i: any) => s + i.quantity, 0)}</td>
-                  <td className="p-3 border-l text-center font-black text-rose-600 font-mono">{ret.totalReturnAmount.toLocaleString()}</td>
-                  <td className="p-3 text-zinc-700 font-normal italic truncate max-w-[100px]">{ret.notes || '-'}</td>
-                  <td className="p-3 text-center no-print">
+                  <td className="p-3 border-l text-center font-mono font-black border-zinc-200">{ret.items.reduce((s: number,i: any) => s + i.quantity, 0)}</td>
+                  <td className="p-3 border-l text-center font-black text-rose-600 font-mono text-xs border-zinc-200">{ret.totalReturnAmount.toLocaleString()}</td>
+                  <td className="p-3 font-normal italic truncate max-w-[100px] border-zinc-200">{ret.notes || '-'}</td>
+                  <td className="p-3 text-center no-print border-zinc-200">
                     <div className="flex justify-center gap-1 opacity-40 group-hover:opacity-100 transition-all">
-                      <button onClick={() => onEdit?.(ret)} className="p-2 text-zinc-400 hover:text-amber-500 transition-colors" title="تعديل"><Edit2 className="w-4 h-4"/></button>
-                      <button onClick={() => handleDelete(ret.id)} className="p-2 text-zinc-400 hover:text-rose-500 transition-colors" title="حذف"><Trash2 className="w-4 h-4"/></button>
+                      <button onClick={() => onEdit?.(ret)} className="p-2 text-zinc-900 hover:text-amber-500 transition-colors" title="تعديل"><Edit2 className="w-4 h-4"/></button>
+                      <button onClick={() => handleDelete(ret.id)} className="p-2 text-zinc-900 hover:text-rose-500 transition-colors" title="حذف"><Trash2 className="w-4 h-4"/></button>
                     </div>
                   </td>
                 </tr>

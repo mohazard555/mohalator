@@ -7,9 +7,10 @@ import { tafqeet } from '../utils/tafqeet';
 
 interface SalesReturnViewProps {
   onBack: () => void;
+  initialReturn?: any;
 }
 
-const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack }) => {
+const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn }) => {
   const [invoiceSearch, setInvoiceSearch] = useState('');
   const [foundInvoice, setFoundInvoice] = useState<SalesInvoice | null>(null);
   const [returnItems, setReturnItems] = useState<InvoiceItem[]>([]);
@@ -19,7 +20,12 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack }) => {
   useEffect(() => {
     const savedReturns = localStorage.getItem('sheno_sales_returns');
     if (savedReturns) setReturnHistory(JSON.parse(savedReturns));
-  }, []);
+
+    // إذا كان هناك مرتجع قادم للتعديل من سجل المرتجعات
+    if (initialReturn && !editingReturnId) {
+      handleEditReturn(initialReturn);
+    }
+  }, [initialReturn]);
 
   const handleSearch = () => {
     const saved = localStorage.getItem('sheno_sales_invoices');
@@ -45,7 +51,7 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack }) => {
       if (original) {
         setFoundInvoice(original);
         const mappedItems = original.items.map(origItem => {
-          const prevRetItem = ret.items.find((ri: any) => ri.id === origItem.id);
+          const prevRetItem = ret.items.find((ri: any) => ri.id === origItem.id || ri.name === origItem.name);
           return { ...origItem, quantity: prevRetItem ? prevRetItem.quantity : 0 };
         });
         setReturnItems(mappedItems);
@@ -96,7 +102,6 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack }) => {
     setReturnHistory(updatedHistory);
     localStorage.setItem('sheno_sales_returns', JSON.stringify(updatedHistory));
 
-    // Update stock & cash
     const savedStock = localStorage.getItem('sheno_stock_entries');
     let stockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
     const returnMovements: StockEntry[] = returnEntry.items.map(item => ({
@@ -132,6 +137,7 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack }) => {
     setFoundInvoice(null);
     setEditingReturnId(null);
     setInvoiceSearch('');
+    if (initialReturn) onBack(); // الرجوع للسجل إذا كان تعديلاً
   };
 
   const handleDeleteReturn = (id: string) => {
@@ -141,6 +147,13 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack }) => {
       localStorage.setItem('sheno_sales_returns', JSON.stringify(updated));
       removeAssociatedMovements(id);
     }
+  };
+
+  const handleCancel = () => {
+    setFoundInvoice(null);
+    setEditingReturnId(null);
+    setInvoiceSearch('');
+    if (initialReturn) onBack();
   };
 
   return (
@@ -185,7 +198,7 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack }) => {
               {returnItems.map(item => (
                 <tr key={item.id}>
                   <td className="p-3">{item.name}</td>
-                  <td className="p-3 text-center font-mono text-zinc-400">{foundInvoice.items.find(i=>i.id===item.id)?.quantity}</td>
+                  <td className="p-3 text-center font-mono text-zinc-400">{foundInvoice.items.find(i=>i.id===item.id || i.name === item.name)?.quantity}</td>
                   <td className="p-3 text-center">
                     <input type="number" min={0} value={item.quantity} onChange={e => setReturnItems(returnItems.map(i => i.id === item.id ? { ...i, quantity: Number(e.target.value) } : i))} className="bg-zinc-50 border-2 w-24 p-2 rounded-xl text-rose-600 font-black text-center" />
                   </td>
@@ -195,8 +208,8 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack }) => {
             </tbody>
           </table>
           <div className="p-6 bg-zinc-50 dark:bg-zinc-800/50 flex justify-end gap-3">
-            <button onClick={handleSaveReturn} className="bg-primary text-white px-12 py-3 rounded-2xl font-black shadow-xl"><Save className="w-5 h-5"/> حفظ المرتجع</button>
-            <button onClick={() => { setFoundInvoice(null); setEditingReturnId(null); }} className="bg-zinc-200 dark:bg-zinc-800 px-10 py-3 rounded-2xl font-bold">إلغاء</button>
+            <button onClick={handleSaveReturn} className="bg-primary text-white px-12 py-3 rounded-2xl font-black shadow-xl"><Save className="w-5 h-5"/> {editingReturnId ? 'تحديث المرتجع' : 'حفظ المرتجع'}</button>
+            <button onClick={handleCancel} className="bg-zinc-200 dark:bg-zinc-800 px-10 py-3 rounded-2xl font-bold">إلغاء</button>
           </div>
         </div>
       )}
