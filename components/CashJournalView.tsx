@@ -1,18 +1,21 @@
 
-import React, { useState, useEffect } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Save, X, TrendingUp, TrendingDown, Search, Calendar, Filter, Coins, CreditCard, Printer, Tags } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowRight, Plus, Trash2, Edit2, Save, X, TrendingUp, TrendingDown, Search, Calendar, Filter, Coins, CreditCard, Printer, Tags, ImageIcon } from 'lucide-react';
 import { CashEntry, AppSettings, AccountingCategory } from '../types';
+import { ImageExportService } from '../utils/ImageExportService';
 
 interface CashJournalViewProps {
   onBack: () => void;
 }
 
 const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
+  const exportRef = useRef<HTMLDivElement>(null);
   const [entries, setEntries] = useState<CashEntry[]>([]);
   const [categories, setCategories] = useState<AccountingCategory[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,6 +97,19 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
     });
   };
 
+  const handleExportImage = async () => {
+    if (!exportRef.current) return;
+    setIsExporting(true);
+    try {
+      await ImageExportService.exportAsPng(
+        exportRef.current,
+        `دفتر_اليومية_${new Date().toISOString().split('T')[0]}`
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const filteredEntries = entries.filter(e => {
     const matchStatement = e.statement.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           e.notes.toLowerCase().includes(searchTerm.toLowerCase());
@@ -106,25 +122,6 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
 
   return (
     <div className="space-y-6">
-      {/* Print Header */}
-      <div className="print-only print-header flex justify-between items-center bg-blue-800 p-6 rounded-t-xl text-white mb-0 border-b-0">
-        <div className="flex items-center gap-4">
-          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
-          <div>
-            <h1 className="text-2xl font-black">{settings?.companyName}</h1>
-            <p className="text-xs opacity-80">{settings?.companyType}</p>
-          </div>
-        </div>
-        <div className="text-center">
-          <h2 className="text-3xl font-black underline decoration-white/30 underline-offset-8">دفتر اليومية المالي التفصيلي</h2>
-          <p className="text-xs mt-2 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
-        </div>
-        <div className="text-left text-xs font-bold space-y-1">
-          <p>{settings?.address}</p>
-          <p>{settings?.phone}</p>
-        </div>
-      </div>
-
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors">
@@ -138,6 +135,14 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
             className="bg-primary hover:brightness-110 text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-primary/20"
           >
             <Plus className="w-5 h-5" /> إضافة حركة مالية
+          </button>
+          <button 
+            onClick={handleExportImage}
+            disabled={isExporting}
+            className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg disabled:opacity-50"
+          >
+            {isExporting ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : <ImageIcon className="w-5 h-5" />}
+            حفظ كصورة
           </button>
           <button onClick={() => window.print()} className="bg-blue-100 text-blue-800 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">
              <Printer className="w-5 h-5" /> طباعة
@@ -273,79 +278,102 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
         </div>
       )}
 
-      {/* Summary Area */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
-        <div className="bg-emerald-500/5 p-8 rounded-3xl border-2 border-emerald-500/20 flex flex-col items-center text-center shadow-sm">
-          <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-emerald-500/20">
-             <TrendingUp className="w-7 h-7" />
+      {/* Exportable content wrapper */}
+      <div ref={exportRef} className="space-y-6 bg-white dark:bg-zinc-950 p-6 rounded-[2.5rem] shadow-sm export-fix">
+        {/* Print Header */}
+        <div className="print-only block flex justify-between items-center bg-blue-800 p-6 rounded-t-xl text-white mb-0 border-b-0">
+          <div className="flex items-center gap-4">
+            {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
+            <div>
+              <h1 className="text-2xl font-black">{settings?.companyName}</h1>
+              <p className="text-xs opacity-80">{settings?.companyType}</p>
+            </div>
           </div>
-          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">صافي الرصيد - {settings?.currency}</span>
-          <div className="text-4xl font-mono font-black text-emerald-600">{totalPrimary.toLocaleString()} <span className="text-xl font-bold opacity-60">{settings?.currencySymbol}</span></div>
+          <div className="text-center">
+            <h2 className="text-3xl font-black underline decoration-white/30 underline-offset-8">دفتر اليومية المالي التفصيلي</h2>
+            {/* Fix: Changed CalendarIcon to Calendar to match imported component name */}
+            <p className="text-xs mt-2 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
+          </div>
+          <div className="text-left text-xs font-bold space-y-1">
+            <p>{settings?.address}</p>
+            <p>{settings?.phone}</p>
+          </div>
         </div>
 
-        <div className="bg-amber-500/5 p-8 rounded-3xl border-2 border-amber-500/20 flex flex-col items-center text-center shadow-sm">
-          <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-amber-500/20">
-             <TrendingDown className="w-7 h-7" />
+        {/* Summary Area */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 no-print-visible">
+          <div className="bg-emerald-500/5 p-8 rounded-3xl border-2 border-emerald-500/20 flex flex-col items-center text-center shadow-sm">
+            <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-emerald-500/20">
+               <TrendingUp className="w-7 h-7" />
+            </div>
+            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">صافي الرصيد - {settings?.currency}</span>
+            <div className="text-4xl font-mono font-black text-emerald-600">{totalPrimary.toLocaleString()} <span className="text-xl font-bold opacity-60">{settings?.currencySymbol}</span></div>
           </div>
-          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">صافي الرصيد - {settings?.secondaryCurrency}</span>
-          <div className="text-4xl font-mono font-black text-amber-600">{totalSecondary.toLocaleString()} <span className="text-xl font-bold opacity-60">{settings?.secondaryCurrencySymbol}</span></div>
-        </div>
-      </div>
 
-      <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl print:border-blue-800 print:rounded-none">
-        <div className="overflow-x-auto">
-          <table className="w-full text-right border-collapse text-sm">
-            <thead>
-              <tr className="bg-blue-800 text-white text-[10px] font-black uppercase tracking-widest border-b border-blue-900">
-                <th rowSpan={2} className="p-4 border-l border-blue-900">التاريخ</th>
-                <th rowSpan={2} className="p-4 border-l border-blue-900">البند / القسم</th>
-                <th rowSpan={2} className="p-4 border-l border-blue-900">البيان</th>
-                <th rowSpan={2} className="p-4 border-l border-blue-900">الملاحظات</th>
-                <th colSpan={2} className="p-3 border-l border-blue-900 text-center bg-blue-900/20">الأساسية: {settings?.currency} ({settings?.currencySymbol})</th>
-                <th colSpan={2} className="p-3 border-l border-blue-900 text-center bg-amber-900/20">الثانوية: {settings?.secondaryCurrency} ({settings?.secondaryCurrencySymbol})</th>
-                <th rowSpan={2} className="p-4 text-center no-print">إجراءات</th>
-              </tr>
-              <tr className="text-[9px] text-zinc-200 font-black border-b border-blue-900 bg-blue-900/50">
-                <th className="p-3 border-l border-blue-900 text-center bg-emerald-500/20">مقبوض (داخل)</th>
-                <th className="p-3 border-l border-blue-900 text-center bg-rose-500/20">مدفوع (خارج)</th>
-                <th className="p-3 border-l border-blue-900 text-center bg-amber-500/20">مقبوض (داخل)</th>
-                <th className="p-3 text-center bg-zinc-500/20">مدفوع (خارج)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:divide-zinc-300">
-              {filteredEntries.length === 0 ? (
-                <tr><td colSpan={9} className="p-20 text-center italic text-zinc-400 font-bold">لا توجد حركات مالية مسجلة تتوافق مع البحث</td></tr>
-              ) : (
-                filteredEntries.map((entry) => {
-                  const category = categories.find(c => c.id === entry.categoryId);
-                  return (
-                    <tr key={entry.id} className="hover:bg-blue-50 dark:hover:bg-zinc-800/30 transition-colors group">
-                      <td className="p-4 font-mono text-zinc-400 border-l border-zinc-100 dark:border-zinc-800">{entry.date}</td>
-                      <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">
-                         {category ? (
-                           <span className={`px-2 py-1 rounded-lg text-[10px] font-black border ${category.type === 'مصروفات' ? 'text-rose-500 border-rose-500/20 bg-rose-500/5' : 'text-emerald-500 border-emerald-500/20 bg-emerald-500/5'}`}>
-                              {category.name}
-                           </span>
-                         ) : '-'}
-                      </td>
-                      <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">{entry.statement}</td>
-                      <td className="p-4 text-zinc-500 font-normal italic border-l border-zinc-100 dark:border-zinc-800">{entry.notes || '-'}</td>
-                      <td className="p-4 text-center text-emerald-600 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-emerald-50/30 print:bg-transparent">{entry.receivedSYP > 0 ? entry.receivedSYP.toLocaleString() : '-'}</td>
-                      <td className="p-4 text-center text-rose-500 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-rose-50/30 print:bg-transparent">{entry.paidSYP > 0 ? entry.paidSYP.toLocaleString() : '-'}</td>
-                      <td className="p-4 text-center text-amber-600 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-amber-500/5 print:bg-transparent">{entry.receivedUSD > 0 ? entry.receivedUSD.toLocaleString() : '-'}</td>
-                      <td className="p-4 text-center text-zinc-500 font-mono border-l border-zinc-100 dark:border-zinc-800">{entry.paidUSD > 0 ? entry.paidUSD.toLocaleString() : '-'}</td>
-                      <td className="p-4 no-print">
-                        <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handleEdit(entry)} className="p-2 text-zinc-400 hover:text-primary transition-all"><Edit2 className="w-4 h-4" /></button>
-                          <button onClick={() => handleDelete(entry.id)} className="p-2 text-zinc-400 hover:text-rose-500 transition-all"><Trash2 className="w-4 h-4" /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+          <div className="bg-amber-500/5 p-8 rounded-3xl border-2 border-amber-500/20 flex flex-col items-center text-center shadow-sm">
+            <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-amber-500/20">
+               <TrendingDown className="w-7 h-7" />
+            </div>
+            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">صافي الرصيد - {settings?.secondaryCurrency}</span>
+            <div className="text-4xl font-mono font-black text-amber-600">{totalSecondary.toLocaleString()} <span className="text-xl font-bold opacity-60">{settings?.secondaryCurrencySymbol}</span></div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl print:border-blue-800 print:rounded-none">
+          <div className="overflow-x-auto">
+            <table className="w-full text-right border-collapse text-sm">
+              <thead>
+                <tr className="bg-blue-800 text-white text-[10px] font-black uppercase tracking-widest border-b border-blue-900">
+                  <th rowSpan={2} className="p-4 border-l border-blue-900">التاريخ</th>
+                  <th rowSpan={2} className="p-4 border-l border-blue-900">البند / القسم</th>
+                  <th rowSpan={2} className="p-4 border-l border-blue-900">البيان</th>
+                  <th rowSpan={2} className="p-4 border-l border-blue-900">الملاحظات</th>
+                  <th colSpan={2} className="p-3 border-l border-blue-900 text-center bg-blue-900/20">الأساسية: {settings?.currency} ({settings?.currencySymbol})</th>
+                  <th colSpan={2} className="p-3 border-l border-blue-900 text-center bg-amber-900/20">الثانوية: {settings?.secondaryCurrency} ({settings?.secondaryCurrencySymbol})</th>
+                  <th rowSpan={2} className="p-4 text-center no-print">إجراءات</th>
+                </tr>
+                <tr className="text-[9px] text-zinc-200 font-black border-b border-blue-900 bg-blue-900/50">
+                  <th className="p-3 border-l border-blue-900 text-center bg-emerald-500/20">مقبوض (داخل)</th>
+                  <th className="p-3 border-l border-blue-900 text-center bg-rose-500/20">مدفوع (خارج)</th>
+                  <th className="p-3 border-l border-blue-900 text-center bg-amber-500/20">مقبوض (داخل)</th>
+                  <th className="p-3 text-center bg-zinc-500/20">مدفوع (خارج)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:divide-zinc-300">
+                {filteredEntries.length === 0 ? (
+                  <tr><td colSpan={9} className="p-20 text-center italic text-zinc-400 font-bold">لا توجد حركات مالية مسجلة تتوافق مع البحث</td></tr>
+                ) : (
+                  filteredEntries.map((entry) => {
+                    const category = categories.find(c => c.id === entry.categoryId);
+                    return (
+                      <tr key={entry.id} className="hover:bg-blue-50 dark:hover:bg-zinc-800/30 transition-colors group">
+                        <td className="p-4 font-mono text-zinc-400 border-l border-zinc-100 dark:border-zinc-800">{entry.date}</td>
+                        <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">
+                           {category ? (
+                             <span className={`px-2 py-1 rounded-lg text-[10px] font-black border ${category.type === 'مصروفات' ? 'text-rose-500 border-rose-500/20 bg-rose-500/5' : 'text-emerald-500 border-emerald-500/20 bg-emerald-500/5'}`}>
+                                {category.name}
+                             </span>
+                           ) : '-'}
+                        </td>
+                        <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">{entry.statement}</td>
+                        <td className="p-4 text-zinc-500 font-normal italic border-l border-zinc-100 dark:border-zinc-800">{entry.notes || '-'}</td>
+                        <td className="p-4 text-center text-emerald-600 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-emerald-50/30 print:bg-transparent">{entry.receivedSYP > 0 ? entry.receivedSYP.toLocaleString() : '-'}</td>
+                        <td className="p-4 text-center text-rose-500 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-rose-50/30 print:bg-transparent">{entry.paidSYP > 0 ? entry.paidSYP.toLocaleString() : '-'}</td>
+                        <td className="p-4 text-center text-amber-600 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-amber-500/5 print:bg-transparent">{entry.receivedUSD > 0 ? entry.receivedUSD.toLocaleString() : '-'}</td>
+                        <td className="p-4 text-center text-zinc-500 font-mono border-l border-zinc-100 dark:border-zinc-800">{entry.paidUSD > 0 ? entry.paidUSD.toLocaleString() : '-'}</td>
+                        <td className="p-4 no-print">
+                          <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => handleEdit(entry)} className="p-2 text-zinc-400 hover:text-primary transition-all"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => handleDelete(entry.id)} className="p-2 text-zinc-400 hover:text-rose-500 transition-all"><Trash2 className="w-4 h-4" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
