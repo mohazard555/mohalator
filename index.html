@@ -7,38 +7,39 @@
     <title>SAMLATOR2026 | نظام إدارة محاسبية</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <!-- مكتبات التصدير -->
+    <!-- مكتبات التصدير الاحترافية -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- استبدال أو إضافة html-to-image لأنها الأفضل للعربية -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
     <style>
-      :root {
-        --primary-color: #e11d48;
-      }
-      body {
-        font-family: 'Cairo', sans-serif;
-        margin: 0;
-        transition: background-color 0.3s ease, color 0.3s ease;
-      }
-      /* إعدادات إجبارية لضمان ثبات النصوص عند التصدير */
-      .export-fix {
-        direction: rtl !important;
-        text-align: right !important;
-        font-feature-settings: "kern" 1;
-        font-kerning: normal;
+      :root { --primary-color: #e11d48; }
+      body { 
+        font-family: 'Cairo', sans-serif; 
+        margin: 0; 
         -webkit-font-smoothing: antialiased;
       }
       
-      .text-readable { color: #18181b; }
-      .dark .text-readable { color: #fafafa; }
-      .bg-primary { background-color: var(--primary-color); }
-      .text-primary { color: var(--primary-color); }
-      .print-only { display: none; }
-
+      /* --- ضوابط الطباعة وتعدد الصفحات --- */
       @media print {
+        .pdf-page-break {
+          page-break-after: always !important;
+          break-after: page !important;
+          display: block !important;
+        }
+        
+        /* منع تقسيم الجداول في منتصف السطر */
+        tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+        thead { display: table-header-group !important; }
+        
         .no-print { display: none !important; }
-        .print-only { display: block !important; }
-        body { background-color: white !important; color: black !important; }
+        html, body { background: white !important; }
+      }
+
+      /* تنسيق خاص لحاوية التصدير لضمان جودة النصوص */
+      .export-container-fix {
+        direction: rtl !important;
+        text-align: right !important;
+        background: white !important;
+        color: black !important;
       }
     </style>
   <script type="importmap">

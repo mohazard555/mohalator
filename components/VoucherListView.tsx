@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, FileDown, Calendar as CalendarIcon, FileText, Search, User, Hash, MessageSquare, Coins, CreditCard, ImageIcon, LayoutDashboard } from 'lucide-react';
+import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, FileDown, Calendar as CalendarIcon, FileText, Search, User, Hash, MessageSquare, Coins, CreditCard, ImageIcon, LayoutDashboard, CheckCircle } from 'lucide-react';
 import { CashEntry, Party, AppSettings, SalesInvoice, PurchaseInvoice, PartyType } from '../types';
 import { tafqeet } from '../utils/tafqeet';
 import { ImageExportService } from '../utils/ImageExportService';
@@ -214,6 +214,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     if (!reportRef.current || isProcessing) return;
     setIsProcessing(true);
     try {
+      // تصدير الصورة يعتمد على ما يظهر حالياً، لذا سيظهر بالشكل الداكن إذا كانت الشاشة داكنة
       await ImageExportService.exportAsPng(
         reportRef.current, 
         `كشف_حساب_${reportParty || 'عميل'}`
@@ -440,66 +441,91 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
       )}
 
       {showCustomerReport && (
-        <div className="fixed inset-0 bg-black z-[100] flex items-center justify-center p-0 md:p-8 animate-in fade-in duration-300 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-0 md:p-8 animate-in fade-in duration-300 overflow-y-auto">
            <style>{`
-             @media print {
-               @page { size: A4 portrait; margin: 0 !important; }
-               body * { visibility: hidden; }
-               .printable-report, .printable-report * { visibility: visible; }
-               .printable-report { 
-                 position: absolute; left: 0; top: 0; width: 100%; 
-                 background: #09090b !important; color: white !important;
-                 padding: 0 !important; 
-                 min-height: 100vh !important;
+             @media screen {
+               .xo-report-container-styled {
+                  background: #09090b;
+                  color: white;
+                  border: 1px solid #27272a;
+                  border-radius: 40px;
+                  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
                }
-               .no-print { display: none !important; }
              }
-             .xo-dark-report-wrapper {
-               background: #09090b;
-               width: 100%;
-               max-width: 1000px;
-               min-height: 100vh;
-               margin: auto;
-               padding: 30px;
-               position: relative;
-               display: flex;
-               flex-direction: column;
-               direction: rtl;
-               color: white;
-               border: 1px solid #27272a;
-               border-radius: 40px;
-               box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+
+             @media print {
+               @page { size: A4 portrait; margin: 15mm !important; }
+               
+               /* إخفاء الحاويات الداكنة تماماً في الطباعة الورقية */
+               .xo-report-container-styled {
+                 background: white !important;
+                 color: black !important;
+                 border: none !important;
+                 box-shadow: none !important;
+                 padding: 0 !important;
+                 margin: 0 !important;
+                 width: 100% !important;
+                 max-width: 100% !important;
+               }
+
+               /* تحسين شكل التقرير ليتطابق مع الصورة الورقية */
+               .xo-report-header-print {
+                 display: flex !important;
+                 justify-content: space-between;
+                 align-items: center;
+                 border-bottom: 2px solid #e11d48;
+                 padding-bottom: 15px;
+                 margin-bottom: 20px;
+               }
+
+               .xo-summary-grid {
+                 display: grid !important;
+                 grid-template-columns: repeat(3, 1fr) !important;
+                 gap: 15px !important;
+                 margin-bottom: 30px !important;
+               }
+
+               .xo-card-print {
+                  background: white !important;
+                  border: 1px solid #eee !important;
+                  border-radius: 15px !important;
+                  padding: 15px !important;
+                  text-align: center !important;
+                  box-shadow: none !important;
+               }
+
+               .xo-table-print {
+                 border: 1px solid #eee !important;
+                 width: 100% !important;
+               }
+               
+               .xo-table-print th {
+                 background-color: #f8fafc !important;
+                 color: #64748b !important;
+                 font-size: 11px !important;
+                 text-transform: uppercase !important;
+                 border-bottom: 2px solid #f1f5f9 !important;
+               }
+               
+               .xo-table-print td {
+                 border-bottom: 1px solid #f1f5f9 !important;
+                 font-size: 13px !important;
+                 padding: 12px 8px !important;
+               }
              }
-             .xo-pink-line-thick { border-bottom: 3px solid #e11d48; margin-top: 20px; margin-bottom: 30px; }
-             .report-summary-card {
-                background: #18181b;
-                border-radius: 20px;
-                padding: 25px;
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                border: 1px solid #27272a;
-                transition: transform 0.2s;
-             }
-             .report-summary-card:hover { transform: translateY(-5px); }
-             .dark-table-head { background: #18181b; border-bottom: 1px solid #27272a; }
-             .dark-table-row { border-bottom: 1px solid #18181b; }
-             .dark-table-row:hover { background: #111113; }
            `}</style>
            
-           <div ref={reportRef} className="xo-dark-report-wrapper printable-report export-fix">
-              {/* Image-matching Header */}
-              <div className="flex justify-between items-start mb-2">
+           <div ref={reportRef} className="xo-report-container-styled w-full max-w-4xl min-h-screen p-8 flex flex-col gap-6 relative export-fix">
+              {/* ترويسة التقرير (تظهر في الطباعة كما في الصورة) */}
+              <div className="flex justify-between items-start mb-2 no-print-visible xo-report-header-print">
                  <div className="text-right space-y-1">
                     <p className="text-[12px] font-black text-rose-600 uppercase tracking-widest">FINANCIAL LOG</p>
-                    <p className="text-[11px] font-bold text-zinc-400">{settings?.address || 'دمشق، سوريا'}</p>
-                    <p className="text-[11px] font-bold text-zinc-400" dir="ltr">{new Date().toLocaleDateString('ar-SA')}</p>
+                    <p className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">{settings?.address || 'دمشق، سوريا'}</p>
+                    <p className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400" dir="ltr">{new Date().toLocaleDateString('ar-SA')}</p>
                  </div>
 
                  <div className="text-center">
-                    <h2 className="text-3xl font-black text-white border-b-2 border-zinc-800 inline-block px-6 pb-2">تقرير كشف حساب مالي</h2>
+                    <h2 className="text-3xl font-black border-b-2 border-zinc-200 dark:border-zinc-800 inline-block px-6 pb-2">تقرير كشف حساب مالي</h2>
                     <div className="mt-2">
                        <span className="text-xl font-black text-rose-500 uppercase tracking-tight">{reportParty || '...'}</span>
                     </div>
@@ -507,122 +533,103 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
 
                  <div className="flex items-center gap-4">
                     <div className="text-left">
-                       <h1 className="text-2xl font-black text-white leading-none">{settings?.companyName || 'XO COMPANY'}</h1>
+                       <h1 className="text-2xl font-black leading-none">{settings?.companyName || 'XO COMPANY'}</h1>
                        <p className="text-[10px] font-bold text-zinc-500 mt-1" dir="ltr">{settings?.phone}</p>
                     </div>
                     {settings?.logoUrl ? (
-                      <img src={settings.logoUrl} className="w-14 h-14 object-contain bg-white rounded-xl p-1" />
+                      <img src={settings.logoUrl} className="w-14 h-14 object-contain bg-white rounded-xl p-1 shadow-sm" />
                     ) : (
                       <div className="w-12 h-12 bg-rose-600 rounded-xl flex items-center justify-center text-white font-black text-2xl shadow-lg">XO</div>
                     )}
                  </div>
               </div>
 
-              <div className="xo-pink-line-thick"></div>
+              {/* خط التصميم الأحمر */}
+              <div className="h-0.5 bg-rose-600 w-full mb-6 print:block hidden"></div>
 
-              {/* Title Section matching Image */}
-              <div className="flex items-center gap-4 mb-8">
-                 <div className="p-3 bg-rose-600/10 rounded-2xl border border-rose-600/20">
-                    <FileText className="w-8 h-8 text-rose-600" />
-                 </div>
-                 <div>
-                    <h3 className="text-2xl font-black text-white flex items-center gap-2">
-                       تحليل مالي للطرف: <span className="text-rose-500">{reportParty || 'غير محدد'}</span>
-                    </h3>
-                 </div>
-              </div>
-
-              {/* Filters Area No-Print */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 no-print">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2">الحساب</label>
-                    <select value={reportParty} onChange={e => setReportParty(e.target.value)} className="bg-zinc-900 border border-zinc-800 text-white p-3.5 rounded-2xl font-black outline-none appearance-none cursor-pointer">
-                        <option value="">-- اختر الطرف --</option>
-                        {parties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                    </select>
+              {/* بطاقات الإجماليات (معدلة لتشبه الصورة) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 xo-summary-grid">
+                  <div className="xo-card-print bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
+                     <span className="text-[11px] font-black text-zinc-500 uppercase tracking-widest">إجمالي المسحوبات</span>
+                     <span className="text-3xl font-mono font-black">{due.toLocaleString()}</span>
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2">من تاريخ</label>
-                    <input type="date" value={reportStart} onChange={e => setReportStart(e.target.value)} className="bg-zinc-900 border border-zinc-800 text-white p-3.5 rounded-2xl font-mono outline-none" />
+                  <div className="xo-card-print bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
+                     <span className="text-[11px] font-black text-emerald-500 uppercase tracking-widest">إجمالي المدفوعات</span>
+                     <span className="text-3xl font-mono font-black text-emerald-500">{paid.toLocaleString()}</span>
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2">إلى تاريخ</label>
-                    <input type="date" value={reportEnd} onChange={e => setReportEnd(e.target.value)} className="bg-zinc-900 border border-zinc-800 text-white p-3.5 rounded-2xl font-mono outline-none" />
+                  <div className="xo-card-print bg-zinc-900/50 border-2 border-rose-600/30 p-6 rounded-3xl flex flex-col items-center justify-center gap-2 ring-4 ring-rose-600/5">
+                     <span className="text-[11px] font-black text-rose-600 uppercase tracking-widest">الرصيد المتبقي</span>
+                     <div className="flex items-center gap-1">
+                        <span className="text-4xl font-mono font-black text-rose-600">{(due - paid).toLocaleString()}</span>
+                        {(due - paid) < 0 && <span className="text-2xl text-rose-600 font-black">-</span>}
+                     </div>
                   </div>
               </div>
 
-              {reportParty ? (
-                  <div className="flex-1 flex flex-col space-y-10">
-                    {/* Summary Cards Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="report-summary-card">
-                           <span className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-3">إجمالي المسحوبات</span>
-                           <span className="text-4xl font-mono font-black text-zinc-300">{due.toLocaleString()}</span>
-                        </div>
-                        <div className="report-summary-card">
-                           <span className="text-[11px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-3">إجمالي المدفوعات</span>
-                           <span className="text-4xl font-mono font-black text-emerald-500">{paid.toLocaleString()}</span>
-                        </div>
-                        <div className="report-summary-card ring-2 ring-rose-600/30">
-                           <span className="text-[11px] font-black text-rose-500 uppercase tracking-[0.2em] mb-3">الرصيد المتبقي</span>
-                           <div className="flex items-center gap-2">
-                             <span className="text-5xl font-mono font-black text-rose-600">{(due - paid).toLocaleString()}</span>
-                             { (due - paid) < 0 && <span className="text-3xl text-rose-600 font-black">-</span> }
-                           </div>
-                        </div>
+              {/* جدول البيانات */}
+              <div className="flex-1 border border-zinc-800 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-2xl bg-zinc-900/20 print:border-zinc-100">
+                  <table className="w-full text-right border-collapse xo-table-print">
+                    <thead>
+                        <tr className="bg-zinc-900 dark:bg-zinc-900 text-zinc-400 font-black text-[11px] uppercase tracking-widest h-14 print:bg-zinc-50 print:text-zinc-500">
+                          <th className="p-4 w-32 text-center">التاريخ</th>
+                          <th className="p-4 w-32 text-center">رقم السند</th>
+                          <th className="p-4">البيان / الوصف</th>
+                          <th className="p-4 text-center w-48">القيمة</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800 print:divide-zinc-100">
+                        {reportVouchers.length === 0 ? (
+                          <tr><td colSpan={4} className="p-32 text-center italic text-zinc-700 font-black text-2xl">لا توجد حركات مالية مسجلة</td></tr>
+                        ) : reportVouchers.map(v => (
+                          <tr key={v.id} className="hover:bg-zinc-800/30 transition-colors h-14">
+                              <td className="p-4 font-mono text-zinc-500 text-center">{v.date}</td>
+                              <td className="p-4 text-center font-black text-zinc-400">#{v.voucherNumber || '---'}</td>
+                              <td className="p-4 text-zinc-300 font-bold print:text-zinc-800">{v.statement}</td>
+                              <td className="p-4 text-center font-mono font-black text-xl text-emerald-500">{(v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+              </div>
+
+              {/* ضوابط الفلترة والأزرار (تختفي في الطباعة) */}
+              <div className="mt-auto no-print pt-10 flex flex-col gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-zinc-900 rounded-3xl border border-zinc-800">
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2">الحساب</label>
+                        <select value={reportParty} onChange={e => setReportParty(e.target.value)} className="bg-zinc-950 border border-zinc-800 text-white p-3.5 rounded-2xl font-black outline-none cursor-pointer">
+                            <option value="">-- اختر الطرف --</option>
+                            {parties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                        </select>
                     </div>
-
-                    {/* Report Table */}
-                    <div className="border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl bg-zinc-900/50">
-                        <table className="w-full text-right border-collapse">
-                          <thead>
-                              <tr className="dark-table-head text-zinc-400 font-black text-[11px] uppercase tracking-widest h-14">
-                                <th className="p-4 w-32 text-center">التاريخ</th>
-                                <th className="p-4 w-32 text-center">رقم السند</th>
-                                <th className="p-4">البيان / الوصف</th>
-                                <th className="p-4 text-center w-48">القيمة</th>
-                              </tr>
-                          </thead>
-                          <tbody className="divide-y divide-zinc-800">
-                              {reportVouchers.length === 0 ? (
-                                <tr><td colSpan={4} className="p-32 text-center italic text-zinc-700 font-black text-2xl">لا توجد حركات مالية مسجلة</td></tr>
-                              ) : reportVouchers.map(v => (
-                                <tr key={v.id} className="dark-table-row h-14 transition-colors">
-                                    <td className="p-4 font-mono text-zinc-500 text-center">{v.date}</td>
-                                    <td className="p-4 text-center font-black text-zinc-400">#{v.voucherNumber || '---'}</td>
-                                    <td className="p-4 text-zinc-300 font-bold">{v.statement}</td>
-                                    <td className="p-4 text-center font-mono font-black text-xl text-emerald-400">{(v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD).toLocaleString()}</td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2">من تاريخ</label>
+                        <input type="date" value={reportStart} onChange={e => setReportStart(e.target.value)} className="bg-zinc-950 border border-zinc-800 text-white p-3.5 rounded-2xl font-mono outline-none" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2">إلى تاريخ</label>
+                        <input type="date" value={reportEnd} onChange={e => setReportEnd(e.target.value)} className="bg-zinc-950 border border-zinc-800 text-white p-3.5 rounded-2xl font-mono outline-none" />
                     </div>
                   </div>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center gap-6 opacity-30 py-20">
-                   <LayoutDashboard className="w-24 h-24" />
-                   <p className="text-2xl font-black">يرجى اختيار الحساب لبدء التحليل</p>
-                </div>
-              )}
 
-              {/* Bottom Print Actions No-Print */}
-              <div className="mt-10 no-print flex justify-between gap-4 pt-8 border-t border-zinc-800">
-                 <button onClick={() => setShowCustomerReport(false)} className="bg-zinc-800 text-white px-10 py-3.5 rounded-2xl font-black text-lg hover:bg-zinc-700 transition-all">إغلاق</button>
-                 <div className="flex gap-4">
-                    <button onClick={handleExportReportImage} className="bg-amber-600 text-white px-8 py-3.5 rounded-2xl font-black text-lg shadow-xl hover:brightness-110 flex items-center gap-2">
-                       <ImageIcon className="w-6 h-6" /> حفظ كصورة PNG
-                    </button>
-                    <button onClick={() => window.print()} className="bg-rose-600 text-white px-12 py-3.5 rounded-2xl font-black text-lg shadow-xl hover:brightness-110 flex items-center gap-2">
-                       <Printer className="w-6 h-6" /> طباعة الكشف المالي
-                    </button>
-                    <button onClick={handleExportReportPDF} className="bg-emerald-600 text-white px-12 py-3.5 rounded-2xl font-black text-lg shadow-xl hover:brightness-110 flex items-center gap-2">
-                       <FileDown className="w-6 h-6" /> تصدير نسخة PDF
-                    </button>
-                 </div>
+                  <div className="flex justify-between gap-4">
+                    <button onClick={() => setShowCustomerReport(false)} className="bg-zinc-800 text-white px-10 py-3.5 rounded-2xl font-black text-lg hover:bg-zinc-700 transition-all active:scale-95">إغلاق</button>
+                    <div className="flex gap-4">
+                        <button onClick={handleExportReportImage} className="bg-amber-600 text-white px-8 py-3.5 rounded-2xl font-black text-lg shadow-xl hover:brightness-110 flex items-center gap-2">
+                          <ImageIcon className="w-6 h-6" /> حفظ كصورة
+                        </button>
+                        <button onClick={() => window.print()} className="bg-rose-600 text-white px-12 py-3.5 rounded-2xl font-black text-lg shadow-xl hover:brightness-110 flex items-center gap-2">
+                          <Printer className="w-6 h-6" /> طباعة الكشف المالي
+                        </button>
+                        <button onClick={handleExportReportPDF} className="bg-emerald-600 text-white px-12 py-3.5 rounded-2xl font-black text-lg shadow-xl hover:brightness-110 flex items-center gap-2">
+                          <FileDown className="w-6 h-6" /> تصدير نسخة PDF
+                        </button>
+                    </div>
+                  </div>
               </div>
 
-              {/* Print Only Footer */}
-              <div className="print-only mt-auto pt-10 pb-4 flex justify-between items-end text-[10px] font-black text-zinc-500 opacity-60">
+              {/* تذييل الطباعة فقط */}
+              <div className="print-only mt-auto pt-10 pb-4 flex justify-between items-end text-[10px] font-black text-zinc-400 opacity-60">
                  <div>SAMLATOR SYSTEM | SECURED FINANCIAL LOG</div>
                  <div dir="ltr">{new Date().toLocaleString('ar-SA')}</div>
               </div>
@@ -630,6 +637,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
         </div>
       )}
 
+      {/* الجزء العلوي الرئيسي لصفحة سجلات القبض/الدفع */}
       <div className="flex flex-col md:flex-row items-center justify-between no-print gap-4">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-3 bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-rose-900 rounded-xl transition-all shadow-lg"><ArrowRight className="w-6 h-6" /></button>
