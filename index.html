@@ -7,8 +7,9 @@
     <title>SAMLATOR2026 | نظام إدارة محاسبية</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <!-- مكتبة تصدير PDF المستقلة -->
+    <!-- مكتبات التصدير -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
       :root {
         --primary-color: #e11d48;
@@ -19,12 +20,11 @@
         transition: background-color 0.3s ease, color 0.3s ease;
       }
       
-      /* تحسين المقروئية بناءً على الثيم */
       .text-readable {
-        color: #18181b; /* zinc-900 */
+        color: #18181b;
       }
       .dark .text-readable {
-        color: #fafafa; /* zinc-50 */
+        color: #fafafa;
       }
       
       .bg-primary { background-color: var(--primary-color); }

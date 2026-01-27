@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Printer, Search, FileOutput, X, Users, Box, HardDrive, Calendar, Eye, EyeOff, FileDown } from 'lucide-react';
+import { ArrowRight, Printer, Search, FileOutput, X, Users, Box, HardDrive, Calendar, Eye, EyeOff, FileDown, ImageIcon } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, CashEntry, Party, PartyType, AppSettings } from '../types';
 import { tafqeet } from '../utils/tafqeet';
 
 declare var html2pdf: any;
+declare var html2canvas: any;
 
 interface DetailedSalesReportViewProps {
   onBack: () => void;
@@ -20,6 +21,7 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   
   const [showUsedMaterials, setShowUsedMaterials] = useState(true);
 
@@ -75,6 +77,24 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     html2pdf().set(opt).from(element).save();
+  };
+
+  const handleExportImage = async () => {
+    if (!reportRef.current || isProcessing) return;
+    setIsProcessing(true);
+    try {
+      const canvas = await (window as any).html2canvas(reportRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      });
+      const link = document.createElement('a');
+      link.download = `Statement_${customerFilter || 'Customer'}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -134,6 +154,9 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
          </div>
          <h1 className="text-2xl font-black flex-1 text-center tracking-tight text-readable">كشف حساب زبون مفصل</h1>
          <div className="flex gap-2">
+            <button onClick={handleExportImage} className="bg-amber-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-black shadow-lg hover:brightness-110 transition-all">
+               <ImageIcon className="w-5 h-5" /> صورة PNG
+            </button>
             <button onClick={() => window.print()} className="bg-rose-900 text-white px-6 py-2 rounded-xl flex items-center gap-2 font-black shadow-lg hover:brightness-110 transition-all">
                <Printer className="w-5 h-5" /> طباعة التقرير
             </button>
@@ -315,9 +338,14 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
          <button onClick={onBack} className="bg-zinc-100 dark:bg-zinc-800 text-readable px-8 py-3 rounded-2xl font-bold shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all active:scale-95 flex items-center gap-2 border border-zinc-200 dark:border-zinc-700">
             العودة للرئيسية
          </button>
-         <button onClick={handleExportPDF} className="bg-rose-900 text-white px-12 py-3 rounded-2xl flex items-center gap-2 font-black shadow-xl hover:bg-rose-800 transition-all active:scale-95">
-            <FileDown className="w-6 h-6" /> تصدير PDF
-         </button>
+         <div className="flex gap-2">
+            <button onClick={handleExportImage} className="bg-amber-600 text-white px-8 py-3 rounded-2xl flex items-center gap-2 font-black shadow-xl hover:bg-amber-500 transition-all active:scale-95">
+               <ImageIcon className="w-6 h-6" /> حفظ كصورة
+            </button>
+            <button onClick={handleExportPDF} className="bg-rose-900 text-white px-12 py-3 rounded-2xl flex items-center gap-2 font-black shadow-xl hover:bg-rose-800 transition-all active:scale-95">
+               <FileDown className="w-6 h-6" /> تصدير PDF
+            </button>
+         </div>
       </div>
     </div>
   );
