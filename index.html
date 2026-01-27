@@ -9,7 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <!-- مكتبات التصدير -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- استبدال أو إضافة html-to-image لأنها الأفضل للعربية -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
     <style>
       :root {
         --primary-color: #e11d48;
@@ -19,50 +20,25 @@
         margin: 0;
         transition: background-color 0.3s ease, color 0.3s ease;
       }
-      
-      .text-readable {
-        color: #18181b;
+      /* إعدادات إجبارية لضمان ثبات النصوص عند التصدير */
+      .export-fix {
+        direction: rtl !important;
+        text-align: right !important;
+        font-feature-settings: "kern" 1;
+        font-kerning: normal;
+        -webkit-font-smoothing: antialiased;
       }
-      .dark .text-readable {
-        color: #fafafa;
-      }
       
+      .text-readable { color: #18181b; }
+      .dark .text-readable { color: #fafafa; }
       .bg-primary { background-color: var(--primary-color); }
       .text-primary { color: var(--primary-color); }
-      .border-primary { border-color: var(--primary-color); }
-      
       .print-only { display: none; }
 
       @media print {
         .no-print { display: none !important; }
         .print-only { display: block !important; }
-        
-        body {
-          background-color: white !important;
-          color: black !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-
-        #root, main {
-          overflow: visible !important;
-          height: auto !important;
-        }
-
-        .bg-zinc-950, .bg-zinc-900, .dark .bg-zinc-900 { background-color: white !important; color: black !important; }
-        .text-readable, .dark .text-readable { color: black !important; }
-        
-        table { border-collapse: collapse !important; width: 100% !important; }
-        th, td { border: 1px solid #e5e7eb !important; }
-        
-        .print-header {
-          display: flex !important;
-          justify-content: space-between;
-          align-items: center;
-          border-bottom: 3px solid #333;
-          margin-bottom: 20px;
-          padding-bottom: 10px;
-        }
+        body { background-color: white !important; color: black !important; }
       }
     </style>
   <script type="importmap">

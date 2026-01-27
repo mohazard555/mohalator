@@ -3,9 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, FileDown, Calendar as CalendarIcon, FileText, Search, User, Hash, MessageSquare, Coins, CreditCard, ImageIcon, LayoutDashboard } from 'lucide-react';
 import { CashEntry, Party, AppSettings, SalesInvoice, PurchaseInvoice, PartyType } from '../types';
 import { tafqeet } from '../utils/tafqeet';
+import { ImageExportService } from '../utils/ImageExportService';
 
 declare var html2pdf: any;
-declare var html2canvas: any;
 
 interface VoucherListViewProps {
   onBack: () => void;
@@ -183,16 +183,10 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     if (!printableRef.current || isProcessing) return;
     setIsProcessing(true);
     try {
-      const canvas = await (window as any).html2canvas(printableRef.current, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        letterRendering: false, // لضمان عدم قلب الحروف العربية
-      });
-      const link = document.createElement('a');
-      link.download = `Voucher_${printingVoucher?.voucherNumber || 'receipt'}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      await ImageExportService.exportAsPng(
+        printableRef.current, 
+        `سند_${type}_${printingVoucher?.voucherNumber || printingVoucher?.id.slice(0,6)}`
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -220,18 +214,10 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     if (!reportRef.current || isProcessing) return;
     setIsProcessing(true);
     try {
-      // إخفاء الأزرار مؤقتاً لضمان عدم ظهورها في الصورة
-      const canvas = await (window as any).html2canvas(reportRef.current, {
-        scale: 2.5,
-        useCORS: true,
-        backgroundColor: '#09090b', // خلفية داكنة تطابق التصميم
-        letterRendering: false,
-        logging: false
-      });
-      const link = document.createElement('a');
-      link.download = `كشف_حساب_${reportParty || 'عميل'}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      await ImageExportService.exportAsPng(
+        reportRef.current, 
+        `كشف_حساب_${reportParty || 'عميل'}`
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -286,8 +272,8 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
               <ArrowRight className="w-5 h-5" /> رجوع
            </button>
            <div className="flex gap-2">
-              <button onClick={handleExportImage} className="bg-amber-600 text-white px-4 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg">
-                <ImageIcon className="w-5 h-5" /> صورة PNG
+              <button onClick={handleExportImage} className="bg-amber-600 text-white px-4 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg hover:brightness-110 active:scale-95 transition-all">
+                <ImageIcon className="w-5 h-5" /> حفظ كصورة PNG
               </button>
               <button onClick={handleExportPDF} className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg">
                 <FileDown className="w-5 h-5" /> تصدير PDF
@@ -298,7 +284,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
            </div>
         </div>
 
-        <div ref={printableRef} className="print-receipt-half bg-white text-zinc-900 w-[210mm] h-[148.5mm] shadow-2xl flex flex-col relative overflow-hidden">
+        <div ref={printableRef} className="print-receipt-half export-fix bg-white text-zinc-900 w-[210mm] h-[148.5mm] shadow-2xl flex flex-col relative overflow-hidden">
           <div className="receipt-inner-container">
             <div className="absolute inset-0 flex items-center justify-center opacity-[0.04] pointer-events-none -rotate-12">
                <span className="text-[70px] font-black uppercase text-rose-900 leading-none text-center">
@@ -503,7 +489,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
              .dark-table-row:hover { background: #111113; }
            `}</style>
            
-           <div ref={reportRef} className="xo-dark-report-wrapper printable-report">
+           <div ref={reportRef} className="xo-dark-report-wrapper printable-report export-fix">
               {/* Image-matching Header */}
               <div className="flex justify-between items-start mb-2">
                  <div className="text-right space-y-1">
@@ -624,7 +610,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  <button onClick={() => setShowCustomerReport(false)} className="bg-zinc-800 text-white px-10 py-3.5 rounded-2xl font-black text-lg hover:bg-zinc-700 transition-all">إغلاق</button>
                  <div className="flex gap-4">
                     <button onClick={handleExportReportImage} className="bg-amber-600 text-white px-8 py-3.5 rounded-2xl font-black text-lg shadow-xl hover:brightness-110 flex items-center gap-2">
-                       <ImageIcon className="w-6 h-6" /> حفظ كصورة
+                       <ImageIcon className="w-6 h-6" /> حفظ كصورة PNG
                     </button>
                     <button onClick={() => window.print()} className="bg-rose-600 text-white px-12 py-3.5 rounded-2xl font-black text-lg shadow-xl hover:brightness-110 flex items-center gap-2">
                        <Printer className="w-6 h-6" /> طباعة الكشف المالي
