@@ -125,9 +125,9 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors">
-            <ArrowRight className="w-6 h-6" />
+            <ArrowRight className="w-6 h-6 text-primary" />
           </button>
-          <h2 className="text-2xl font-black text-blue-800">دفتر اليومية الشامل</h2>
+          <h2 className="text-2xl font-black text-readable">دفتر اليومية الشامل</h2>
         </div>
         <div className="flex gap-2">
           <button 
@@ -144,7 +144,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
             {isExporting ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : <ImageIcon className="w-5 h-5" />}
             حفظ كصورة
           </button>
-          <button onClick={() => window.print()} className="bg-blue-100 text-blue-800 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">
+          <button onClick={() => window.print()} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">
              <Printer className="w-5 h-5" /> طباعة
           </button>
         </div>
@@ -166,9 +166,9 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
            <Calendar className="w-4 h-4 text-zinc-400" />
            <div className="flex items-center gap-2">
               <span className="text-[10px] font-black text-zinc-500">من</span>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none" />
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none focus:text-primary" />
               <span className="text-[10px] font-black text-zinc-500">إلى</span>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none" />
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none focus:text-primary" />
            </div>
         </div>
       </div>
@@ -281,7 +281,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
       {/* Exportable content wrapper */}
       <div ref={exportRef} className="space-y-6 bg-white dark:bg-zinc-950 p-6 rounded-[2.5rem] shadow-sm export-fix">
         {/* Print Header */}
-        <div className="print-only block flex justify-between items-center bg-blue-800 p-6 rounded-t-xl text-white mb-0 border-b-0">
+        <div className="print-only block flex justify-between items-center bg-zinc-800 p-6 rounded-t-xl text-white mb-0 border-b-0">
           <div className="flex items-center gap-4">
             {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
             <div>
@@ -291,7 +291,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
           </div>
           <div className="text-center">
             <h2 className="text-3xl font-black underline decoration-white/30 underline-offset-8">دفتر اليومية المالي التفصيلي</h2>
-            {/* Fix: Changed CalendarIcon to Calendar to match imported component name */}
+            <p className="text-sm mt-3 font-bold">الفترة: <span className="text-primary">{startDate || 'غير محدد'}</span> إلى <span className="text-primary">{endDate || 'غير محدد'}</span></p>
             <p className="text-xs mt-2 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
           </div>
           <div className="text-left text-xs font-bold space-y-1">
@@ -319,23 +319,23 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl print:border-blue-800 print:rounded-none">
+        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl print:border-zinc-800 print:rounded-none">
           <div className="overflow-x-auto">
             <table className="w-full text-right border-collapse text-sm">
               <thead>
-                <tr className="bg-blue-800 text-white text-[10px] font-black uppercase tracking-widest border-b border-blue-900">
-                  <th rowSpan={2} className="p-4 border-l border-blue-900">التاريخ</th>
-                  <th rowSpan={2} className="p-4 border-l border-blue-900">البند / القسم</th>
-                  <th rowSpan={2} className="p-4 border-l border-blue-900">البيان</th>
-                  <th rowSpan={2} className="p-4 border-l border-blue-900">الملاحظات</th>
-                  <th colSpan={2} className="p-3 border-l border-blue-900 text-center bg-blue-900/20">الأساسية: {settings?.currency} ({settings?.currencySymbol})</th>
-                  <th colSpan={2} className="p-3 border-l border-blue-900 text-center bg-amber-900/20">الثانوية: {settings?.secondaryCurrency} ({settings?.secondaryCurrencySymbol})</th>
+                <tr className="bg-zinc-800 text-white text-[10px] font-black uppercase tracking-widest border-b border-zinc-900">
+                  <th rowSpan={2} className="p-4 border-l border-zinc-900">التاريخ</th>
+                  <th rowSpan={2} className="p-4 border-l border-zinc-900">البند / القسم</th>
+                  <th rowSpan={2} className="p-4 border-l border-zinc-900">البيان</th>
+                  <th rowSpan={2} className="p-4 border-l border-zinc-900">الملاحظات</th>
+                  <th colSpan={2} className="p-3 border-l border-zinc-900 text-center bg-zinc-900/20">الأساسية: {settings?.currency} ({settings?.currencySymbol})</th>
+                  <th colSpan={2} className="p-3 border-l border-zinc-900 text-center bg-amber-900/20">الثانوية: {settings?.secondaryCurrency} ({settings?.secondaryCurrencySymbol})</th>
                   <th rowSpan={2} className="p-4 text-center no-print">إجراءات</th>
                 </tr>
-                <tr className="text-[9px] text-zinc-200 font-black border-b border-blue-900 bg-blue-900/50">
-                  <th className="p-3 border-l border-blue-900 text-center bg-emerald-500/20">مقبوض (داخل)</th>
-                  <th className="p-3 border-l border-blue-900 text-center bg-rose-500/20">مدفوع (خارج)</th>
-                  <th className="p-3 border-l border-blue-900 text-center bg-amber-500/20">مقبوض (داخل)</th>
+                <tr className="text-[9px] text-zinc-200 font-black border-b border-zinc-900 bg-zinc-900/50">
+                  <th className="p-3 border-l border-zinc-900 text-center bg-emerald-500/20">مقبوض (داخل)</th>
+                  <th className="p-3 border-l border-zinc-900 text-center bg-rose-500/20">مدفوع (خارج)</th>
+                  <th className="p-3 border-l border-zinc-900 text-center bg-amber-500/20">مقبوض (داخل)</th>
                   <th className="p-3 text-center bg-zinc-500/20">مدفوع (خارج)</th>
                 </tr>
               </thead>
@@ -346,7 +346,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
                   filteredEntries.map((entry) => {
                     const category = categories.find(c => c.id === entry.categoryId);
                     return (
-                      <tr key={entry.id} className="hover:bg-blue-50 dark:hover:bg-zinc-800/30 transition-colors group">
+                      <tr key={entry.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">
                         <td className="p-4 font-mono text-zinc-400 border-l border-zinc-100 dark:border-zinc-800">{entry.date}</td>
                         <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">
                            {category ? (
@@ -355,7 +355,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
                              </span>
                            ) : '-'}
                         </td>
-                        <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">{entry.statement}</td>
+                        <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-readable">{entry.statement}</td>
                         <td className="p-4 text-zinc-500 font-normal italic border-l border-zinc-100 dark:border-zinc-800">{entry.notes || '-'}</td>
                         <td className="p-4 text-center text-emerald-600 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-emerald-50/30 print:bg-transparent">{entry.receivedSYP > 0 ? entry.receivedSYP.toLocaleString() : '-'}</td>
                         <td className="p-4 text-center text-rose-500 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-rose-50/30 print:bg-transparent">{entry.paidSYP > 0 ? entry.paidSYP.toLocaleString() : '-'}</td>

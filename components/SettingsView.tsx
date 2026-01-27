@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { 
   ArrowRight, Save, Image as ImageIcon, Palette, Building, 
   ShieldCheck, Database, Download, Upload, Trash2, AlertTriangle, Eye, EyeOff, Lock, User, KeyRound, Coins, Globe, Users, Briefcase, CreditCard, RotateCcw,
-  AlertCircle
+  AlertCircle, Moon, Sun
 } from 'lucide-react';
 import { AppSettings } from '../types';
 
@@ -189,6 +189,31 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
             <Palette className="w-5 h-5 text-primary" /> مظهر النظام والألوان
           </h3>
           <div className="space-y-6">
+             {/* Dark Mode Toggle */}
+             <div className="flex items-center justify-between p-5 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-700">
+                <div className="flex items-center gap-3">
+                   <div className={`p-2.5 rounded-xl ${localSettings.darkMode ? 'bg-amber-400/10 text-amber-400' : 'bg-zinc-200 text-zinc-600'}`}>
+                      {localSettings.darkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                   </div>
+                   <div className="flex flex-col">
+                      <span className="font-black text-sm text-readable">الوضع المظلم (Dark Mode)</span>
+                      <span className="text-[10px] text-zinc-500 font-bold">تغيير واجهة النظام للوضع الليلي المريح</span>
+                   </div>
+                </div>
+                
+                <label className="relative inline-flex items-center cursor-pointer select-none">
+                   <input 
+                     type="checkbox" 
+                     className="sr-only" 
+                     checked={localSettings.darkMode} 
+                     onChange={e => setLocalSettings({...localSettings, darkMode: e.target.checked})} 
+                   />
+                   <div className={`w-12 h-6 rounded-full transition-colors duration-300 relative ${localSettings.darkMode ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-600'}`}>
+                     <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-300 ${localSettings.darkMode ? (localSettings.language === 'ar' ? '-translate-x-7' : 'translate-x-7') : (localSettings.language === 'ar' ? '-translate-x-1' : 'translate-x-1')}`}></div>
+                   </div>
+                </label>
+             </div>
+
              <div className="flex flex-col gap-3">
                 <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">لون السمة الرئيسي (Brand Color)</label>
                 <div className="flex items-center gap-4 bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-700">
@@ -281,7 +306,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
                 <div className="space-y-1">
                    <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">تلميح كلمة المرور (Hint)</label>
                    <div className="relative">
-                     {/* Added AlertCircle to imports and using it here */}
                      <AlertCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                      <input 
                        type="text" 

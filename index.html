@@ -6,6 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SAMLATOR2026 | نظام إدارة محاسبية</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                DEFAULT: 'var(--primary-color)',
+                dark: 'var(--primary-color)',
+              }
+            }
+          }
+        }
+      }
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <!-- مكتبات التصدير الاحترافية -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -20,21 +35,48 @@
       
       /* --- ضوابط الطباعة وتعدد الصفحات --- */
       @media print {
+        /* إجبار الخلفية البيضاء في كل مكان عند الطباعة */
+        html, body { 
+          background: white !important; 
+          color: black !important;
+        }
+
+        .export-fix, .professional-invoice-box, [ref="reportRef"], .export-container-fix {
+          background-color: white !important;
+          color: black !important;
+        }
+
+        /* إخفاء عناصر الوضع المظلم القهرية */
+        .dark {
+           background-color: white !important;
+           color: black !important;
+        }
+
+        .dark * {
+          background-color: transparent !important;
+          color: black !important;
+          border-color: #d1d5db !important; /* zinc-300 */
+        }
+
+        .dark .bg-primary, .bg-primary, 
+        .dark .bg-rose-900, .bg-rose-900,
+        .dark .bg-blue-800, .bg-blue-800 {
+           background-color: #eee !important; /* خلفية رمادية فاتحة للجداول الملونة */
+           color: black !important;
+        }
+
         .pdf-page-break {
           page-break-after: always !important;
           break-after: page !important;
           display: block !important;
         }
         
-        /* منع تقسيم الجداول في منتصف السطر */
         tr { page-break-inside: avoid !important; break-inside: avoid !important; }
         thead { display: table-header-group !important; }
         
         .no-print { display: none !important; }
-        html, body { background: white !important; }
       }
 
-      /* تنسيق خاص لحاوية التصدير لضمان جودة النصوص */
       .export-container-fix {
         direction: rtl !important;
         text-align: right !important;

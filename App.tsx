@@ -98,7 +98,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col transition-colors duration-300 ${settings.darkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'}>
+    <div className={`min-h-screen flex flex-col transition-colors duration-300 print:bg-white print:text-black ${settings.darkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'}>
       <header className={`${settings.darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'} border-b px-6 py-3 flex items-center justify-between sticky top-0 z-50 no-print shadow-sm`}>
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3 cursor-pointer group" onClick={() => { setEditingInvoice(null); setEditingReturn(null); setCurrentView(AppView.DASHBOARD); }}>
@@ -156,7 +156,7 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="flex-1 p-4 md:p-8 overflow-auto pb-24">
+      <main className="flex-1 p-4 md:p-8 overflow-auto pb-24 print:p-0 print:bg-white">
         {(() => {
           switch (currentView) {
             case AppView.DASHBOARD: return <Dashboard setView={setCurrentView} />;
