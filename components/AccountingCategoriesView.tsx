@@ -85,24 +85,22 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
 
   return (
     <div className="space-y-6">
-      {/* Professional Print Header */}
-      <div className="print-only print-header flex justify-between items-center bg-zinc-900 p-6 rounded-t-xl text-white mb-0 border-b-4 border-primary">
+      {/* Professional Print Header - Fixed to be white background */}
+      <div className="print-only mb-6 border-b-4 border-primary pb-6 flex justify-between items-center bg-white text-black p-4 rounded-xl">
         <div className="flex items-center gap-4">
-          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
+          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain" alt="Logo" />}
           <div>
-            <h1 className="text-2xl font-black">{settings?.companyName}</h1>
-            <p className="text-xs opacity-80">{settings?.companyType}</p>
+            <h1 className="text-2xl font-black text-primary leading-none">{settings?.companyName}</h1>
+            <p className="text-[10px] text-zinc-500 font-bold uppercase mt-1">{settings?.companyType}</p>
           </div>
         </div>
         <div className="text-center">
-          <h2 className="text-3xl font-black underline decoration-white/30 underline-offset-8">
+          <h2 className="text-2xl font-black underline underline-offset-8 decoration-primary/30">
             {selectedCategory ? `كشف حركات: ${selectedCategory.name}` : 'دليل بنود المصاريف والإيرادات'}
           </h2>
-          <p className="text-xs mt-2 opacity-80 flex items-center justify-center gap-1">
-            <Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}
-          </p>
+          <p className="text-xs mt-3 font-bold">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
         </div>
-        <div className="text-left text-xs font-bold space-y-1">
+        <div className="text-left text-xs font-bold text-zinc-500">
           <p>{settings?.address}</p>
           <p>{settings?.phone}</p>
         </div>

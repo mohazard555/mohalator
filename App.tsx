@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, Settings as SettingsIcon, LogOut, FileOutput, Heart } from 'lucide-react';
+import { Settings as SettingsIcon, LogOut, FileOutput, Heart } from 'lucide-react';
 import { AppView, AppSettings, SalesInvoice } from './types';
 import Dashboard from './components/Dashboard';
 import SalesInvoiceView from './components/SalesInvoiceView';
@@ -103,13 +103,13 @@ const App: React.FC = () => {
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3 cursor-pointer group" onClick={() => { setEditingInvoice(null); setEditingReturn(null); setCurrentView(AppView.DASHBOARD); }}>
             {settings.logoUrl ? (
-              <img src={settings.logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded transition-transform group-hover:scale-105" />
+              <img src={settings.logoUrl} alt="Logo" className="w-14 h-14 object-contain rounded-xl transition-transform group-hover:scale-105 shadow-sm" />
             ) : (
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-black shadow-lg">
+              <div className="w-14 h-14 bg-primary rounded-xl flex items-center justify-center text-white font-black shadow-lg text-xl">
                 {settings.companyName.substring(0, 2).toUpperCase()}
               </div>
             )}
-            <span className="font-black text-xl tracking-tight text-primary">{settings.companyName}</span>
+            <span className="font-black text-2xl tracking-tight text-primary">{settings.companyName}</span>
           </div>
         </div>
 
@@ -120,21 +120,14 @@ const App: React.FC = () => {
               className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-primary p-2.5 rounded-xl transition-all" 
               title="تصدير فاتورة احترافية"
             >
-               <FileOutput className="w-5 h-5" />
-            </button>
-            <button 
-              onClick={() => setSettings({...settings, darkMode: !settings.darkMode})} 
-              className={`p-2.5 rounded-xl transition-all ${settings.darkMode ? 'text-amber-400 hover:bg-zinc-800' : 'text-zinc-600 hover:bg-zinc-100'}`}
-              title="تغيير المظهر"
-            >
-              {settings.darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+               <FileOutput className="w-6 h-6" />
             </button>
             <button 
               onClick={() => setCurrentView(AppView.SETTINGS)} 
               className="p-2.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all" 
               title="إعدادات النظام"
             >
-              <SettingsIcon className="w-5 h-5" />
+              <SettingsIcon className="w-6 h-6" />
             </button>
           </div>
 
@@ -142,7 +135,7 @@ const App: React.FC = () => {
             {isAuthenticated && (
               <button 
                 onClick={handleLogout} 
-                className="flex items-center gap-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white px-4 py-2 rounded-xl transition-all font-bold text-sm" 
+                className="flex items-center gap-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white px-5 py-2.5 rounded-xl transition-all font-bold text-sm" 
                 title="تسجيل الخروج"
               >
                 <LogOut className="w-4 h-4" />

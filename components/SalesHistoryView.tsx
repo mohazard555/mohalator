@@ -146,14 +146,12 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
     setSelectedItems(prev => prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]);
   };
 
-  // Fixed: Update handleDelete signature to accept 2 arguments (id, invoiceNumber) to match call site and perform cleanup
   const handleDelete = (id: string, invoiceNumber: string) => {
     if (window.confirm('حذف الفاتورة نهائياً؟')) {
        const updated = invoices.filter(i => i.id !== id);
        setInvoices(updated);
        localStorage.setItem('sheno_sales_invoices', JSON.stringify(updated));
 
-       // Also clean up associated stock entries
        const savedStock = localStorage.getItem('sheno_stock_entries');
        if (savedStock) {
           try {
@@ -228,87 +226,86 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
         </div>
       </div>
 
-      <div ref={reportRef} className="bg-zinc-950 rounded-3xl border border-zinc-800 overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.8)] print:border-zinc-300 print:rounded-none p-4 md:p-8">
-        <div className="flex justify-between items-center bg-rose-700 p-6 rounded-xl text-white mb-6 print:m-0 no-print">
+      <div ref={reportRef} className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-2xl print:border-rose-700 print:rounded-none p-4 md:p-8">
+        {/* Professional Print Header - Fixed Background */}
+        <div className="mb-6 border-b-4 border-rose-700 pb-6 flex justify-between items-center bg-white text-black p-4 rounded-xl">
           <div className="flex items-center gap-4">
-            {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
+            {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain" alt="Logo" />}
             <div>
-              <h1 className="text-2xl font-black">{settings?.companyName || 'SAMLATOR'}</h1>
-              <p className="text-xs opacity-80">{settings?.companyType}</p>
+              <h1 className="text-2xl font-black text-rose-700 leading-none">{settings?.companyName || 'SAMLATOR'}</h1>
+              <p className="text-[10px] text-zinc-500 font-bold uppercase mt-1">{settings?.companyType}</p>
             </div>
           </div>
           <div className="text-center">
-            <h2 className="text-2xl font-black underline underline-offset-8">سجل مبيعات المنشأة العام</h2>
-            <div className="flex flex-col gap-1 mt-2">
-              <p className="text-[10px] font-black">الفترة: {startDate || 'البداية'} ← {endDate || 'اليوم'}</p>
-            </div>
+            <h2 className="text-2xl font-black underline underline-offset-8 decoration-rose-700/30">سجل مبيعات المنشأة العام</h2>
+            <p className="text-sm mt-3 font-bold">الفترة: <span className="text-rose-700">{startDate || 'البداية'}</span> إلى <span className="text-rose-700">{endDate || 'اليوم'}</span></p>
           </div>
-          <div className="text-left text-xs font-bold space-y-1">
+          <div className="text-left text-xs font-bold text-zinc-500">
             <p>{settings?.address}</p>
-            <p>{new Date().toLocaleDateString('ar-SA')}</p>
+            <p>تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
           </div>
         </div>
 
         <div className="overflow-x-auto border rounded-xl">
           <table className="w-full text-right border-collapse text-[10px]">
             <thead>
-              <tr className="bg-zinc-900 text-white font-black border-b border-zinc-800 h-16 uppercase tracking-tighter shadow-md print:bg-zinc-100 print:text-zinc-900 print:border-zinc-300">
-                <th className="p-3 border-l border-zinc-800 text-center w-12 text-zinc-400 print:border-zinc-300">تسلسل</th>
-                <th className="p-3 border-l border-zinc-800 text-center w-16 text-rose-500 print:border-zinc-300">رقم</th>
-                <th className="p-3 border-l border-zinc-800 text-center w-20 print:border-zinc-300">تاريخ</th>
-                <th className="p-3 border-l border-zinc-800 text-center print:border-zinc-300">العميل</th>
-                <th className="p-3 border-l border-zinc-800 text-right w-48 print:border-zinc-300">الأصناف</th>
-                <th className="p-3 border-l border-zinc-800 text-center w-20 text-amber-500 print:border-zinc-300">سعر الوحدة</th>
-                <th className="p-3 border-l border-zinc-800 text-right w-40 print:border-zinc-300">المواد المستخدمة</th>
-                <th className="p-3 border-l border-zinc-800 text-center w-12 print:border-zinc-300">العدد</th>
-                <th className="p-3 border-l border-zinc-800 text-center w-24 print:border-zinc-300">الإجمالي</th>
-                <th className="p-3 border-l border-zinc-800 text-right w-48 print:border-zinc-300">التفقيط (كتابة)</th>
-                <th className="p-3 border-l border-zinc-800 text-right print:border-zinc-300">ملاحظات</th>
-                <th className="p-3 border-l border-zinc-800 text-center w-20 no-print">إجراءات</th>
-                <th className="p-3 text-center w-20 text-emerald-500 print:text-emerald-700">المدفوع</th>
+              <tr className="bg-zinc-50 text-zinc-900 font-black border-b border-zinc-200 h-16 uppercase tracking-tighter shadow-sm print:bg-zinc-50 print:border-zinc-300">
+                <th className="p-3 border-l border-zinc-200 text-center w-12 text-zinc-400">تسلسل</th>
+                <th className="p-3 border-l border-zinc-200 text-center w-16 text-rose-700">رقم</th>
+                <th className="p-3 border-l border-zinc-200 text-center w-20">تاريخ</th>
+                <th className="p-3 border-l border-zinc-200 text-center">العميل</th>
+                <th className="p-3 border-l border-zinc-200 text-right w-48">الأصناف</th>
+                <th className="p-3 border-l border-zinc-200 text-center w-20 text-amber-600">سعر الوحدة</th>
+                <th className="p-3 border-l border-zinc-200 text-right w-40">المواد المستخدمة</th>
+                <th className="p-3 border-l border-zinc-200 text-center w-12">العدد</th>
+                <th className="p-3 border-l border-zinc-200 text-center w-24">الإجمالي</th>
+                <th className="p-3 border-l border-zinc-200 text-right w-48">التفقيط (كتابة)</th>
+                <th className="p-3 border-l border-zinc-200 text-right">ملاحظات</th>
+                <th className="p-3 border-l border-zinc-200 text-center w-20 no-print">إجراءات</th>
+                <th className="p-3 text-center w-20 text-emerald-700">المدفوع</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-900 font-bold bg-zinc-950 text-zinc-300 print:bg-white print:text-zinc-900 print:divide-zinc-200">
+            <tbody className="divide-y divide-zinc-100 font-bold bg-white text-zinc-800 print:divide-zinc-200">
               {filteredInvoices.map((inv, idx) => (
-                <tr key={inv.id} className="hover:bg-zinc-900 transition-colors h-14 print:hover:bg-white">
-                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-500 print:border-zinc-200">{filteredInvoices.length - idx}</td>
-                  <td className="p-2 border-l border-zinc-900 text-center text-rose-500 font-black print:border-zinc-200">#{inv.invoiceNumber}</td>
-                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-400 print:border-zinc-200">{inv.date}</td>
-                  <td className="p-2 border-l border-zinc-900 text-zinc-100 truncate max-w-[100px] print:text-zinc-900 print:border-zinc-200">{inv.customerName}</td>
-                  <td className="p-2 border-l border-zinc-900 print:border-zinc-200">
+                <tr key={inv.id} className="hover:bg-zinc-50 transition-colors h-14 print:hover:bg-white">
+                  <td className="p-2 border-l border-zinc-100 text-center font-mono text-zinc-500">{filteredInvoices.length - idx}</td>
+                  <td className="p-2 border-l border-zinc-100 text-center text-rose-700 font-black">#{inv.invoiceNumber}</td>
+                  <td className="p-2 border-l border-zinc-100 text-center font-mono text-zinc-400">{inv.date}</td>
+                  <td className="p-2 border-l border-zinc-100 truncate max-w-[100px]">{inv.customerName}</td>
+                  <td className="p-2 border-l border-zinc-100">
                     <div className="flex flex-col gap-0.5 max-h-12 overflow-y-auto">
                       {inv.items.map((it, i) => (
-                        <div key={i} className="flex items-center gap-1 truncate text-[10px] text-zinc-100 print:text-zinc-900">
+                        <div key={i} className="flex items-center gap-1 truncate text-[10px]">
                           • {it.name} ({it.quantity})
                         </div>
                       ))}
                     </div>
                   </td>
-                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-amber-500 print:border-zinc-200">
+                  <td className="p-2 border-l border-zinc-100 text-center font-mono text-amber-600">
                     {inv.items.length === 1 ? inv.items[0].price.toLocaleString() : <span className="text-[8px] text-zinc-500 uppercase">متعدد</span>}
                   </td>
-                  <td className="p-2 border-l border-zinc-900 print:border-zinc-200">
+                  <td className="p-2 border-l border-zinc-100">
                     <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
-                       {inv.usedMaterials?.map((m, i) => ( <span key={i} className="bg-rose-900/30 text-rose-400 px-1 py-0.5 rounded-sm text-[8px] font-black print:bg-zinc-100 print:text-rose-900">{m.name} ({m.quantity})</span> ))}
+                       {inv.usedMaterials?.map((m, i) => ( <span key={i} className="bg-rose-50 text-rose-700 px-1 py-0.5 rounded-sm text-[8px] font-black border border-rose-100">{m.name} ({m.quantity})</span> ))}
                     </div>
                   </td>
-                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-100 print:text-zinc-900 print:border-zinc-200">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
-                  <td className="p-2 border-l border-zinc-900 text-center font-black text-rose-500 font-mono text-sm bg-rose-900/10 print:bg-transparent print:border-zinc-200">
+                  <td className="p-2 border-l border-zinc-100 text-center font-mono text-zinc-700">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
+                  <td className="p-2 border-l border-zinc-100 text-center font-black text-rose-700 font-mono text-sm bg-rose-50/30">
                     {inv.totalAmount.toLocaleString()}
                   </td>
-                  <td className="p-2 border-l border-zinc-900 text-[10px] font-black text-zinc-400 leading-tight print:text-zinc-900 print:border-zinc-200">
+                  <td className="p-2 border-l border-zinc-100 text-[10px] font-black text-zinc-600 leading-tight">
                     {inv.totalAmountLiteral}
                   </td>
-                  <td className="p-2 border-l border-zinc-900 text-zinc-400 font-bold italic truncate max-w-[100px] print:text-zinc-700 print:border-zinc-200">
+                  <td className="p-2 border-l border-zinc-100 text-zinc-500 font-bold italic truncate max-w-[100px]">
                     {inv.notes || '-'}
                   </td>
-                  <td className="p-2 border-l border-zinc-900 text-center no-print">
+                  <td className="p-2 border-l border-zinc-100 text-center no-print">
                     <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => onEdit?.(inv)} className="p-1.5 bg-zinc-900 rounded-lg text-zinc-500 hover:text-amber-500 transition-all"><Edit2 className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => handleDelete(inv.id, inv.invoiceNumber)} className="p-1.5 bg-zinc-900 rounded-lg text-zinc-500 hover:text-rose-500 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => onEdit?.(inv)} className="p-1.5 bg-zinc-100 rounded-lg text-zinc-500 hover:text-amber-500 transition-all"><Edit2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => handleDelete(inv.id, inv.invoiceNumber)} className="p-1.5 bg-zinc-100 rounded-lg text-zinc-500 hover:text-rose-500 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   </td>
-                  <td className="p-2 text-center text-emerald-500 font-mono text-xs font-black print:text-emerald-700">
+                  <td className="p-2 text-center text-emerald-700 font-mono text-xs font-black">
                     {inv.paidAmount?.toLocaleString() || '0'}
                   </td>
                 </tr>

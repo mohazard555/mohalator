@@ -31,22 +31,22 @@ const PurchaseHistoryView: React.FC<PurchaseHistoryViewProps> = ({ onBack }) => 
 
   return (
     <div className="space-y-6">
-       {/* Print Header */}
-      <div className="print-only print-header flex justify-between items-center bg-amber-600 p-6 rounded-t-xl text-white mb-0 border-b-0">
+       {/* Professional Print Header - Fixed Background */}
+      <div className="print-only mb-6 border-b-4 border-amber-600 pb-6 flex justify-between items-center bg-white text-black p-4 rounded-xl">
         <div className="flex items-center gap-4">
-          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
+          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain" alt="Logo" />}
           <div>
-            <h1 className="text-2xl font-black">{settings?.companyName}</h1>
-            <p className="text-xs opacity-80">{settings?.companyType}</p>
+            <h1 className="text-2xl font-black text-amber-700 leading-none">{settings?.companyName}</h1>
+            <p className="text-[10px] text-zinc-500 font-bold uppercase mt-1">{settings?.companyType}</p>
           </div>
         </div>
         <div className="text-center">
-          <h2 className="text-3xl font-black underline decoration-white/30 underline-offset-8">سجل فواتير المشتريات والتوريد</h2>
-          <p className="text-xs mt-2 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
+          <h2 className="text-2xl font-black underline underline-offset-8 decoration-amber-600/30">سجل فواتير المشتريات والتوريد</h2>
+          <p className="text-sm mt-3 font-bold">الفترة: <span className="text-amber-600">{startDate || 'البداية'}</span> إلى <span className="text-amber-600">{endDate || 'اليوم'}</span></p>
         </div>
-        <div className="text-left text-xs font-bold">
+        <div className="text-left text-xs font-bold text-zinc-500">
           <p>{settings?.address}</p>
-          <p>{settings?.phone}</p>
+          <p>تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
         </div>
       </div>
 
@@ -62,7 +62,7 @@ const PurchaseHistoryView: React.FC<PurchaseHistoryViewProps> = ({ onBack }) => 
              <FileDown className="w-5 h-5" /> تصدير XLSX
           </button>
           <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable border border-zinc-200 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">
-             <Printer className="w-5 h-5" /> طباعة PDF
+             <Printer className="w-5 h-5" /> طباعة
           </button>
         </div>
       </div>
@@ -91,36 +91,36 @@ const PurchaseHistoryView: React.FC<PurchaseHistoryViewProps> = ({ onBack }) => 
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse text-sm">
             <thead>
-              <tr className="bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest border-b border-zinc-700 h-12 print:bg-amber-600 print:text-white">
-                <th className="p-4 border-l border-zinc-800 text-center w-24">رقم الفاتورة</th>
-                <th className="p-4 border-l border-zinc-800 text-center w-32">التاريخ</th>
-                <th className="p-4 border-l border-zinc-800">المورد</th>
-                <th className="p-4 border-l border-zinc-800">تفاصيل المواد (كمية / وحدة)</th>
-                <th className="p-4 border-l border-zinc-800 text-center w-40">إجمالي المبلغ</th>
+              <tr className="bg-zinc-50 text-zinc-900 text-[10px] font-black uppercase tracking-widest border-b border-zinc-200 h-12 print:bg-zinc-50 print:border-zinc-300">
+                <th className="p-4 border-l border-zinc-200 text-center w-24">رقم الفاتورة</th>
+                <th className="p-4 border-l border-zinc-200 text-center w-32">التاريخ</th>
+                <th className="p-4 border-l border-zinc-200">المورد</th>
+                <th className="p-4 border-l border-zinc-200">تفاصيل المواد (كمية / وحدة)</th>
+                <th className="p-4 border-l border-zinc-200 text-center w-40">إجمالي المبلغ</th>
                 <th className="p-4 text-center w-40">المدفوع نقداً</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:divide-zinc-300">
+            <tbody className="divide-y divide-zinc-100 font-bold print:divide-zinc-300">
               {filtered.length === 0 ? (
                 <tr><td colSpan={6} className="p-20 text-center italic text-zinc-400">لا يوجد سجلات مشتريات تطابق البحث</td></tr>
               ) : filtered.map(p => (
                 <tr key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors h-14">
-                  <td className="p-4 text-amber-600 font-black text-center font-mono border-l border-zinc-100 dark:border-zinc-800">#{p.invoiceNumber}</td>
-                  <td className="p-4 font-mono text-zinc-400 text-center border-l border-zinc-100 dark:border-zinc-800">{p.date}</td>
-                  <td className="p-4 text-readable border-l border-zinc-100 dark:border-zinc-800">{p.supplierName}</td>
-                  <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">
+                  <td className="p-4 text-amber-700 font-black text-center font-mono border-l border-zinc-100">#{p.invoiceNumber}</td>
+                  <td className="p-4 font-mono text-zinc-400 text-center border-l border-zinc-100">{p.date}</td>
+                  <td className="p-4 text-readable border-l border-zinc-100">{p.supplierName}</td>
+                  <td className="p-4 border-l border-zinc-100">
                      <div className="flex flex-col gap-1">
                         {p.items.map((it, i) => (
                            <div key={i} className="text-xs text-zinc-500 font-normal flex items-center gap-2">
                               <Package className="w-3 h-3 text-zinc-300" />
                               <span className="font-bold text-readable">{it.name}</span>
-                              <span className="bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-[10px] font-mono text-amber-600">{it.quantity} {it.unit}</span>
+                              <span className="bg-zinc-50 px-1.5 py-0.5 rounded text-[10px] font-mono text-amber-700">{it.quantity} {it.unit}</span>
                            </div>
                         ))}
                      </div>
                   </td>
-                  <td className="p-4 text-center font-black text-rose-600 font-mono text-lg border-l border-zinc-100 dark:border-zinc-800 bg-rose-50/20">{p.totalAmount.toLocaleString()}</td>
-                  <td className="p-4 text-center font-black text-emerald-600 font-mono text-lg bg-emerald-50/20">{p.paidAmount?.toLocaleString() || '0'}</td>
+                  <td className="p-4 text-center font-black text-rose-700 font-mono text-lg border-l border-zinc-100 bg-rose-50/10">{p.totalAmount.toLocaleString()}</td>
+                  <td className="p-4 text-center font-black text-emerald-700 font-mono text-lg bg-emerald-50/10">{p.paidAmount?.toLocaleString() || '0'}</td>
                 </tr>
               ))}
             </tbody>
