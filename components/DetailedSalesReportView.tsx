@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Printer, Search, FileOutput, X, Users, Box, HardDrive, Calendar, Eye, EyeOff, FileDown, ImageIcon } from 'lucide-react';
+import { ArrowRight, Printer, Search, FileOutput, X, Users, Box, HardDrive, Calendar, Eye, EyeOff, FileDown, ImageIcon, Calculator, FileStack } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, CashEntry, Party, PartyType, AppSettings } from '../types';
 import { tafqeet } from '../utils/tafqeet';
 
@@ -109,30 +109,7 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
         </div>
       )}
 
-      {/* Print Header Visible ONLY in Print/PDF Mode */}
-      <div className="print-only print-header flex justify-between items-center bg-rose-900 p-6 rounded-t-xl text-white mb-0 border-b-0">
-        <div className="flex items-center gap-4">
-          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
-          <div>
-            <h1 className="text-2xl font-black">{settings?.companyName}</h1>
-            <p className="text-xs opacity-80">{settings?.companyType}</p>
-          </div>
-        </div>
-        <div className="text-center">
-          <h2 className="text-2xl font-black underline decoration-white/30 underline-offset-8">كشف حساب زبون تفصيلي</h2>
-          <div className="flex gap-4 justify-center mt-3">
-             <span className="bg-white/20 px-3 py-0.5 rounded text-[10px] font-black">إجمالي القطع: {totalItemsCount}</span>
-             <span className="bg-white/20 px-3 py-0.5 rounded text-[10px] font-black">عدد الفواتير: {totalInvoicesCount}</span>
-          </div>
-          <p className="text-[10px] mt-1 opacity-80 font-bold">{customerFilter || 'جميع الزبائن'}</p>
-          <p className="text-[9px] mt-1 opacity-70 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> {startDate} ← {endDate}</p>
-        </div>
-        <div className="text-left text-xs font-bold space-y-1">
-          <p>{settings?.address}</p>
-          <p>{settings?.phone}</p>
-        </div>
-      </div>
-
+      {/* Main UI Header (No print) */}
       <div className="flex flex-col md:flex-row items-center justify-between border-b-2 border-zinc-200 dark:border-zinc-800 pb-4 mb-4 no-print gap-4">
          <div className="flex items-center gap-4">
             <button onClick={onBack} className="p-2 bg-white dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl border border-zinc-200 dark:border-zinc-700 transition-all">
@@ -163,7 +140,7 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
          </div>
       </div>
 
-      {/* Filter & Privacy Controls */}
+      {/* Filter & Privacy Controls (No print) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden rounded-2xl no-print">
          <div className="col-span-1 border-l-2 border-zinc-200 dark:border-zinc-800 flex flex-col">
             <div className="flex border-b-2 border-zinc-200 dark:border-zinc-800 flex-1">
@@ -207,122 +184,143 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
       </div>
 
       {/* Report Content Ref (Used for PDF Export and Print) */}
-      <div ref={reportRef} className="bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 shadow-lg rounded-2xl overflow-hidden print:border-rose-900 print:rounded-none p-4 md:p-8">
+      <div ref={reportRef} className="bg-white border-2 border-rose-900 shadow-lg rounded-2xl overflow-hidden p-4 md:p-8 export-fix">
         
-        {/* Header visible inside Ref (Used for PDF) */}
-        <div className="print-only mb-8">
-           <div className="flex justify-between items-center border-b-2 border-rose-900 pb-4">
-              <div className="flex items-center gap-4">
-                 {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
-                 <div>
-                    <h1 className="text-2xl font-black">{settings?.companyName}</h1>
-                    <p className="text-xs text-zinc-500">{settings?.companyType}</p>
-                 </div>
-              </div>
-              <div className="text-center">
-                 <h2 className="text-2xl font-black underline decoration-rose-900 underline-offset-8">كشف حساب زبون تفصيلي</h2>
-                 <p className="text-[10px] mt-2 font-bold">{customerFilter || 'جميع الزبائن'}</p>
-              </div>
-              <div className="text-left text-xs font-bold text-zinc-500">
-                 <p>{settings?.address}</p>
-                 <p>{new Date().toLocaleDateString('ar-SA')}</p>
-              </div>
-           </div>
+        {/* Unified Print Header - Ink friendly with white background */}
+        <div className="flex justify-between items-center border-b-4 border-rose-900 pb-6 mb-8 bg-white text-zinc-900">
+          <div className="flex items-center gap-4">
+            {settings?.logoUrl && <img src={settings.logoUrl} className="w-20 h-20 object-contain bg-white p-1 rounded-lg" />}
+            <div>
+              <h1 className="text-3xl font-black text-rose-900 leading-none">{settings?.companyName}</h1>
+              <p className="text-[10px] text-zinc-500 font-black uppercase mt-1">{settings?.address}</p>
+              <p className="text-[10px] text-zinc-400 font-bold" dir="ltr">{settings?.phone}</p>
+            </div>
+          </div>
+
+          <div className="text-center space-y-2">
+            <h2 className="text-3xl font-black underline decoration-rose-900/30 underline-offset-8">كشف حساب زبون تفصيلي</h2>
+            <div className="flex gap-4 justify-center">
+               <div className="bg-zinc-50 border border-zinc-200 px-4 py-1.5 rounded-xl flex items-center gap-2">
+                  <Calculator className="w-4 h-4 text-rose-900" />
+                  <span className="text-xs font-black">إجمالي القطع: <span className="text-rose-900">{totalItemsCount}</span></span>
+               </div>
+               <div className="bg-zinc-50 border border-zinc-200 px-4 py-1.5 rounded-xl flex items-center gap-2">
+                  <FileStack className="w-4 h-4 text-rose-900" />
+                  <span className="text-xs font-black">عدد الفواتير: <span className="text-rose-900">{totalInvoicesCount}</span></span>
+               </div>
+            </div>
+            <div className="text-lg font-black text-rose-800">{customerFilter || 'جميع الزبائن'}</div>
+          </div>
+
+          <div className="text-left">
+             <div className="bg-zinc-100 p-3 rounded-2xl border border-zinc-200 space-y-1">
+                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest text-center border-b border-zinc-200 pb-1 mb-1">فترة التقرير</p>
+                <div className="flex items-center gap-2 text-xs font-mono font-bold text-zinc-700">
+                   <span>{startDate}</span>
+                   <span className="text-zinc-300">←</span>
+                   <span>{endDate}</span>
+                </div>
+             </div>
+             <p className="text-[9px] mt-2 font-bold text-zinc-400 text-center">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
+          </div>
         </div>
 
+        {/* Table Body */}
         <table className="w-full text-right border-collapse text-[10px]">
           <thead>
-            <tr className="bg-rose-900 text-white font-black border-b-2 border-rose-950 h-10">
-              <th className="p-1 border border-rose-800 w-12 text-center">فاتورة</th>
-              <th className="p-1 border border-rose-800 w-20 text-center">التاريخ</th>
-              <th className="p-1 border border-rose-800 text-right pr-4">الصنف وتفاصيله</th>
-              {showUsedMaterials && <th className="p-1 border border-rose-800 text-right pr-4">المواد المستخدمة</th>}
-              <th className="p-1 border border-rose-800 w-12 text-center">العدد</th>
-              <th className="p-1 border border-rose-800 w-24 text-center">السعر</th>
-              <th className="p-1 border border-rose-800 w-24 text-center">المجموع</th>
+            <tr className="bg-zinc-100 text-zinc-900 font-black border-y-2 border-rose-900 h-10">
+              <th className="p-1 border border-zinc-200 w-12 text-center">فاتورة</th>
+              <th className="p-1 border border-zinc-200 w-20 text-center">التاريخ</th>
+              <th className="p-1 border border-zinc-200 text-right pr-4">الصنف وتفاصيله</th>
+              {showUsedMaterials && <th className="p-1 border border-zinc-200 text-right pr-4">المواد المستخدمة</th>}
+              <th className="p-1 border border-zinc-200 w-12 text-center">العدد</th>
+              <th className="p-1 border border-zinc-200 w-24 text-center">السعر</th>
+              <th className="p-1 border border-zinc-200 w-24 text-center">المجموع</th>
             </tr>
           </thead>
-          <tbody className="text-readable">
+          <tbody className="text-zinc-800">
             {reportRows.length === 0 ? (
               Array.from({ length: 15 }).map((_, i) => (
-                <tr key={i} className="h-8 border-b border-zinc-100 dark:border-zinc-800">
-                  {Array.from({ length: showUsedMaterials ? 7 : 6 }).map((__, j) => <td key={j} className="border border-zinc-100 dark:border-zinc-800"></td>)}
+                <tr key={i} className="h-8 border-b border-zinc-100">
+                  {Array.from({ length: showUsedMaterials ? 7 : 6 }).map((__, j) => <td key={j} className="border border-zinc-100"></td>)}
                 </tr>
               ))
             ) : (
               reportRows.map((row, idx) => (
-                <tr key={idx} className="h-10 border-b border-zinc-100 dark:border-zinc-800 font-bold hover:bg-rose-50 dark:hover:bg-rose-900/10 transition-colors">
-                  <td className="p-1 border-zinc-100 dark:border-zinc-800 font-mono text-rose-700 dark:text-rose-400 text-center">#{row.invoiceNumber}</td>
-                  <td className="p-1 border-zinc-100 dark:border-zinc-800 font-mono text-center text-zinc-400">{row.invoiceDate}</td>
-                  <td className="p-1 border-zinc-100 dark:border-zinc-800 text-right pr-4">
+                <tr key={idx} className="h-10 border-b border-zinc-100 font-bold hover:bg-rose-50 transition-colors">
+                  <td className="p-1 border-zinc-200 font-mono text-rose-700 text-center">#{row.invoiceNumber}</td>
+                  <td className="p-1 border-zinc-200 font-mono text-center text-zinc-400">{row.invoiceDate}</td>
+                  <td className="p-1 border-zinc-200 text-right pr-4">
                     <div className="flex items-center gap-2">
-                       {row.image && <img src={row.image} className="w-6 h-6 object-cover rounded shadow-sm border border-zinc-200 cursor-zoom-in" onClick={() => setPreviewImage(row.image!)} />}
+                       {row.image && <img src={row.image} className="w-6 h-6 object-cover rounded shadow-sm border border-zinc-200 cursor-zoom-in no-print" onClick={() => setPreviewImage(row.image!)} />}
                        <div className="flex flex-col">
-                          <span className="text-readable">{row.name}</span>
+                          <span className="text-zinc-900">{row.name}</span>
                           {row.serialNumber && <span className="text-[8px] text-zinc-400 font-mono uppercase">SN: {row.serialNumber}</span>}
                        </div>
                     </div>
                   </td>
                   {showUsedMaterials && (
-                    <td className="p-1 border-zinc-100 dark:border-zinc-800 text-right pr-4 bg-zinc-50/50 dark:bg-zinc-800/30 print:bg-transparent">
+                    <td className="p-1 border-zinc-200 text-right pr-4 bg-zinc-50/30">
                        <div className="flex flex-wrap gap-1">
                           {row.usedMaterials.length > 0 ? (
                             row.usedMaterials.map((m: any, i: number) => (
-                              <span key={i} className="bg-rose-500/5 text-rose-600 dark:text-rose-300 px-1.5 py-0.5 rounded-sm border border-rose-200 dark:border-rose-900/50 text-[8px] flex items-center gap-1">
+                              <span key={i} className="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded-sm border border-rose-100 text-[8px] flex items-center gap-1">
                                  <HardDrive className="w-2 h-2 opacity-50"/> {m.name} ({m.quantity})
                               </span>
                             ))
                           ) : (
-                            <span className="text-zinc-300 dark:text-zinc-600 font-normal italic">لا يوجد مواد</span>
+                            <span className="text-zinc-300 font-normal italic">لا يوجد مواد</span>
                           )}
                        </div>
                     </td>
                   )}
-                  <td className="p-1 border-zinc-100 dark:border-zinc-800 font-mono text-center text-sm">{row.quantity}</td>
-                  <td className="p-1 border-zinc-100 dark:border-zinc-800 font-mono text-center">{row.price.toLocaleString()}</td>
-                  <td className="p-1 border-zinc-100 dark:border-zinc-800 font-mono font-black text-center text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/10 print:bg-transparent">{(row.quantity * row.price).toLocaleString()}</td>
+                  <td className="p-1 border-zinc-200 font-mono text-center text-sm">{row.quantity}</td>
+                  <td className="p-1 border-zinc-200 font-mono text-center">{row.price.toLocaleString()}</td>
+                  <td className="p-1 border-zinc-200 font-mono font-black text-center text-emerald-700 bg-emerald-50/50">{(row.quantity * row.price).toLocaleString()}</td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
 
+        {/* Summary Boxes */}
         <div className="border-t-4 border-rose-900 mt-4">
-          <div className="flex border-b border-zinc-200 dark:border-zinc-700 h-12 items-center hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all">
-             <div className="bg-rose-100 dark:bg-rose-900/30 w-64 border-l border-zinc-200 dark:border-zinc-800 p-3 font-black text-center text-sm">اجمالي المبيعات</div>
-             <div className="flex-1 p-2 font-mono font-black text-2xl px-8 text-rose-900 dark:text-rose-400">
+          <div className="flex border-b border-zinc-200 h-12 items-center hover:bg-zinc-50 transition-all">
+             <div className="bg-zinc-50 w-64 border-l border-zinc-200 p-3 font-black text-center text-sm">اجمالي المبيعات</div>
+             <div className="flex-1 p-2 font-mono font-black text-2xl px-8 text-rose-900">
                {totalSales.toLocaleString()} <span className="text-sm font-bold opacity-60">{settings?.currencySymbol}</span>
              </div>
           </div>
-          <div className="flex border-b border-zinc-200 dark:border-zinc-700 h-12 items-center hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all">
-             <div className="bg-emerald-100 dark:bg-emerald-900/30 w-64 border-l border-zinc-200 dark:border-zinc-800 p-3 font-black text-center text-sm">الرصيد المدفوع</div>
-             <div className="flex-1 p-2 font-mono font-black text-2xl px-8 text-emerald-700 dark:text-emerald-400">
+          <div className="flex border-b border-zinc-200 h-12 items-center hover:bg-zinc-50 transition-all">
+             <div className="bg-emerald-50 w-64 border-l border-zinc-200 p-3 font-black text-center text-sm">الرصيد المدفوع</div>
+             <div className="flex-1 p-2 font-mono font-black text-2xl px-8 text-emerald-700">
                {totalPaid.toLocaleString()} <span className="text-sm font-bold opacity-60">{settings?.currencySymbol}</span>
              </div>
           </div>
-          <div className="flex h-12 items-center bg-rose-50 dark:bg-rose-900/10 hover:bg-rose-100 dark:hover:bg-rose-900/20 transition-all">
-             <div className="bg-rose-200 dark:bg-rose-800/40 w-64 border-l border-zinc-200 dark:border-zinc-800 p-3 font-black text-center text-sm">الرصيد المتبقي</div>
-             <div className="flex-1 p-2 font-mono font-black text-2xl px-8 text-rose-700 dark:text-rose-300">
+          <div className="flex h-12 items-center bg-rose-50/50 hover:bg-rose-100 transition-all">
+             <div className="bg-rose-100/50 w-64 border-l border-zinc-200 p-3 font-black text-center text-sm">الرصيد المتبقي</div>
+             <div className="flex-1 p-2 font-mono font-black text-2xl px-8 text-rose-700">
                {totalRemaining.toLocaleString()} <span className="text-sm font-bold opacity-60">{settings?.currencySymbol}</span>
              </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-4 border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden shadow-md mt-6 print:border-rose-900">
-           <div className="col-span-3 flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800 text-[10px] font-bold">
-              <div className="p-2.5 px-8 text-readable underline underline-offset-4 decoration-zinc-200 dark:decoration-zinc-700">{tafqeet(totalSales, settings?.currency || 'ليرة سورية')}</div>
-              <div className="p-2.5 px-8 text-readable underline underline-offset-4 decoration-zinc-200 dark:decoration-zinc-700">{tafqeet(totalPaid, settings?.currency || 'ليرة سورية')}</div>
-              <div className="p-2.5 px-8 text-rose-800 dark:text-rose-400 underline underline-offset-4 decoration-rose-200 dark:decoration-rose-900 font-black">{tafqeet(totalRemaining, settings?.currency || 'ليرة سورية')}</div>
+        {/* Amount in words block */}
+        <div className="grid grid-cols-4 border-2 border-zinc-200 bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
+           <div className="col-span-3 flex flex-col divide-y divide-zinc-100 text-[10px] font-bold">
+              <div className="p-2.5 px-8 text-zinc-700 underline underline-offset-4 decoration-zinc-200">{tafqeet(totalSales, settings?.currency || 'ليرة سورية')}</div>
+              <div className="p-2.5 px-8 text-zinc-700 underline underline-offset-4 decoration-zinc-200">{tafqeet(totalPaid, settings?.currency || 'ليرة سورية')}</div>
+              <div className="p-2.5 px-8 text-rose-800 underline underline-offset-4 decoration-rose-200 font-black">{tafqeet(totalRemaining, settings?.currency || 'ليرة سورية')}</div>
            </div>
-           <div className="col-span-1 border-r border-zinc-200 dark:border-zinc-800 flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800 font-black text-[10px] bg-zinc-50 dark:bg-zinc-800/50 print:border-rose-900">
-              <div className="p-2.5 pr-6 text-left border-l border-zinc-100 dark:border-zinc-800">المبيع كتابةً</div>
-              <div className="p-2.5 pr-6 text-left border-l border-zinc-100 dark:border-zinc-800">المدفوع كتابةً</div>
-              <div className="p-2.5 pr-6 text-left border-l border-zinc-100 dark:border-zinc-800">المتبقي كتابةً</div>
+           <div className="col-span-1 border-r border-zinc-200 flex flex-col divide-y divide-zinc-100 font-black text-[10px] bg-zinc-50">
+              <div className="p-2.5 pr-6 text-left border-l border-zinc-100">المبيع كتابةً</div>
+              <div className="p-2.5 pr-6 text-left border-l border-zinc-100">المدفوع كتابةً</div>
+              <div className="p-2.5 pr-6 text-left border-l border-zinc-100">المتبقي كتابةً</div>
            </div>
         </div>
 
         {/* Print Only Footer */}
-        <div className="print-only mt-10 pt-6 border-t border-zinc-100 flex justify-between items-end text-[9px] font-black text-zinc-400">
+        <div className="print-only mt-10 pt-6 border-t border-zinc-200 flex justify-between items-end text-[9px] font-black text-zinc-400">
            <div className="flex flex-col">
               <span>SAMLATOR SYSTEM | SECURED FINANCIAL LOG</span>
               <span>تاريخ الطباعة: {new Date().toLocaleString('ar-SA')}</span>

@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { ArrowRight, Search, UserCheck, Printer, FileDown, Filter, Calendar, Coins, CreditCard, Building, RefreshCcw, Calculator, ChevronDown, Users, Briefcase, Share2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowRight, Search, UserCheck, Printer, FileDown, Filter, Calendar, Coins, CreditCard, Building, RefreshCcw, Calculator, ChevronDown, Users, Briefcase, Share2, MapPin, Phone } from 'lucide-react';
 import { Party, PartyType, SalesInvoice, CashEntry, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -9,13 +9,14 @@ interface CustomerBalancesViewProps {
 }
 
 const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) => {
+  const reportRef = useRef<HTMLDivElement>(null);
   const [partyType, setPartyType] = useState<PartyType | 'الكل'>(PartyType.CUSTOMER);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Currency Toggle (Image Style)
+  // Currency Toggle
   const [activeCurrencyView, setActiveCurrencyView] = useState<'primary' | 'secondary'>('primary');
 
-  // Converter States (Image 60 logic)
+  // Converter States
   const [exchangeRate, setExchangeRate] = useState(11500);
   const [isUnifiedView, setIsUnifiedView] = useState(false);
 
@@ -64,7 +65,6 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
     const primary = getStats(primarySymbol, true);
     const secondary = getStats(secondarySymbol, false);
 
-    // Unified Calculation
     let unifiedNet = 0;
     let unifiedMovements = 0;
     let unifiedPayments = 0;
@@ -98,13 +98,13 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
 
   return (
     <div className="space-y-6 text-right" dir="rtl">
-      {/* Header Buttons */}
+      {/* UI Action Bar (No Print) */}
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-zinc-800 text-white hover:bg-zinc-700 rounded-xl transition-colors">
             <ArrowRight className="w-6 h-6" />
           </button>
-          <h2 className="text-2xl font-black text-white">أرصدة العملاء والموردين</h2>
+          <h2 className="text-2xl font-black text-readable">أرصدة العملاء والموردين</h2>
         </div>
         <div className="flex gap-2">
            <button onClick={() => exportToCSV(balancesData, 'customer_balances')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-zinc-700">
@@ -116,10 +116,8 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
         </div>
       </div>
 
-      {/* Main Filter & Currency Toggle Bar */}
-      <div className="bg-[#121214] p-4 rounded-3xl border border-zinc-800 flex flex-wrap items-center gap-6 no-print">
-        
-        {/* Party Type Filter (الكل، عملاء، موردين، مشترك) */}
+      {/* Main Filter & Currency Toggle Bar (No Print) */}
+      <div className="bg-[#121214] p-4 rounded-3xl border border-zinc-800 flex flex-wrap items-center gap-6 no-print shadow-xl">
         <div className="flex bg-zinc-900 p-1.5 rounded-2xl border border-zinc-800 gap-1">
            <button onClick={() => setPartyType('الكل')} className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${partyType === 'الكل' ? 'bg-[#e11d48] text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-400'}`}>الكل</button>
            <button onClick={() => setPartyType(PartyType.CUSTOMER)} className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${partyType === PartyType.CUSTOMER ? 'bg-[#e11d48] text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-400'}`}>العملاء</button>
@@ -127,7 +125,6 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
            <button onClick={() => setPartyType(PartyType.BOTH)} className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${partyType === PartyType.BOTH ? 'bg-[#e11d48] text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-400'}`}>مشترك</button>
         </div>
 
-        {/* Search Bar */}
         <div className="relative flex-1 min-w-[250px]">
           <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 w-5 h-5" />
           <input 
@@ -139,100 +136,104 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
           />
         </div>
 
-        {/* Currency Capsule Toggle (Same as Image) */}
         <div className="flex bg-[#18181b] border border-zinc-700 p-1 rounded-full h-12 items-center">
-           <button 
-             onClick={() => setActiveCurrencyView('secondary')} 
-             className={`flex items-center gap-2 px-6 h-full rounded-full text-xs font-black transition-all ${activeCurrencyView === 'secondary' ? 'bg-[#e11d48] text-white' : 'text-zinc-500'}`}
-           >
-              <CreditCard className="w-4 h-4" /> {settings?.secondaryCurrency || 'دولار أمريكي'}
-           </button>
-           <button 
-             onClick={() => setActiveCurrencyView('primary')} 
-             className={`flex items-center gap-2 px-6 h-full rounded-full text-xs font-black transition-all ${activeCurrencyView === 'primary' ? 'bg-[#e11d48] text-white' : 'text-zinc-500'}`}
-           >
-              <Coins className="w-4 h-4" /> {settings?.currency || 'ليرة سورية'}
-           </button>
+           <button onClick={() => setActiveCurrencyView('secondary')} className={`flex items-center gap-2 px-6 h-full rounded-full text-xs font-black transition-all ${activeCurrencyView === 'secondary' ? 'bg-[#e11d48] text-white' : 'text-zinc-500'}`}><CreditCard className="w-4 h-4" /> {settings?.secondaryCurrency || 'دولار'}</button>
+           <button onClick={() => setActiveCurrencyView('primary')} className={`flex items-center gap-2 px-6 h-full rounded-full text-xs font-black transition-all ${activeCurrencyView === 'primary' ? 'bg-[#e11d48] text-white' : 'text-zinc-500'}`}><Coins className="w-4 h-4" /> {settings?.currency || 'ليرة'}</button>
         </div>
       </div>
 
-      {/* Currency Converter Controls (Image 60) */}
-      <div className="bg-[#121214] p-5 rounded-[2rem] border border-zinc-800 flex flex-wrap items-center justify-between gap-6 no-print">
-         <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsUnifiedView(!isUnifiedView)} 
-              className={`px-8 py-3 rounded-2xl font-black text-sm flex items-center gap-3 transition-all ${isUnifiedView ? 'bg-emerald-600 text-white shadow-xl' : 'bg-zinc-800 text-zinc-500'}`}
-            >
-               <RefreshCcw className={`w-5 h-5 ${isUnifiedView ? 'animate-spin-slow' : ''}`} />
-               {isUnifiedView ? 'الرصيد الموحد مفعّل' : 'تفعيل العرض الموحد للنتائج'}
-            </button>
-            <div className="flex flex-col gap-0.5">
-               <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mr-1">سعر الصرف النشط</span>
-               <div className="relative group">
-                  <input 
-                    type="number" 
-                    value={exchangeRate} 
-                    onChange={e => setExchangeRate(Number(e.target.value))}
-                    className="w-40 bg-zinc-950 border-2 border-zinc-800 p-2.5 rounded-xl text-center font-black text-[#e11d48] text-lg outline-none group-focus-within:border-[#e11d48] transition-all"
-                  />
-                  <Calculator className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-800" />
-               </div>
-            </div>
-         </div>
+      {/* Design Matching the Image for Printing */}
+      <div ref={reportRef} className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-2xl p-4 md:p-8 print:p-0 print:border-none print:shadow-none export-fix">
+        
+        {/* Professional Header - Matches provided image layout */}
+        <div className="flex justify-between items-start mb-2 border-b-4 border-[#e11d48] pb-6 bg-white text-zinc-900 print:mb-8 print:mx-4">
+           {/* Right Part: Logo & Company Name */}
+           <div className="flex items-center gap-4">
+              {settings?.logoUrl ? (
+                <img src={settings.logoUrl} className="w-20 h-20 object-contain bg-white rounded-xl p-1" alt="Logo" />
+              ) : (
+                <div className="w-16 h-16 bg-[#e11d48] rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg">SH</div>
+              )}
+              <div>
+                 <h1 className="text-3xl font-black text-[#e11d48] leading-tight">{settings?.companyName || 'مطبعة شينو'}</h1>
+                 <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em]">{settings?.companyType}</p>
+              </div>
+           </div>
 
-         {/* Extra Info */}
-         <div className="hidden lg:flex items-center gap-6">
-            <div className="text-left">
-               <p className="text-[10px] font-black text-zinc-500 uppercase">معدل التحويل المعتمد</p>
-               <p className="font-mono font-black text-zinc-300">1 {settings?.secondaryCurrencySymbol} = {exchangeRate} {settings?.currencySymbol}</p>
-            </div>
-            <div className="w-px h-10 bg-zinc-800"></div>
-            <div className="text-left">
-               <p className="text-[10px] font-black text-zinc-500 uppercase">جهة العرض الحالية</p>
-               <p className="font-black text-[#e11d48]">{activeCurrencyView === 'primary' ? settings?.currency : settings?.secondaryCurrency}</p>
-            </div>
-         </div>
-      </div>
+           {/* Center Part: Report Title */}
+           <div className="text-center pt-2">
+              <h2 className="text-3xl font-black text-zinc-900 border-b-2 border-zinc-100 inline-block px-8 pb-1 mb-3">كشف أرصدة الحسابات</h2>
+              <div className="flex flex-col items-center">
+                 <div className="flex items-center gap-2 bg-zinc-50 px-4 py-1.5 rounded-full border border-zinc-100 no-print-visible">
+                    <span className="text-xs font-bold text-zinc-500">نوع الطرف:</span>
+                    <span className="text-sm font-black text-[#e11d48] uppercase tracking-tighter">{partyType === 'الكل' ? 'جميع الجهات المعتمدة' : partyType}</span>
+                 </div>
+                 <div className="text-[11px] mt-2 font-mono font-bold text-zinc-400">
+                    {new Date().toLocaleDateString('ar-SA')} | SAMLATOR SECURED LEDGER
+                 </div>
+              </div>
+           </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
-         <div className={`bg-[#18181b] border border-zinc-800 p-8 rounded-[2rem] flex flex-col items-center justify-center gap-2 shadow-xl relative overflow-hidden transition-all ${activeCurrencyView === 'primary' ? 'ring-2 ring-[#e11d48]/50' : 'opacity-60'}`}>
-            <div className="absolute top-0 right-0 w-24 h-24 bg-[#e11d48]/5 blur-3xl rounded-full"></div>
-            <span className="text-[11px] text-zinc-500 font-black uppercase tracking-widest z-10">إجمالي الأرصدة بـ {settings?.currency}</span>
-            <div className="flex items-baseline gap-2 z-10">
-               <span className="text-5xl font-mono text-[#e11d48] font-black tracking-tighter">{totalPrimaryAll.toLocaleString()}</span>
-               <span className="text-xs font-black text-zinc-600">{settings?.currencySymbol}</span>
-            </div>
-         </div>
-         <div className={`bg-[#18181b] border border-zinc-800 p-8 rounded-[2rem] flex flex-col items-center justify-center gap-2 shadow-xl relative overflow-hidden transition-all ${activeCurrencyView === 'secondary' ? 'ring-2 ring-amber-500/50' : 'opacity-60'}`}>
-            <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 blur-3xl rounded-full"></div>
-            <span className="text-[11px] text-zinc-500 font-black uppercase tracking-widest z-10">إجمالي الأرصدة بـ {settings?.secondaryCurrency}</span>
-            <div className="flex items-baseline gap-2 z-10">
-               <span className="text-5xl font-mono text-amber-500 font-black tracking-tighter">{totalSecondaryAll.toLocaleString()}</span>
-               <span className="text-xs font-black text-zinc-600">{settings?.secondaryCurrencySymbol}</span>
-            </div>
-         </div>
-      </div>
+           {/* Left Part: Contact Info */}
+           <div className="text-left space-y-1">
+              <div className="flex items-center justify-end gap-2 text-zinc-500">
+                 <span className="text-xs font-bold">{settings?.address || 'دمشق، سوريا'}</span>
+                 <MapPin className="w-4 h-4 text-[#e11d48]" />
+              </div>
+              <div className="flex items-center justify-end gap-2 text-zinc-500" dir="ltr">
+                 <Phone className="w-4 h-4 text-[#e11d48]" />
+                 <span className="text-xs font-bold">{settings?.phone || '093XXXXXXX'}</span>
+              </div>
+              <div className="text-[10px] font-black text-zinc-400 uppercase pt-2">
+                 تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}
+              </div>
+           </div>
+        </div>
 
-      {/* Main Table */}
-      <div className="bg-[#0e0e10] rounded-[2.5rem] border border-zinc-800 overflow-hidden shadow-2xl">
-        <div className="overflow-x-auto">
+        {/* Action Bar inside report - UI only */}
+        <div className="no-print bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 flex justify-between items-center mb-8">
+           <div className="flex items-center gap-6">
+              <button 
+                onClick={() => setIsUnifiedView(!isUnifiedView)} 
+                className={`px-6 py-2.5 rounded-2xl font-black text-xs flex items-center gap-2 transition-all ${isUnifiedView ? 'bg-emerald-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}
+              >
+                 <RefreshCcw className="w-4 h-4" /> {isUnifiedView ? 'العرض الموحد مفعّل' : 'تفعيل العرض الموحد'}
+              </button>
+              <div className="flex items-center gap-2">
+                 <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">سعر الصرف</span>
+                 <input type="number" value={exchangeRate} onChange={e => setExchangeRate(Number(e.target.value))} className="w-24 bg-zinc-950 border border-zinc-800 p-2 rounded-xl text-center font-black text-[#e11d48] text-sm outline-none" />
+              </div>
+           </div>
+           <div className="flex gap-4">
+              <div className="text-center">
+                 <p className="text-[9px] font-black text-zinc-500 uppercase">إجمالي {settings?.currencySymbol}</p>
+                 <p className="font-mono font-black text-white">{totalPrimaryAll.toLocaleString()}</p>
+              </div>
+              <div className="w-px h-8 bg-zinc-800"></div>
+              <div className="text-center">
+                 <p className="text-[9px] font-black text-zinc-500 uppercase">إجمالي {settings?.secondaryCurrencySymbol}</p>
+                 <p className="font-mono font-black text-amber-500">{totalSecondaryAll.toLocaleString()}</p>
+              </div>
+           </div>
+        </div>
+
+        {/* Table - Matches the visual style of the provided image */}
+        <div className="overflow-x-auto print:mx-4">
           <table className="w-full text-right border-collapse text-sm">
             <thead>
-              <tr className="bg-[#18181b] text-[10px] text-zinc-500 font-black uppercase tracking-widest border-b border-zinc-800 h-16">
-                <th className="p-4 text-center w-24">كود</th>
-                <th className="p-4">اسم الحساب</th>
-                <th className="p-4 text-center">إجمالي الحركات</th>
-                <th className="p-4 text-center">إجمالي المدفوعات</th>
-                <th className="p-4 text-center font-black">
-                  الرصيد الصافي ({isUnifiedView ? 'موحد' : activeCurrencyView === 'primary' ? settings?.currencySymbol : settings?.secondaryCurrencySymbol})
-                </th>
-                <th className="p-4 text-center">الحالة</th>
+              <tr className="bg-zinc-100 text-zinc-900 font-black border-b-2 border-zinc-300 h-14 uppercase tracking-tighter print:bg-zinc-100 print:text-black">
+                <th className="p-4 border-l border-zinc-200 text-center w-24">كود</th>
+                <th className="p-4 border-l border-zinc-200">الاسم والبيان</th>
+                <th className="p-4 border-l border-zinc-200 text-center">إجمالي المسحوبات</th>
+                <th className="p-4 border-l border-zinc-200 text-center">إجمالي المدفوعات</th>
+                <th className="p-4 border-l border-zinc-200 text-center bg-zinc-50/50 print:bg-zinc-100">الرصيد الصافي</th>
+                <th className="p-4 text-center">حالة الحساب</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-900 font-bold">
-              {balancesData.map((party) => {
-                // Determine which data to show based on Unified toggle and Active Currency toggle
+            <tbody className="divide-y divide-zinc-100 font-bold bg-white text-zinc-800 print:divide-zinc-200">
+              {balancesData.length === 0 ? (
+                 <tr><td colSpan={6} className="p-20 text-center italic text-zinc-300">لا يوجد بيانات لعرضها</td></tr>
+              ) : balancesData.map((party) => {
                 let stats;
                 if (isUnifiedView) {
                   stats = {
@@ -260,22 +261,22 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
                 }
 
                 return (
-                  <tr key={party.id} className="hover:bg-zinc-900/50 transition-colors h-14 group">
-                    <td className="p-4 font-mono text-zinc-600 text-center">{party.code}</td>
-                    <td className="p-4 text-white text-lg">
+                  <tr key={party.id} className="hover:bg-zinc-50 transition-colors h-14 print:h-12">
+                    <td className="p-4 font-mono text-zinc-400 text-center border-l border-zinc-100">{party.code}</td>
+                    <td className="p-4 text-zinc-900 text-lg border-l border-zinc-100 print:text-base">
                        {party.name}
-                       {party.type === PartyType.BOTH && <span className="mr-2 text-[8px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500 uppercase">مشترك</span>}
+                       {party.type === PartyType.BOTH && <span className="mr-2 text-[8px] px-2 py-0.5 rounded bg-zinc-100 text-zinc-400 font-black">مشترك</span>}
                     </td>
-                    <td className="p-4 text-center font-mono text-zinc-400 group-hover:text-zinc-200 transition-colors">{stats.movements.toLocaleString()}</td>
-                    <td className="p-4 text-center font-mono text-emerald-600 group-hover:text-emerald-400 transition-colors">{stats.payments.toLocaleString()}</td>
-                    <td className="p-4 text-center font-mono">
-                       <span className={`text-xl font-black ${stats.net > 0 ? 'text-[#e11d48]' : stats.net === 0 ? 'text-white/40' : 'text-emerald-500'}`}>
+                    <td className="p-4 text-center font-mono text-zinc-500 border-l border-zinc-100">{stats.movements.toLocaleString()}</td>
+                    <td className="p-4 text-center font-mono text-emerald-600 border-l border-zinc-100">{stats.payments.toLocaleString()}</td>
+                    <td className="p-4 text-center font-mono border-l border-zinc-100 bg-zinc-50/20 print:bg-transparent">
+                       <span className={`text-xl font-black print:text-lg ${stats.net > 0 ? 'text-[#e11d48]' : stats.net === 0 ? 'text-zinc-300' : 'text-emerald-600'}`}>
                          {stats.net.toLocaleString()}
                        </span>
-                       <span className="text-[9px] mr-1 opacity-40 font-bold uppercase">{stats.symbol}</span>
+                       <span className="text-[9px] mr-1 text-zinc-400 font-bold uppercase">{stats.symbol}</span>
                     </td>
                     <td className="p-4 text-center">
-                      <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase border ${stats.net > 0 ? 'text-[#e11d48] bg-[#e11d48]/10 border-[#e11d48]/20' : stats.net === 0 ? 'text-zinc-500 bg-zinc-900 border-zinc-800' : 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'}`}>
+                      <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase border ${stats.net > 0 ? 'text-[#e11d48] bg-[#e11d48]/5 border-[#e11d48]/20' : stats.net === 0 ? 'text-zinc-400 bg-zinc-50 border-zinc-200' : 'text-emerald-600 bg-emerald-50 border-emerald-100'} print:border-none print:p-0`}>
                         {stats.net > 0 ? 'مدين' : stats.net === 0 ? 'مسدد' : 'دائن'}
                       </span>
                     </td>
@@ -283,13 +284,40 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
                 );
               })}
             </tbody>
+            {/* Table Footer for Grand Totals */}
+            <tfoot>
+               <tr className="bg-zinc-50 font-black border-t-2 border-zinc-300 h-14 print:bg-zinc-50 print:text-black">
+                  <td colSpan={2} className="p-4 text-center text-zinc-500 uppercase text-[10px] tracking-widest">إجمالي الأرصدة المفلترة المفتوحة</td>
+                  <td colSpan={2} className="p-4 text-center">---</td>
+                  <td className="p-4 text-center font-mono text-2xl text-[#e11d48] print:text-xl">
+                     {totalPrimaryAll.toLocaleString()} <span className="text-xs">{settings?.currencySymbol}</span>
+                  </td>
+                  <td className="p-4 text-center">---</td>
+               </tr>
+            </tfoot>
           </table>
+        </div>
+
+        {/* Print Only Footer - Matches Professional Accounting Style */}
+        <div className="hidden print:flex justify-between items-end mt-12 pt-8 border-t border-zinc-200 text-[10px] font-black text-zinc-400 mx-4">
+           <div className="flex flex-col">
+              <span>SAMLATOR SYSTEM | FINANCIAL LOGS TERMINAL</span>
+              <span>تاريخ استخراج هذا التقرير: {new Date().toLocaleString('ar-SA')}</span>
+           </div>
+           <div className="text-center">
+              <div className="w-48 border-b-2 border-zinc-200 mb-2 mx-auto"></div>
+              <span>توقيع مدير الحسابات / والختم الرسمي</span>
+           </div>
+           <div className="text-left italic opacity-50">
+              {settings?.companyName} Accounting Terminal v4.1
+           </div>
         </div>
       </div>
 
+      {/* Bottom Sticky Branding for UI */}
       <div className="flex justify-between items-center no-print px-4 py-4 text-zinc-600 text-[9px] font-black uppercase tracking-[0.4em]">
          <span>{settings?.companyName} Accounting Terminal</span>
-         <span>Version 2026.4.1</span>
+         <span>Version 2026.4.1 | SYRIA</span>
       </div>
     </div>
   );

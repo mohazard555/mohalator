@@ -214,7 +214,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     if (!reportRef.current || isProcessing) return;
     setIsProcessing(true);
     try {
-      // تصدير الصورة يعتمد على ما يظهر حالياً، لذا سيظهر بالشكل الداكن إذا كانت الشاشة داكنة
       await ImageExportService.exportAsPng(
         reportRef.current, 
         `كشف_حساب_${reportParty || 'عميل'}`
@@ -265,6 +264,8 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
              padding: 8mm;
              display: flex;
              flex-direction: column;
+             background: white !important;
+             color: black !important;
           }
         `}</style>
         
@@ -445,18 +446,31 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
            <style>{`
              @media screen {
                .xo-report-container-styled {
-                  background: #09090b;
-                  color: white;
-                  border: 1px solid #27272a;
+                  background: white !important;
+                  color: black !important;
+                  border: 1px solid #e5e7eb;
                   border-radius: 40px;
                   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+               }
+               .xo-card-screen {
+                  background: #f9fafb !important;
+                  border: 1px solid #e5e7eb !important;
+                  color: #111827 !important;
+               }
+               .xo-table-screen th {
+                  background: #f3f4f6 !important;
+                  color: #374151 !important;
+               }
+               .xo-table-screen td {
+                  color: #1f2937 !important;
+               }
+               .xo-summary-label {
+                  color: #6b7280 !important;
                }
              }
 
              @media print {
                @page { size: A4 portrait; margin: 15mm !important; }
-               
-               /* إخفاء الحاويات الداكنة تماماً في الطباعة الورقية */
                .xo-report-container-styled {
                  background: white !important;
                  color: black !important;
@@ -467,8 +481,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  width: 100% !important;
                  max-width: 100% !important;
                }
-
-               /* تحسين شكل التقرير ليتطابق مع الصورة الورقية */
                .xo-report-header-print {
                  display: flex !important;
                  justify-content: space-between;
@@ -477,14 +489,12 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  padding-bottom: 15px;
                  margin-bottom: 20px;
                }
-
                .xo-summary-grid {
                  display: grid !important;
                  grid-template-columns: repeat(3, 1fr) !important;
                  gap: 15px !important;
                  margin-bottom: 30px !important;
                }
-
                .xo-card-print {
                   background: white !important;
                   border: 1px solid #eee !important;
@@ -492,48 +502,51 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                   padding: 15px !important;
                   text-align: center !important;
                   box-shadow: none !important;
+                  color: black !important;
                }
-
                .xo-table-print {
                  border: 1px solid #eee !important;
                  width: 100% !important;
+                 border-collapse: collapse !important;
                }
-               
                .xo-table-print th {
                  background-color: #f8fafc !important;
                  color: #64748b !important;
                  font-size: 11px !important;
                  text-transform: uppercase !important;
-                 border-bottom: 2px solid #f1f5f9 !important;
+                 border: 1px solid #eee !important;
+                 padding: 10px !important;
                }
-               
                .xo-table-print td {
-                 border-bottom: 1px solid #f1f5f9 !important;
+                 border: 1px solid #eee !important;
                  font-size: 13px !important;
                  padding: 12px 8px !important;
+                 color: black !important;
                }
+               .no-print { display: none !important; }
+               * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
              }
            `}</style>
            
            <div ref={reportRef} className="xo-report-container-styled w-full max-w-4xl min-h-screen p-8 flex flex-col gap-6 relative export-fix">
-              {/* ترويسة التقرير (تظهر في الطباعة كما في الصورة) */}
-              <div className="flex justify-between items-start mb-2 no-print-visible xo-report-header-print">
+              {/* ترويسة التقرير */}
+              <div className="flex justify-between items-start mb-2 xo-report-header-print">
                  <div className="text-right space-y-1">
                     <p className="text-[12px] font-black text-rose-600 uppercase tracking-widest">FINANCIAL LOG</p>
-                    <p className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">{settings?.address || 'دمشق، سوريا'}</p>
-                    <p className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400" dir="ltr">{new Date().toLocaleDateString('ar-SA')}</p>
+                    <p className="text-[11px] font-bold text-zinc-500">{settings?.address || 'دمشق، سوريا'}</p>
+                    <p className="text-[11px] font-bold text-zinc-500" dir="ltr">{new Date().toLocaleDateString('ar-SA')}</p>
                  </div>
 
                  <div className="text-center">
-                    <h2 className="text-3xl font-black border-b-2 border-zinc-200 dark:border-zinc-800 inline-block px-6 pb-2">تقرير كشف حساب مالي</h2>
+                    <h2 className="text-3xl font-black border-b-2 border-zinc-200 inline-block px-6 pb-2 text-zinc-900">تقرير كشف حساب مالي</h2>
                     <div className="mt-2">
-                       <span className="text-xl font-black text-rose-500 uppercase tracking-tight">{reportParty || '...'}</span>
+                       <span className="text-xl font-black text-rose-600 uppercase tracking-tight">{reportParty || 'اسم الحساب غير محدد'}</span>
                     </div>
                  </div>
 
                  <div className="flex items-center gap-4">
                     <div className="text-left">
-                       <h1 className="text-2xl font-black leading-none">{settings?.companyName || 'XO COMPANY'}</h1>
+                       <h1 className="text-2xl font-black leading-none text-zinc-900">{settings?.companyName || 'XO COMPANY'}</h1>
                        <p className="text-[10px] font-bold text-zinc-500 mt-1" dir="ltr">{settings?.phone}</p>
                     </div>
                     {settings?.logoUrl ? (
@@ -545,19 +558,19 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
               </div>
 
               {/* خط التصميم الأحمر */}
-              <div className="h-0.5 bg-rose-600 w-full mb-6 print:block hidden"></div>
+              <div className="h-0.5 bg-rose-600 w-full mb-6"></div>
 
-              {/* بطاقات الإجماليات (معدلة لتشبه الصورة) */}
+              {/* بطاقات الإجماليات */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 xo-summary-grid">
-                  <div className="xo-card-print bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
-                     <span className="text-[11px] font-black text-zinc-500 uppercase tracking-widest">إجمالي المسحوبات</span>
-                     <span className="text-3xl font-mono font-black">{due.toLocaleString()}</span>
+                  <div className="xo-card-print xo-card-screen p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
+                     <span className="text-[11px] font-black xo-summary-label uppercase tracking-widest">إجمالي المسحوبات</span>
+                     <span className="text-3xl font-mono font-black text-zinc-900">{due.toLocaleString()}</span>
                   </div>
-                  <div className="xo-card-print bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
-                     <span className="text-[11px] font-black text-emerald-500 uppercase tracking-widest">إجمالي المدفوعات</span>
-                     <span className="text-3xl font-mono font-black text-emerald-500">{paid.toLocaleString()}</span>
+                  <div className="xo-card-print xo-card-screen p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
+                     <span className="text-[11px] font-black text-emerald-600 uppercase tracking-widest">إجمالي المدفوعات</span>
+                     <span className="text-3xl font-mono font-black text-emerald-600">{paid.toLocaleString()}</span>
                   </div>
-                  <div className="xo-card-print bg-zinc-900/50 border-2 border-rose-600/30 p-6 rounded-3xl flex flex-col items-center justify-center gap-2 ring-4 ring-rose-600/5">
+                  <div className="xo-card-print xo-card-screen border-2 border-rose-600/30 p-6 rounded-3xl flex flex-col items-center justify-center gap-2 ring-4 ring-rose-600/5">
                      <span className="text-[11px] font-black text-rose-600 uppercase tracking-widest">الرصيد المتبقي</span>
                      <div className="flex items-center gap-1">
                         <span className="text-4xl font-mono font-black text-rose-600">{(due - paid).toLocaleString()}</span>
@@ -567,48 +580,48 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
               </div>
 
               {/* جدول البيانات */}
-              <div className="flex-1 border border-zinc-800 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-2xl bg-zinc-900/20 print:border-zinc-100">
-                  <table className="w-full text-right border-collapse xo-table-print">
+              <div className="flex-1 border border-zinc-200 rounded-3xl overflow-hidden shadow-sm bg-zinc-50/30">
+                  <table className="w-full text-right border-collapse xo-table-print xo-table-screen">
                     <thead>
-                        <tr className="bg-zinc-900 dark:bg-zinc-900 text-zinc-400 font-black text-[11px] uppercase tracking-widest h-14 print:bg-zinc-50 print:text-zinc-500">
-                          <th className="p-4 w-32 text-center">التاريخ</th>
-                          <th className="p-4 w-32 text-center">رقم السند</th>
-                          <th className="p-4">البيان / الوصف</th>
-                          <th className="p-4 text-center w-48">القيمة</th>
+                        <tr className="bg-zinc-100 text-zinc-600 font-black text-[11px] uppercase tracking-widest h-14">
+                          <th className="p-4 w-32 text-center border-l border-zinc-200">التاريخ</th>
+                          <th className="p-4 w-32 text-center border-l border-zinc-200">رقم السند</th>
+                          <th className="p-4 border-l border-zinc-200">البيان / الوصف</th>
+                          <th className="p-4 text-center w-48 font-black">القيمة</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-800 print:divide-zinc-100">
+                    <tbody className="divide-y divide-zinc-200">
                         {reportVouchers.length === 0 ? (
-                          <tr><td colSpan={4} className="p-32 text-center italic text-zinc-700 font-black text-2xl">لا توجد حركات مالية مسجلة</td></tr>
+                          <tr><td colSpan={4} className="p-32 text-center italic text-zinc-400 font-black text-2xl">لا توجد حركات مالية مسجلة</td></tr>
                         ) : reportVouchers.map(v => (
-                          <tr key={v.id} className="hover:bg-zinc-800/30 transition-colors h-14">
-                              <td className="p-4 font-mono text-zinc-500 text-center">{v.date}</td>
-                              <td className="p-4 text-center font-black text-zinc-400">#{v.voucherNumber || '---'}</td>
-                              <td className="p-4 text-zinc-300 font-bold print:text-zinc-800">{v.statement}</td>
-                              <td className="p-4 text-center font-mono font-black text-xl text-emerald-500">{(v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD).toLocaleString()}</td>
+                          <tr key={v.id} className="hover:bg-zinc-100 transition-colors h-14">
+                              <td className="p-4 font-mono text-zinc-500 text-center border-l border-zinc-100">{v.date}</td>
+                              <td className="p-4 text-center font-black text-zinc-400 border-l border-zinc-100">#{v.voucherNumber || '---'}</td>
+                              <td className="p-4 text-zinc-800 font-bold border-l border-zinc-100">{v.statement}</td>
+                              <td className="p-4 text-center font-mono font-black text-xl text-emerald-600">{(v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD).toLocaleString()}</td>
                           </tr>
                         ))}
                     </tbody>
                   </table>
               </div>
 
-              {/* ضوابط الفلترة والأزرار (تختفي في الطباعة) */}
+              {/* ضوابط الفلترة والأزرار */}
               <div className="mt-auto no-print pt-10 flex flex-col gap-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-zinc-900 rounded-3xl border border-zinc-800">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-zinc-100 rounded-3xl border border-zinc-200">
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2">الحساب</label>
-                        <select value={reportParty} onChange={e => setReportParty(e.target.value)} className="bg-zinc-950 border border-zinc-800 text-white p-3.5 rounded-2xl font-black outline-none cursor-pointer">
+                        <select value={reportParty} onChange={e => setReportParty(e.target.value)} className="bg-white border border-zinc-300 text-zinc-900 p-3.5 rounded-2xl font-black outline-none cursor-pointer">
                             <option value="">-- اختر الطرف --</option>
                             {parties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                         </select>
                     </div>
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2">من تاريخ</label>
-                        <input type="date" value={reportStart} onChange={e => setReportStart(e.target.value)} className="bg-zinc-950 border border-zinc-800 text-white p-3.5 rounded-2xl font-mono outline-none" />
+                        <input type="date" value={reportStart} onChange={e => setReportStart(e.target.value)} className="bg-white border border-zinc-300 text-zinc-900 p-3.5 rounded-2xl font-mono outline-none" />
                     </div>
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2">إلى تاريخ</label>
-                        <input type="date" value={reportEnd} onChange={e => setReportEnd(e.target.value)} className="bg-zinc-950 border border-zinc-800 text-white p-3.5 rounded-2xl font-mono outline-none" />
+                        <input type="date" value={reportEnd} onChange={e => setReportEnd(e.target.value)} className="bg-white border border-zinc-300 text-zinc-900 p-3.5 rounded-2xl font-mono outline-none" />
                     </div>
                   </div>
 

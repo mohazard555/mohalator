@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check, X, HardDrive, Printer, FileText, Upload } from 'lucide-react';
+import { ArrowRight, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check, X, HardDrive, Printer, FileText, Upload, Calculator } from 'lucide-react';
 import { SalesInvoice, AppSettings, InvoiceItem } from '../types';
 import { exportToCSV } from '../utils/export';
 import { PdfExportService } from '../utils/PdfExportService';
@@ -59,6 +59,15 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
     }
     return matchSearch && matchDate && matchItems;
   });
+
+  // حساب إجماليات الوحدات (جديد)
+  const unitTotals = filteredInvoices.reduce((acc: Record<string, number>, inv) => {
+    inv.items.forEach(item => {
+      const unit = item.unit || 'قطعة';
+      acc[unit] = (acc[unit] || 0) + item.quantity;
+    });
+    return acc;
+  }, {});
 
   const handleExportPDF = async () => {
     if (!reportRef.current) return;
@@ -189,6 +198,9 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
           <button onClick={handleExportPDF} className="bg-rose-700 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
              <FileText className="w-5 h-5" /> تصدير PDF
           </button>
+          <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-zinc-200 shadow-sm">
+             <Printer className="w-5 h-5" /> طباعة السجل
+          </button>
           <button onClick={() => exportToCSV(filteredInvoices, 'sales_history')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
              <FileDown className="w-5 h-5" /> تصدير XLSX
           </button>
@@ -226,8 +238,18 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
         </div>
       </div>
 
+      {/* عرض إجماليات الوحدات في الواجهة */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 no-print">
+         {Object.entries(unitTotals).map(([unit, total]) => (
+            <div key={unit} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center shadow-sm">
+               <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">إجمالي ({unit})</span>
+               <span className="text-xl font-mono font-black text-rose-700">{total.toLocaleString()}</span>
+            </div>
+         ))}
+      </div>
+
       <div ref={reportRef} className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-2xl print:border-rose-700 print:rounded-none p-4 md:p-8">
-        {/* Professional Print Header - Fixed Background */}
+        {/* Professional Print Header */}
         <div className="mb-6 border-b-4 border-rose-700 pb-6 flex justify-between items-center bg-white text-black p-4 rounded-xl">
           <div className="flex items-center gap-4">
             {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain" alt="Logo" />}
@@ -244,6 +266,20 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
             <p>{settings?.address}</p>
             <p>تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
           </div>
+        </div>
+
+        {/* ملخص الكميات حسب الوحدة للطباعة */}
+        <div className="mb-6 p-4 bg-zinc-50 border-2 border-dashed border-zinc-200 rounded-2xl flex flex-wrap gap-6 justify-center">
+            <div className="flex items-center gap-2 border-l border-zinc-200 pl-6">
+               <Calculator className="w-5 h-5 text-rose-700" />
+               <span className="text-xs font-black">إجمالي الكميات المباعة المفلترة:</span>
+            </div>
+            {Object.entries(unitTotals).map(([unit, total]) => (
+               <div key={unit} className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-zinc-500">{unit}:</span>
+                  <span className="text-lg font-mono font-black text-rose-900">{total.toLocaleString()}</span>
+               </div>
+            ))}
         </div>
 
         <div className="overflow-x-auto border rounded-xl">
@@ -276,7 +312,7 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
                     <div className="flex flex-col gap-0.5 max-h-12 overflow-y-auto">
                       {inv.items.map((it, i) => (
                         <div key={i} className="flex items-center gap-1 truncate text-[10px]">
-                          • {it.name} ({it.quantity})
+                          • {it.name} ({it.quantity} {it.unit})
                         </div>
                       ))}
                     </div>
@@ -312,6 +348,18 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
               ))}
             </tbody>
           </table>
+        </div>
+        
+        {/* Print Only Footer */}
+        <div className="print-only mt-10 pt-6 border-t border-zinc-200 flex justify-between items-end text-[9px] font-black text-zinc-400">
+           <div className="flex flex-col">
+              <span>SAMLATOR SYSTEM | SECURED FINANCIAL LOG</span>
+              <span>تاريخ الطباعة: {new Date().toLocaleString('ar-SA')}</span>
+           </div>
+           <div className="text-center">
+              <div className="w-32 border-b-2 border-zinc-200 mb-1 mx-auto"></div>
+              <span>توقيع مدير الحسابات</span>
+           </div>
         </div>
       </div>
     </div>

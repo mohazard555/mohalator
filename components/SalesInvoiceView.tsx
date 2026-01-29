@@ -209,20 +209,20 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
 
   return (
     <div className="space-y-6">
-      {/* Print Header Ledger Style */}
-      <div className="print-only print-header flex justify-between items-center bg-zinc-900 p-6 rounded-t-xl text-white mb-0 border-b-4 border-primary">
+      {/* Print Header Ledger Style - Ink Friendly Fix */}
+      <div className="print-only print-header flex justify-between items-center bg-white p-6 rounded-t-xl text-zinc-900 mb-0 border-b-4 border-primary">
         <div className="flex items-center gap-4">
-          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
+          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg border border-zinc-100" />}
           <div>
             <h1 className="text-2xl font-black">{settings?.companyName}</h1>
-            <p className="text-xs opacity-80">{settings?.companyType}</p>
+            <p className="text-xs text-zinc-500 font-bold uppercase">{settings?.companyType}</p>
           </div>
         </div>
         <div className="text-center">
-          <h2 className="text-3xl font-black underline decoration-white/30 underline-offset-8">سجل مبيعات المنشأة المفلتر</h2>
-          <p className="text-xs mt-2 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
+          <h2 className="text-3xl font-black underline decoration-zinc-200 underline-offset-8">سجل مبيعات المنشأة المفلتر</h2>
+          <p className="text-xs mt-3 font-bold flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
         </div>
-        <div className="text-left text-xs font-bold space-y-1">
+        <div className="text-left text-xs font-bold text-zinc-500 space-y-1">
           <p>{settings?.address}</p>
           <p>{settings?.phone}</p>
         </div>

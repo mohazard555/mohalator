@@ -279,67 +279,68 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
       )}
 
       {/* Exportable content wrapper */}
-      <div ref={exportRef} className="space-y-6 bg-white dark:bg-zinc-950 p-6 rounded-[2.5rem] shadow-sm export-fix">
-        {/* Print Header */}
-        <div className="print-only block flex justify-between items-center bg-zinc-800 p-6 rounded-t-xl text-white mb-0 border-b-0">
+      <div ref={exportRef} className="space-y-6 bg-white dark:bg-zinc-950 p-6 rounded-[2.5rem] shadow-sm export-fix print:bg-white print:p-0 print:shadow-none">
+        
+        {/* Print Header - Fixed to be ink-friendly */}
+        <div className="print-only flex justify-between items-center bg-white p-6 border-b-4 border-zinc-200 text-black mb-4">
           <div className="flex items-center gap-4">
             {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
             <div>
               <h1 className="text-2xl font-black">{settings?.companyName}</h1>
-              <p className="text-xs opacity-80">{settings?.companyType}</p>
+              <p className="text-[10px] text-zinc-500 uppercase font-bold">{settings?.companyType}</p>
             </div>
           </div>
           <div className="text-center">
-            <h2 className="text-3xl font-black underline decoration-white/30 underline-offset-8">دفتر اليومية المالي التفصيلي</h2>
-            <p className="text-sm mt-3 font-bold">الفترة: <span className="text-primary">{startDate || 'غير محدد'}</span> إلى <span className="text-primary">{endDate || 'غير محدد'}</span></p>
-            <p className="text-xs mt-2 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
+            <h2 className="text-3xl font-black underline decoration-zinc-200 underline-offset-8">دفتر اليومية المالي التفصيلي</h2>
+            <p className="text-sm mt-3 font-bold">الفترة: <span className="text-primary">{startDate || 'بداية السجلات'}</span> إلى <span className="text-primary">{endDate || 'اليوم'}</span></p>
+            <p className="text-[10px] mt-2 text-zinc-400 font-bold flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
           </div>
-          <div className="text-left text-xs font-bold space-y-1">
+          <div className="text-left text-[10px] font-bold text-zinc-500 space-y-1">
             <p>{settings?.address}</p>
             <p>{settings?.phone}</p>
           </div>
         </div>
 
-        {/* Summary Area */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 no-print-visible">
-          <div className="bg-emerald-500/5 p-8 rounded-3xl border-2 border-emerald-500/20 flex flex-col items-center text-center shadow-sm">
-            <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-emerald-500/20">
+        {/* Summary Area - Ink friendly on print */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:gap-4 no-print-visible">
+          <div className="bg-emerald-500/5 p-8 rounded-3xl border-2 border-emerald-500/20 flex flex-col items-center text-center shadow-sm print:bg-transparent print:p-4 print:rounded-xl">
+            <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-emerald-500/20 no-print">
                <TrendingUp className="w-7 h-7" />
             </div>
             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">صافي الرصيد - {settings?.currency}</span>
-            <div className="text-4xl font-mono font-black text-emerald-600">{totalPrimary.toLocaleString()} <span className="text-xl font-bold opacity-60">{settings?.currencySymbol}</span></div>
+            <div className="text-4xl font-mono font-black text-emerald-600 print:text-2xl">{totalPrimary.toLocaleString()} <span className="text-xl font-bold opacity-60 print:text-sm">{settings?.currencySymbol}</span></div>
           </div>
 
-          <div className="bg-amber-500/5 p-8 rounded-3xl border-2 border-amber-500/20 flex flex-col items-center text-center shadow-sm">
-            <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-amber-500/20">
+          <div className="bg-amber-500/5 p-8 rounded-3xl border-2 border-amber-500/20 flex flex-col items-center text-center shadow-sm print:bg-transparent print:p-4 print:rounded-xl">
+            <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-amber-500/20 no-print">
                <TrendingDown className="w-7 h-7" />
             </div>
             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">صافي الرصيد - {settings?.secondaryCurrency}</span>
-            <div className="text-4xl font-mono font-black text-amber-600">{totalSecondary.toLocaleString()} <span className="text-xl font-bold opacity-60">{settings?.secondaryCurrencySymbol}</span></div>
+            <div className="text-4xl font-mono font-black text-amber-600 print:text-2xl">{totalSecondary.toLocaleString()} <span className="text-xl font-bold opacity-60 print:text-sm">{settings?.secondaryCurrencySymbol}</span></div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl print:border-zinc-800 print:rounded-none">
+        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl print:border-zinc-300 print:rounded-none print:shadow-none">
           <div className="overflow-x-auto">
             <table className="w-full text-right border-collapse text-sm">
               <thead>
-                <tr className="bg-zinc-800 text-white text-[10px] font-black uppercase tracking-widest border-b border-zinc-900">
-                  <th rowSpan={2} className="p-4 border-l border-zinc-900">التاريخ</th>
-                  <th rowSpan={2} className="p-4 border-l border-zinc-900">البند / القسم</th>
-                  <th rowSpan={2} className="p-4 border-l border-zinc-900">البيان</th>
-                  <th rowSpan={2} className="p-4 border-l border-zinc-900">الملاحظات</th>
-                  <th colSpan={2} className="p-3 border-l border-zinc-900 text-center bg-zinc-900/20">الأساسية: {settings?.currency} ({settings?.currencySymbol})</th>
-                  <th colSpan={2} className="p-3 border-l border-zinc-900 text-center bg-amber-900/20">الثانوية: {settings?.secondaryCurrency} ({settings?.secondaryCurrencySymbol})</th>
+                <tr className="bg-zinc-800 text-white text-[10px] font-black uppercase tracking-widest border-b border-zinc-900 print:bg-zinc-100 print:text-black print:border-zinc-300">
+                  <th rowSpan={2} className="p-4 border-l border-zinc-900 print:border-zinc-300">التاريخ</th>
+                  <th rowSpan={2} className="p-4 border-l border-zinc-900 print:border-zinc-300">البند / القسم</th>
+                  <th rowSpan={2} className="p-4 border-l border-zinc-900 print:border-zinc-300">البيان</th>
+                  <th rowSpan={2} className="p-4 border-l border-zinc-900 print:border-zinc-300">الملاحظات</th>
+                  <th colSpan={2} className="p-3 border-l border-zinc-900 text-center bg-zinc-900/20 print:bg-zinc-50 print:border-zinc-300">الأساسية: {settings?.currencySymbol}</th>
+                  <th colSpan={2} className="p-3 border-l border-zinc-900 text-center bg-amber-900/20 print:bg-zinc-50 print:border-zinc-300">الثانوية: {settings?.secondaryCurrencySymbol}</th>
                   <th rowSpan={2} className="p-4 text-center no-print">إجراءات</th>
                 </tr>
-                <tr className="text-[9px] text-zinc-200 font-black border-b border-zinc-900 bg-zinc-900/50">
-                  <th className="p-3 border-l border-zinc-900 text-center bg-emerald-500/20">مقبوض (داخل)</th>
-                  <th className="p-3 border-l border-zinc-900 text-center bg-rose-500/20">مدفوع (خارج)</th>
-                  <th className="p-3 border-l border-zinc-900 text-center bg-amber-500/20">مقبوض (داخل)</th>
-                  <th className="p-3 text-center bg-zinc-500/20">مدفوع (خارج)</th>
+                <tr className="text-[9px] text-zinc-200 font-black border-b border-zinc-900 bg-zinc-900/50 print:bg-zinc-50 print:text-zinc-500 print:border-zinc-300">
+                  <th className="p-3 border-l border-zinc-900 print:border-zinc-300 text-center bg-emerald-500/10 print:bg-transparent">مقبوض</th>
+                  <th className="p-3 border-l border-zinc-900 print:border-zinc-300 text-center bg-rose-500/10 print:bg-transparent">مدفوع</th>
+                  <th className="p-3 border-l border-zinc-900 print:border-zinc-300 text-center bg-amber-500/10 print:bg-transparent">مقبوض</th>
+                  <th className="p-3 text-center bg-zinc-500/10 print:bg-transparent print:border-zinc-300">مدفوع</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:divide-zinc-300">
+              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:divide-zinc-300 print:text-black">
                 {filteredEntries.length === 0 ? (
                   <tr><td colSpan={9} className="p-20 text-center italic text-zinc-400 font-bold">لا توجد حركات مالية مسجلة تتوافق مع البحث</td></tr>
                 ) : (
@@ -347,20 +348,20 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
                     const category = categories.find(c => c.id === entry.categoryId);
                     return (
                       <tr key={entry.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">
-                        <td className="p-4 font-mono text-zinc-400 border-l border-zinc-100 dark:border-zinc-800">{entry.date}</td>
-                        <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">
+                        <td className="p-4 font-mono text-zinc-400 border-l border-zinc-100 dark:border-zinc-800 print:border-zinc-200 print:text-zinc-500">{entry.date}</td>
+                        <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 print:border-zinc-200">
                            {category ? (
-                             <span className={`px-2 py-1 rounded-lg text-[10px] font-black border ${category.type === 'مصروفات' ? 'text-rose-500 border-rose-500/20 bg-rose-500/5' : 'text-emerald-500 border-emerald-500/20 bg-emerald-500/5'}`}>
+                             <span className={`px-2 py-1 rounded-lg text-[10px] font-black border ${category.type === 'مصروفات' ? 'text-rose-500 border-rose-500/20 bg-rose-500/5' : 'text-emerald-500 border-emerald-500/20 bg-emerald-500/5'} print:border-none print:bg-transparent print:p-0`}>
                                 {category.name}
                              </span>
                            ) : '-'}
                         </td>
-                        <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-readable">{entry.statement}</td>
-                        <td className="p-4 text-zinc-500 font-normal italic border-l border-zinc-100 dark:border-zinc-800">{entry.notes || '-'}</td>
-                        <td className="p-4 text-center text-emerald-600 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-emerald-50/30 print:bg-transparent">{entry.receivedSYP > 0 ? entry.receivedSYP.toLocaleString() : '-'}</td>
-                        <td className="p-4 text-center text-rose-500 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-rose-50/30 print:bg-transparent">{entry.paidSYP > 0 ? entry.paidSYP.toLocaleString() : '-'}</td>
-                        <td className="p-4 text-center text-amber-600 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-amber-500/5 print:bg-transparent">{entry.receivedUSD > 0 ? entry.receivedUSD.toLocaleString() : '-'}</td>
-                        <td className="p-4 text-center text-zinc-500 font-mono border-l border-zinc-100 dark:border-zinc-800">{entry.paidUSD > 0 ? entry.paidUSD.toLocaleString() : '-'}</td>
+                        <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-readable print:border-zinc-200 print:text-black">{entry.statement}</td>
+                        <td className="p-4 text-zinc-500 font-normal italic border-l border-zinc-100 dark:border-zinc-800 print:border-zinc-200">{entry.notes || '-'}</td>
+                        <td className="p-4 text-center text-emerald-600 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-emerald-50/30 print:bg-transparent print:border-zinc-200">{entry.receivedSYP > 0 ? entry.receivedSYP.toLocaleString() : '-'}</td>
+                        <td className="p-4 text-center text-rose-500 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-rose-50/30 print:bg-transparent print:border-zinc-200">{entry.paidSYP > 0 ? entry.paidSYP.toLocaleString() : '-'}</td>
+                        <td className="p-4 text-center text-amber-600 font-mono border-l border-zinc-100 dark:border-zinc-800 bg-amber-500/5 print:bg-transparent print:border-zinc-200">{entry.receivedUSD > 0 ? entry.receivedUSD.toLocaleString() : '-'}</td>
+                        <td className="p-4 text-center text-zinc-500 font-mono border-l border-zinc-100 dark:border-zinc-800 print:border-zinc-200">{entry.paidUSD > 0 ? entry.paidUSD.toLocaleString() : '-'}</td>
                         <td className="p-4 no-print">
                           <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => handleEdit(entry)} className="p-2 text-zinc-400 hover:text-primary transition-all"><Edit2 className="w-4 h-4" /></button>
@@ -374,6 +375,18 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Print Only Footer */}
+        <div className="print-only mt-10 pt-6 border-t border-zinc-200 flex justify-between items-end text-[10px] font-black text-zinc-400">
+           <div className="flex flex-col">
+              <span>SAMLATOR SYSTEM | SECURED FINANCIAL LOG</span>
+              <span>تاريخ الطباعة: {new Date().toLocaleString('ar-SA')}</span>
+           </div>
+           <div className="text-center">
+              <div className="w-32 border-b-2 border-zinc-200 mb-1 mx-auto"></div>
+              <span>توقيع المحاسب</span>
+           </div>
         </div>
       </div>
     </div>
