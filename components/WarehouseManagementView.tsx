@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Warehouse, MapPin, Save, X, Printer, ArrowLeftRight, Package, Calendar, FileSpreadsheet } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Edit2, Warehouse, MapPin, Save, X, Printer, ArrowLeftRight, Package, Calendar, FileSpreadsheet, List, Box } from 'lucide-react';
 import { WarehouseEntity, InventoryItem, StockEntry, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -11,6 +11,7 @@ interface WarehouseManagementViewProps {
 const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBack }) => {
   const [warehouses, setWarehouses] = useState<WarehouseEntity[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [stockEntries, setStockEntries] = useState<StockEntry[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isTransferring, setIsTransferring] = useState(false);
@@ -22,7 +23,6 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
     isMain: false
   });
 
-  // حالة نموذج النقل
   const [transferData, setTransferData] = useState({
     itemCode: '',
     fromWarehouse: '',
@@ -32,12 +32,18 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
   });
 
   useEffect(() => {
+    loadAllData();
+  }, []);
+
+  const loadAllData = () => {
     const savedW = localStorage.getItem('sheno_warehouses');
     const savedInv = localStorage.getItem('sheno_inventory_list');
+    const savedStock = localStorage.getItem('sheno_stock_entries');
     const savedSettings = localStorage.getItem('sheno_settings');
     
     if (savedSettings) setSettings(JSON.parse(savedSettings));
     if (savedInv) setInventory(JSON.parse(savedInv));
+    if (savedStock) setStockEntries(JSON.parse(savedStock));
 
     if (savedW) {
       setWarehouses(JSON.parse(savedW));
@@ -46,16 +52,45 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
       setWarehouses(defaultW);
       localStorage.setItem('sheno_warehouses', JSON.stringify(defaultW));
     }
-  }, []);
+  };
+
+  const getWarehouseItems = (warehouseName: string) => {
+    // جلب كافة المواد التي لها رصيد أو حركات في هذا المستودع
+    return inventory.map(item => {
+      const itemEntries = stockEntries.filter(e => e.itemCode === item.code && e.warehouse === warehouseName);
+      const added = itemEntries.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
+      const issued = itemEntries.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
+      const returned = itemEntries.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
+      
+      // الرصيد الافتتاحي يحسب فقط إذا كان المستودع هو المستودع الرئيسي للمادة عند تعريفها
+      const initial = item.warehouse === warehouseName ? (item.openingStock || 0) : 0;
+      const balance = initial + added - issued + returned;
+      
+      return { ...item, balance };
+    }).filter(item => item.balance !== 0);
+  };
 
   const handleExportExcel = () => {
-    const dataToExport = warehouses.map((w, idx) => ({
-      'م': idx + 1,
-      'اسم المستودع': w.name,
-      'الموقع': w.location,
-      'الحالة': w.isMain ? 'مستودع رئيسي' : 'مستودع فرعي'
-    }));
-    exportToCSV(dataToExport, 'warehouses_list');
+    const dataToExport = warehouses.flatMap(w => {
+      const items = getWarehouseItems(w.name);
+      if (items.length === 0) return [{
+        'اسم المستودع': w.name,
+        'الموقع': w.location,
+        'الحالة': w.isMain ? 'رئيسي' : 'فرعي',
+        'المادة': 'لا يوجد مواد',
+        'الكمية': 0
+      }];
+      return items.map(it => ({
+        'اسم المستودع': w.name,
+        'الموقع': w.location,
+        'الحالة': w.isMain ? 'رئيسي' : 'فرعي',
+        'المادة': it.name,
+        'الكود': it.code,
+        'الكمية': it.balance,
+        'الوحدة': it.unit
+      }));
+    });
+    exportToCSV(dataToExport, 'warehouses_content_report');
   };
 
   const handleSave = () => {
@@ -77,6 +112,7 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
     setIsAdding(false);
     setEditingId(null);
     setFormData({ name: '', location: '', isMain: false });
+    loadAllData();
   };
 
   const handleTransfer = () => {
@@ -98,7 +134,6 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
     const dayName = new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(new Date(transferData.date));
     const transferId = crypto.randomUUID();
 
-    // 1. قيد صرف من المستودع المصدر
     const outMove: StockEntry = {
       id: crypto.randomUUID(),
       date: transferData.date,
@@ -116,7 +151,6 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
       movementCode: transferId
     };
 
-    // 2. قيد إدخال في المستودع الهدف
     const inMove: StockEntry = {
       id: crypto.randomUUID(),
       date: transferData.date,
@@ -140,24 +174,25 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
     alert(`تم نقل ${transferData.quantity} ${item.unit} بنجاح.`);
     setIsTransferring(false);
     setTransferData({ itemCode: '', fromWarehouse: '', toWarehouse: '', quantity: 1, date: new Date().toISOString().split('T')[0] });
+    loadAllData();
   };
 
   return (
     <div className="space-y-6">
-      {/* Print Header */}
-      <div className="print-only print-header flex justify-between items-center bg-zinc-900 p-6 rounded-t-xl text-white mb-0 border-b-0">
+      {/* Print Header - FIXED TO WHITE */}
+      <div className="print-only print-header flex justify-between items-center bg-white p-6 rounded-t-xl text-black mb-0 border-b-2 border-zinc-200">
         <div className="flex items-center gap-4">
-          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
+          {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg border border-zinc-100" />}
           <div>
-            <h1 className="text-2xl font-black">{settings?.companyName}</h1>
-            <p className="text-xs opacity-80">{settings?.companyType}</p>
+            <h1 className="text-2xl font-black text-rose-900">{settings?.companyName}</h1>
+            <p className="text-xs text-zinc-500 font-bold">{settings?.companyType}</p>
           </div>
         </div>
         <div className="text-center">
-          <h2 className="text-3xl font-black underline decoration-white/30 underline-offset-8">ملف المستودعات المعتمدة</h2>
-          <p className="text-xs mt-2 opacity-80 flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
+          <h2 className="text-3xl font-black underline decoration-rose-900/30 underline-offset-8">جرد محتويات المستودعات المعتمدة</h2>
+          <p className="text-xs mt-2 font-bold flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
         </div>
-        <div className="text-left text-xs font-bold space-y-1">
+        <div className="text-left text-xs font-bold text-zinc-500 space-y-1">
           <p>{settings?.address}</p>
           <p>{settings?.phone}</p>
         </div>
@@ -175,7 +210,7 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
               <ArrowLeftRight className="w-5 h-5" /> نقل مادة
            </button>
            <button onClick={handleExportExcel} className="bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:bg-emerald-700 transition-all">
-              <FileSpreadsheet className="w-5 h-5" /> تصدير XLSX
+              <FileSpreadsheet className="w-5 h-5" /> تصدير الجرد الكامل
            </button>
            <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-zinc-200 dark:border-zinc-700">
               <Printer className="w-5 h-5" /> طباعة
@@ -186,7 +221,7 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
         </div>
       </div>
 
-      {/* نموذج إضافة/تعديل مستودع */}
+      {/* Forms Section */}
       {(isAdding || editingId) && (
         <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl space-y-6 animate-in zoom-in-95 no-print text-readable">
            <div className="flex items-center justify-between border-b pb-4 dark:border-zinc-800">
@@ -215,7 +250,6 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
         </div>
       )}
 
-      {/* نموذج نقل كميات */}
       {isTransferring && (
         <div className="bg-amber-500/5 dark:bg-amber-950/20 p-8 rounded-[2.5rem] border-2 border-amber-500/30 shadow-2xl space-y-6 animate-in slide-in-from-top-4 no-print text-readable">
            <div className="flex items-center justify-between border-b pb-4 border-amber-500/10">
@@ -261,74 +295,124 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
         </div>
       )}
 
-      {/* شبكة المستودعات */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 no-print">
-         {warehouses.map(w => (
-           <div key={w.id} className={`bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border transition-all shadow-xl hover:shadow-2xl group relative overflow-hidden ${w.isMain ? 'border-primary ring-4 ring-primary/5' : 'border-zinc-200 dark:border-zinc-800'}`}>
-              <div className={`absolute right-0 top-0 w-12 h-12 flex items-center justify-center transition-all ${w.isMain ? 'bg-primary text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 opacity-0 group-hover:opacity-100'}`}>
-                 <Warehouse className="w-5 h-5" />
-              </div>
-              <div className="flex justify-between items-start mb-6">
-                 <div className={`p-4 rounded-2xl ${w.isMain ? 'bg-primary/10 text-primary' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
-                    <Warehouse className="w-8 h-8" />
-                 </div>
-                 <div className="flex gap-1">
-                    <button onClick={() => { setEditingId(w.id); setFormData(w); }} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl text-zinc-500 transition-colors"><Edit2 className="w-4 h-4" /></button>
-                    {!w.isMain && (
-                      <button onClick={() => {
-                        if(window.confirm('حذف المستودع؟')) {
-                           const updated = warehouses.filter(x => x.id !== w.id);
-                           setWarehouses(updated);
-                           localStorage.setItem('sheno_warehouses', JSON.stringify(updated));
-                        }
-                      }} className="p-2 hover:bg-rose-500/10 rounded-xl text-rose-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
-                    )}
-                 </div>
-              </div>
-              <h3 className="text-2xl font-black mb-1 text-readable">{w.name}</h3>
-              <div className="flex items-center gap-2 text-zinc-500 font-bold text-sm mb-6">
-                 <MapPin className="w-4 h-4 text-primary" /> {w.location || 'العنوان غير محدد'}
-              </div>
-              {w.isMain && (
-                 <div className="flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-xl w-fit">
-                    <Check className="w-4 h-4" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">المستودع الافتراضي للنظام</span>
-                 </div>
-              )}
-           </div>
-         ))}
+      {/* Grid of Warehouses */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 no-print">
+         {warehouses.map(w => {
+           const items = getWarehouseItems(w.name);
+           return (
+             <div key={w.id} className={`bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border transition-all shadow-xl hover:shadow-2xl group relative overflow-hidden flex flex-col ${w.isMain ? 'border-primary ring-4 ring-primary/5' : 'border-zinc-200 dark:border-zinc-800'}`}>
+                <div className={`absolute right-0 top-0 w-12 h-12 flex items-center justify-center transition-all ${w.isMain ? 'bg-primary text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 opacity-0 group-hover:opacity-100'}`}>
+                   <Warehouse className="w-5 h-5" />
+                </div>
+                <div className="flex justify-between items-start mb-4">
+                   <div className={`p-4 rounded-2xl ${w.isMain ? 'bg-primary/10 text-primary' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
+                      <Warehouse className="w-8 h-8" />
+                   </div>
+                   <div className="flex gap-1">
+                      <button onClick={() => { setEditingId(w.id); setFormData(w); }} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl text-zinc-500 transition-colors"><Edit2 className="w-4 h-4" /></button>
+                      {!w.isMain && (
+                        <button onClick={() => {
+                          if(window.confirm('حذف المستودع؟')) {
+                             const updated = warehouses.filter(x => x.id !== w.id);
+                             setWarehouses(updated);
+                             localStorage.setItem('sheno_warehouses', JSON.stringify(updated));
+                          }
+                        }} className="p-2 hover:bg-rose-500/10 rounded-xl text-rose-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      )}
+                   </div>
+                </div>
+                <h3 className="text-2xl font-black mb-1 text-readable">{w.name}</h3>
+                <div className="flex items-center gap-2 text-zinc-500 font-bold text-sm mb-4">
+                   <MapPin className="w-4 h-4 text-primary" /> {w.location || 'العنوان غير محدد'}
+                </div>
+                
+                {/* Warehouse Contents Section */}
+                <div className="flex-1 bg-zinc-50 dark:bg-zinc-800/50 rounded-3xl p-4 border dark:border-zinc-700">
+                   <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <List className="w-3 h-3" /> قائمة الجرد الحالي
+                   </h4>
+                   <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                      {items.length === 0 ? (
+                        <div className="text-center py-6 italic text-zinc-300 text-xs font-bold">لا يوجد مواد حالياً</div>
+                      ) : (
+                        items.map(it => (
+                           <div key={it.id} className="flex items-center justify-between bg-white dark:bg-zinc-900 p-2.5 rounded-xl border dark:border-zinc-800 shadow-sm">
+                              <div className="flex items-center gap-3">
+                                 <Box className="w-4 h-4 text-primary opacity-40" />
+                                 <div className="flex flex-col">
+                                    <span className="text-xs font-black text-readable">{it.name}</span>
+                                    <span className="text-[8px] font-mono text-zinc-400">#{it.code}</span>
+                                 </div>
+                              </div>
+                              <div className="text-left">
+                                 <span className="text-sm font-black text-rose-700 dark:text-rose-400 font-mono">{it.balance.toLocaleString()}</span>
+                                 <span className="text-[9px] font-bold text-zinc-400 mr-1">{it.unit}</span>
+                              </div>
+                           </div>
+                        ))
+                      )}
+                   </div>
+                </div>
+
+                {w.isMain && (
+                   <div className="mt-4 flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-xl w-fit">
+                      <Check className="w-4 h-4" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">المستودع الافتراضي للنظام</span>
+                   </div>
+                )}
+             </div>
+           );
+         })}
       </div>
 
-      {/* قسم الطباعة (جدول منظم) */}
+      {/* Print Table View (Corrected Header) */}
       <div className="print-only">
-         <table className="w-full text-right border-collapse">
-            <thead>
-               <tr className="bg-zinc-100 font-black text-sm border-y-2 border-zinc-900 h-12">
-                  <th className="p-3 border">م</th>
-                  <th className="p-3 border">اسم المستودع</th>
-                  <th className="p-3 border">الموقع / العنوان</th>
-                  <th className="p-3 border text-center">الحالة</th>
-               </tr>
-            </thead>
-            <tbody className="text-sm font-bold">
-               {warehouses.map((w, idx) => (
-                  <tr key={w.id} className="h-10">
-                     <td className="p-3 border text-center font-mono">{idx + 1}</td>
-                     <td className="p-3 border">{w.name}</td>
-                     <td className="p-3 border">{w.location}</td>
-                     <td className="p-3 border text-center">
-                        {w.isMain ? 'مستودع رئيسي' : 'مستودع فرعي'}
-                     </td>
-                  </tr>
-               ))}
-            </tbody>
-         </table>
+         {warehouses.map(w => {
+           const items = getWarehouseItems(w.name);
+           return (
+             <div key={w.id} className="mb-8 border-b-2 border-zinc-100 pb-6">
+                <div className="flex items-center justify-between mb-4 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
+                   <div>
+                      <h3 className="text-xl font-black text-rose-900">{w.name}</h3>
+                      <p className="text-xs text-zinc-500 font-bold">{w.location}</p>
+                   </div>
+                   <div className="text-left">
+                      <span className="text-[10px] font-black uppercase text-zinc-400">حالة المستودع</span>
+                      <p className="text-sm font-black">{w.isMain ? 'مستودع رئيسي' : 'مستودع فرعي'}</p>
+                   </div>
+                </div>
+                <table className="w-full text-right border-collapse">
+                   <thead>
+                      <tr className="bg-zinc-100 text-black font-black text-xs border-y border-zinc-300">
+                         <th className="p-3 border w-24">كود الصنف</th>
+                         <th className="p-3 border">اسم المادة / الصنف</th>
+                         <th className="p-3 border text-center w-24">الوحدة</th>
+                         <th className="p-3 border text-center w-32 bg-zinc-50">الكمية المتوفرة</th>
+                      </tr>
+                   </thead>
+                   <tbody className="text-xs font-bold">
+                      {items.length === 0 ? (
+                        <tr><td colSpan={4} className="p-4 text-center text-zinc-400 italic">لا يوجد مواد مسجلة</td></tr>
+                      ) : (
+                        items.map(it => (
+                           <tr key={it.id} className="h-10">
+                              <td className="p-3 border font-mono text-zinc-500">{it.code}</td>
+                              <td className="p-3 border text-zinc-900">{it.name}</td>
+                              <td className="p-3 border text-center text-zinc-500">{it.unit}</td>
+                              <td className="p-3 border text-center font-mono text-lg font-black text-rose-900">{it.balance.toLocaleString()}</td>
+                           </tr>
+                        ))
+                      )}
+                   </tbody>
+                </table>
+             </div>
+           );
+         })}
       </div>
     </div>
   );
 };
 
-// أيقونة فحص بسيطة للاستخدام داخل المكون
 const Check = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>

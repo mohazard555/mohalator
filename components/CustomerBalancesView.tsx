@@ -101,44 +101,46 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
       {/* UI Action Bar (No Print) */}
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 bg-zinc-800 text-white hover:bg-zinc-700 rounded-xl transition-colors">
+          <button onClick={onBack} className="p-2 bg-slate-800 text-white hover:bg-slate-700 rounded-xl transition-colors shadow-lg">
             <ArrowRight className="w-6 h-6" />
           </button>
-          <h2 className="text-2xl font-black text-readable">أرصدة العملاء والموردين</h2>
+          <h2 className="text-2xl font-black text-readable tracking-tight">أرصدة العملاء والموردين</h2>
         </div>
         <div className="flex gap-2">
-           <button onClick={() => exportToCSV(balancesData, 'customer_balances')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-zinc-700">
+           <button onClick={() => exportToCSV(balancesData, 'customer_balances')} className="bg-slate-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-slate-700 hover:bg-slate-700 transition-all">
              <FileDown className="w-5 h-5" /> تصدير XLSX
            </button>
-           <button onClick={() => window.print()} className="bg-[#e11d48] text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-rose-900/20">
+           <button onClick={() => window.print()} className="bg-[#e11d48] text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-rose-900/20 hover:brightness-110 transition-all">
              <Printer className="w-5 h-5" /> طباعة الكشف
            </button>
         </div>
       </div>
 
-      {/* Main Filter & Currency Toggle Bar (No Print) */}
-      <div className="bg-[#121214] p-4 rounded-3xl border border-zinc-800 flex flex-wrap items-center gap-6 no-print shadow-xl">
-        <div className="flex bg-zinc-900 p-1.5 rounded-2xl border border-zinc-800 gap-1">
-           <button onClick={() => setPartyType('الكل')} className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${partyType === 'الكل' ? 'bg-[#e11d48] text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-400'}`}>الكل</button>
-           <button onClick={() => setPartyType(PartyType.CUSTOMER)} className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${partyType === PartyType.CUSTOMER ? 'bg-[#e11d48] text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-400'}`}>العملاء</button>
-           <button onClick={() => setPartyType(PartyType.SUPPLIER)} className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${partyType === PartyType.SUPPLIER ? 'bg-[#e11d48] text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-400'}`}>الموردين</button>
-           <button onClick={() => setPartyType(PartyType.BOTH)} className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${partyType === PartyType.BOTH ? 'bg-[#e11d48] text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-400'}`}>مشترك</button>
+      {/* Main Filter & Currency Toggle Bar (No Print) - Updated for better visuals */}
+      <div className="bg-[#0f172a] p-5 rounded-3xl border border-slate-800 flex flex-wrap items-center gap-6 no-print shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full"></div>
+        
+        <div className="flex bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800 gap-1 relative z-10">
+           <button onClick={() => setPartyType('الكل')} className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${partyType === 'الكل' ? 'bg-[#e11d48] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>الكل</button>
+           <button onClick={() => setPartyType(PartyType.CUSTOMER)} className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${partyType === PartyType.CUSTOMER ? 'bg-[#e11d48] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>العملاء</button>
+           <button onClick={() => setPartyType(PartyType.SUPPLIER)} className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${partyType === PartyType.SUPPLIER ? 'bg-[#e11d48] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>الموردين</button>
+           <button onClick={() => setPartyType(PartyType.BOTH)} className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${partyType === PartyType.BOTH ? 'bg-[#e11d48] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>مشترك</button>
         </div>
 
-        <div className="relative flex-1 min-w-[250px]">
-          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 w-5 h-5" />
+        <div className="relative flex-1 min-w-[250px] z-10">
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
           <input 
             type="text" 
             placeholder="البحث بالاسم أو الكود..." 
-            className="w-full bg-[#18181b] border border-zinc-800 rounded-2xl py-3 pr-12 pl-4 outline-none font-bold text-white focus:border-[#e11d48] transition-all"
+            className="w-full bg-slate-900/60 border border-slate-700 rounded-2xl py-3 pr-12 pl-4 outline-none font-bold text-white focus:border-[#e11d48] focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="flex bg-[#18181b] border border-zinc-700 p-1 rounded-full h-12 items-center">
-           <button onClick={() => setActiveCurrencyView('secondary')} className={`flex items-center gap-2 px-6 h-full rounded-full text-xs font-black transition-all ${activeCurrencyView === 'secondary' ? 'bg-[#e11d48] text-white' : 'text-zinc-500'}`}><CreditCard className="w-4 h-4" /> {settings?.secondaryCurrency || 'دولار'}</button>
-           <button onClick={() => setActiveCurrencyView('primary')} className={`flex items-center gap-2 px-6 h-full rounded-full text-xs font-black transition-all ${activeCurrencyView === 'primary' ? 'bg-[#e11d48] text-white' : 'text-zinc-500'}`}><Coins className="w-4 h-4" /> {settings?.currency || 'ليرة'}</button>
+        <div className="flex bg-slate-900/80 border border-slate-800 p-1 rounded-full h-12 items-center z-10 shadow-lg">
+           <button onClick={() => setActiveCurrencyView('secondary')} className={`flex items-center gap-2 px-6 h-full rounded-full text-xs font-black transition-all ${activeCurrencyView === 'secondary' ? 'bg-[#e11d48] text-white shadow-md' : 'text-slate-500'}`}><CreditCard className="w-4 h-4" /> {settings?.secondaryCurrency || 'دولار'}</button>
+           <button onClick={() => setActiveCurrencyView('primary')} className={`flex items-center gap-2 px-6 h-full rounded-full text-xs font-black transition-all ${activeCurrencyView === 'primary' ? 'bg-[#e11d48] text-white shadow-md' : 'text-slate-500'}`}><Coins className="w-4 h-4" /> {settings?.currency || 'ليرة'}</button>
         </div>
       </div>
 
@@ -190,29 +192,33 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
            </div>
         </div>
 
-        {/* Action Bar inside report - UI only */}
-        <div className="no-print bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 flex justify-between items-center mb-8">
-           <div className="flex items-center gap-6">
+        {/* Action Bar inside report - Updated to Deep Slate Blue (Eye Friendly) */}
+        <div className="no-print bg-slate-900/90 p-6 rounded-[2rem] border border-slate-800 flex justify-between items-center mb-8 shadow-inner overflow-hidden group">
+           <div className="flex items-center gap-6 relative z-10">
               <button 
                 onClick={() => setIsUnifiedView(!isUnifiedView)} 
-                className={`px-6 py-2.5 rounded-2xl font-black text-xs flex items-center gap-2 transition-all ${isUnifiedView ? 'bg-emerald-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}
+                className={`px-6 py-2.5 rounded-2xl font-black text-xs flex items-center gap-2 transition-all shadow-md ${isUnifiedView ? 'bg-emerald-600 text-white hover:bg-emerald-500' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
               >
                  <RefreshCcw className="w-4 h-4" /> {isUnifiedView ? 'العرض الموحد مفعّل' : 'تفعيل العرض الموحد'}
               </button>
-              <div className="flex items-center gap-2">
-                 <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">سعر الصرف</span>
-                 <input type="number" value={exchangeRate} onChange={e => setExchangeRate(Number(e.target.value))} className="w-24 bg-zinc-950 border border-zinc-800 p-2 rounded-xl text-center font-black text-[#e11d48] text-sm outline-none" />
+              <div className="flex items-center gap-3">
+                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">سعر الصرف</span>
+                 <div className="relative">
+                    <input type="number" value={exchangeRate} onChange={e => setExchangeRate(Number(e.target.value))} className="w-28 bg-slate-950 border border-slate-700 p-2 rounded-xl text-center font-black text-primary text-sm outline-none focus:border-primary transition-all shadow-inner" />
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                 </div>
               </div>
            </div>
-           <div className="flex gap-4">
-              <div className="text-center">
-                 <p className="text-[9px] font-black text-zinc-500 uppercase">إجمالي {settings?.currencySymbol}</p>
-                 <p className="font-mono font-black text-white">{totalPrimaryAll.toLocaleString()}</p>
+           
+           <div className="flex gap-8 relative z-10">
+              <div className="text-center group-hover:scale-105 transition-transform">
+                 <p className="text-[9px] font-black text-slate-500 uppercase mb-1 tracking-widest">إجمالي {settings?.currencySymbol}</p>
+                 <p className="font-mono font-black text-white text-xl tracking-tighter">{totalPrimaryAll.toLocaleString()}</p>
               </div>
-              <div className="w-px h-8 bg-zinc-800"></div>
-              <div className="text-center">
-                 <p className="text-[9px] font-black text-zinc-500 uppercase">إجمالي {settings?.secondaryCurrencySymbol}</p>
-                 <p className="font-mono font-black text-amber-500">{totalSecondaryAll.toLocaleString()}</p>
+              <div className="w-px h-10 bg-slate-800 shadow-sm"></div>
+              <div className="text-center group-hover:scale-105 transition-transform">
+                 <p className="text-[9px] font-black text-slate-500 uppercase mb-1 tracking-widest">إجمالي {settings?.secondaryCurrencySymbol}</p>
+                 <p className="font-mono font-black text-amber-500 text-xl tracking-tighter">{totalSecondaryAll.toLocaleString()}</p>
               </div>
            </div>
         </div>
@@ -287,7 +293,7 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
             {/* Table Footer for Grand Totals */}
             <tfoot>
                <tr className="bg-zinc-50 font-black border-t-2 border-zinc-300 h-14 print:bg-zinc-50 print:text-black">
-                  <td colSpan={2} className="p-4 text-center text-zinc-500 uppercase text-[10px] tracking-widest">إجمالي الأرصدة المفلترة المفتوحة</td>
+                  <td colSpan={2} className="p-4 text-center text-zinc-500 uppercase text-[10px] tracking-widest">إجمالي الأرصدة المفتوحة</td>
                   <td colSpan={2} className="p-4 text-center">---</td>
                   <td className="p-4 text-center font-mono text-2xl text-[#e11d48] print:text-xl">
                      {totalPrimaryAll.toLocaleString()} <span className="text-xs">{settings?.currencySymbol}</span>
@@ -315,7 +321,7 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
       </div>
 
       {/* Bottom Sticky Branding for UI */}
-      <div className="flex justify-between items-center no-print px-4 py-4 text-zinc-600 text-[9px] font-black uppercase tracking-[0.4em]">
+      <div className="flex justify-between items-center no-print px-4 py-4 text-slate-500 text-[9px] font-black uppercase tracking-[0.4em]">
          <span>{settings?.companyName} Accounting Terminal</span>
          <span>Version 2026.4.1 | SYRIA</span>
       </div>

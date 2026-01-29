@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, FileDown, Calendar as CalendarIcon, FileText, Search, User, Hash, MessageSquare, Coins, CreditCard, ImageIcon, LayoutDashboard, CheckCircle } from 'lucide-react';
+import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, FileDown, Calendar as CalendarIcon, FileText, Search, User, Hash, MessageSquare, Coins, CreditCard, ImageIcon, LayoutDashboard, CheckCircle, Calculator, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { CashEntry, Party, AppSettings, SalesInvoice, PurchaseInvoice, PartyType } from '../types';
 import { tafqeet } from '../utils/tafqeet';
 import { ImageExportService } from '../utils/ImageExportService';
@@ -485,9 +485,9 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  display: flex !important;
                  justify-content: space-between;
                  align-items: center;
-                 border-bottom: 2px solid #e11d48;
-                 padding-bottom: 15px;
-                 margin-bottom: 20px;
+                 border-bottom: 3px solid #e11d48;
+                 padding-bottom: 20px;
+                 margin-bottom: 25px;
                }
                .xo-summary-grid {
                  display: grid !important;
@@ -496,8 +496,8 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  margin-bottom: 30px !important;
                }
                .xo-card-print {
-                  background: white !important;
-                  border: 1px solid #eee !important;
+                  background: #fffafa !important;
+                  border: 1px solid #ffe4e6 !important;
                   border-radius: 15px !important;
                   padding: 15px !important;
                   text-align: center !important;
@@ -511,16 +511,17 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                }
                .xo-table-print th {
                  background-color: #f8fafc !important;
-                 color: #64748b !important;
+                 color: #1e293b !important;
                  font-size: 11px !important;
+                 font-weight: 900 !important;
                  text-transform: uppercase !important;
                  border: 1px solid #eee !important;
-                 padding: 10px !important;
+                 padding: 12px 10px !important;
                }
                .xo-table-print td {
-                 border: 1px solid #eee !important;
-                 font-size: 13px !important;
-                 padding: 12px 8px !important;
+                 border: 1px solid #f1f5f9 !important;
+                 font-size: 12px !important;
+                 padding: 12px 10px !important;
                  color: black !important;
                }
                .no-print { display: none !important; }
@@ -529,122 +530,174 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
            `}</style>
            
            <div ref={reportRef} className="xo-report-container-styled w-full max-w-4xl min-h-screen p-8 flex flex-col gap-6 relative export-fix">
-              {/* ترويسة التقرير */}
+              {/* ترويسة التقرير المطورة */}
               <div className="flex justify-between items-start mb-2 xo-report-header-print">
-                 <div className="text-right space-y-1">
-                    <p className="text-[12px] font-black text-rose-600 uppercase tracking-widest">FINANCIAL LOG</p>
-                    <p className="text-[11px] font-bold text-zinc-500">{settings?.address || 'دمشق، سوريا'}</p>
-                    <p className="text-[11px] font-bold text-zinc-500" dir="ltr">{new Date().toLocaleDateString('ar-SA')}</p>
+                 <div className="text-right space-y-2">
+                    <p className="text-[14px] font-black text-rose-600 uppercase tracking-widest border-b-2 border-rose-100 pb-1 inline-block">FINANCIAL STATEMENT</p>
+                    <div className="flex flex-col gap-0.5">
+                       <p className="text-[11px] font-bold text-zinc-500 flex items-center gap-2"><MapPin className="w-3 h-3 text-rose-400" /> {settings?.address || 'دمشق، سوريا'}</p>
+                       <p className="text-[11px] font-bold text-zinc-400 flex items-center gap-2"><CalendarIcon className="w-3 h-3 text-rose-400" /> {new Date().toLocaleDateString('ar-SA')}</p>
+                    </div>
                  </div>
 
                  <div className="text-center">
-                    <h2 className="text-3xl font-black border-b-2 border-zinc-200 inline-block px-6 pb-2 text-zinc-900">تقرير كشف حساب مالي</h2>
-                    <div className="mt-2">
-                       <span className="text-xl font-black text-rose-600 uppercase tracking-tight">{reportParty || 'اسم الحساب غير محدد'}</span>
+                    <h2 className="text-4xl font-black border-b-4 border-rose-600 inline-block px-10 pb-3 text-zinc-900 mb-4">كشف حساب مالي تفصيلي</h2>
+                    
+                    {/* إضافة نطاق التاريخ هنا */}
+                    <div className="flex flex-col items-center justify-center gap-1">
+                       <span className="text-[10px] font-black text-rose-600 uppercase tracking-[0.3em]">REPORT PERIOD | فترة التقرير</span>
+                       <div className="bg-zinc-50 border border-zinc-200 px-6 py-1.5 rounded-full flex items-center gap-3 shadow-sm">
+                          <span className="font-mono font-black text-xs text-zinc-700">{reportStart || 'البداية'}</span>
+                          <span className="text-zinc-300 font-bold">←</span>
+                          <span className="font-mono font-black text-xs text-zinc-700">{reportEnd || 'اليوم'}</span>
+                       </div>
                     </div>
                  </div>
 
-                 <div className="flex items-center gap-4">
+                 <div className="flex items-center gap-5">
                     <div className="text-left">
                        <h1 className="text-2xl font-black leading-none text-zinc-900">{settings?.companyName || 'XO COMPANY'}</h1>
-                       <p className="text-[10px] font-bold text-zinc-500 mt-1" dir="ltr">{settings?.phone}</p>
+                       <p className="text-[10px] font-bold text-zinc-400 mt-1 uppercase tracking-widest" dir="ltr">{settings?.phone}</p>
                     </div>
                     {settings?.logoUrl ? (
-                      <img src={settings.logoUrl} className="w-14 h-14 object-contain bg-white rounded-xl p-1 shadow-sm" />
+                      <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white rounded-2xl p-1 shadow-sm border border-zinc-100" />
                     ) : (
-                      <div className="w-12 h-12 bg-rose-600 rounded-xl flex items-center justify-center text-white font-black text-2xl shadow-lg">XO</div>
+                      <div className="w-14 h-14 bg-rose-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg transform -rotate-3">XO</div>
                     )}
                  </div>
               </div>
 
-              {/* خط التصميم الأحمر */}
-              <div className="h-0.5 bg-rose-600 w-full mb-6"></div>
-
-              {/* بطاقات الإجماليات */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 xo-summary-grid">
-                  <div className="xo-card-print xo-card-screen p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
-                     <span className="text-[11px] font-black xo-summary-label uppercase tracking-widest">إجمالي المسحوبات</span>
-                     <span className="text-3xl font-mono font-black text-zinc-900">{due.toLocaleString()}</span>
-                  </div>
-                  <div className="xo-card-print xo-card-screen p-6 rounded-3xl flex flex-col items-center justify-center gap-2">
-                     <span className="text-[11px] font-black text-emerald-600 uppercase tracking-widest">إجمالي المدفوعات</span>
-                     <span className="text-3xl font-mono font-black text-emerald-600">{paid.toLocaleString()}</span>
-                  </div>
-                  <div className="xo-card-print xo-card-screen border-2 border-rose-600/30 p-6 rounded-3xl flex flex-col items-center justify-center gap-2 ring-4 ring-rose-600/5">
-                     <span className="text-[11px] font-black text-rose-600 uppercase tracking-widest">الرصيد المتبقي</span>
-                     <div className="flex items-center gap-1">
-                        <span className="text-4xl font-mono font-black text-rose-600">{(due - paid).toLocaleString()}</span>
-                        {(due - paid) < 0 && <span className="text-2xl text-rose-600 font-black">-</span>}
+              {/* بطاقة معلومات الحساب */}
+              <div className="bg-rose-900/5 border-2 border-rose-900/10 p-5 rounded-[2rem] flex items-center justify-between no-print-visible">
+                  <div className="flex items-center gap-4">
+                     <div className="w-12 h-12 bg-rose-900 rounded-2xl flex items-center justify-center text-white shadow-lg"><User className="w-7 h-7" /></div>
+                     <div>
+                        <span className="text-[10px] font-black text-rose-900 uppercase tracking-widest block opacity-60">ACCOUNT NAME | اسم الحساب</span>
+                        <span className="text-3xl font-black text-zinc-900 italic tracking-tight">{reportParty || 'جميع الأطراف'}</span>
                      </div>
+                  </div>
+                  <div className="text-left">
+                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">REPORT STATUS</span>
+                     <span className="bg-emerald-500/10 text-emerald-600 px-4 py-1 rounded-full text-[10px] font-black border border-emerald-500/20">معتمد وحقيقي</span>
                   </div>
               </div>
 
-              {/* جدول البيانات */}
-              <div className="flex-1 border border-zinc-200 rounded-3xl overflow-hidden shadow-sm bg-zinc-50/30">
+              {/* بطاقات الإجماليات المطورة */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 xo-summary-grid">
+                  <div className="xo-card-print xo-card-screen p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 relative overflow-hidden group">
+                     <div className="absolute top-0 right-0 w-16 h-16 bg-zinc-100 opacity-20 -mr-8 -mt-8 rounded-full"></div>
+                     <ArrowUpRight className="w-6 h-6 text-zinc-300 no-print" />
+                     <span className="text-[11px] font-black xo-summary-label uppercase tracking-[0.2em] mb-1">إجمالي المسحوبات</span>
+                     <span className="text-4xl font-mono font-black text-zinc-900 leading-none">{due.toLocaleString()}</span>
+                     <span className="text-[9px] font-bold text-zinc-400">{settings?.currencySymbol}</span>
+                  </div>
+                  
+                  <div className="xo-card-print xo-card-screen p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 relative overflow-hidden bg-emerald-50/30 border-emerald-100/50">
+                     <ArrowDownLeft className="w-6 h-6 text-emerald-200 no-print" />
+                     <span className="text-[11px] font-black text-emerald-700 uppercase tracking-[0.2em] mb-1">إجمالي المدفوعات</span>
+                     <span className="text-4xl font-mono font-black text-emerald-600 leading-none">{paid.toLocaleString()}</span>
+                     <span className="text-[9px] font-bold text-emerald-400">{settings?.currencySymbol}</span>
+                  </div>
+                  
+                  <div className="xo-card-print xo-card-screen border-4 border-rose-600/30 p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 ring-8 ring-rose-600/5 bg-rose-50/20 relative">
+                     <Calculator className="w-6 h-6 text-rose-300 no-print" />
+                     <span className="text-[11px] font-black text-rose-600 uppercase tracking-[0.2em] mb-1">صافي الرصيد المتبقي</span>
+                     <div className="flex items-center gap-2">
+                        <span className="text-5xl font-mono font-black text-rose-700 leading-none">{(due - paid).toLocaleString()}</span>
+                        {(due - paid) < 0 && <span className="text-3xl text-rose-700 font-black">-</span>}
+                     </div>
+                     <span className="text-[9px] font-bold text-rose-400">{settings?.currencySymbol}</span>
+                  </div>
+              </div>
+
+              {/* جدول البيانات المطور */}
+              <div className="flex-1 border border-zinc-200 rounded-[2.5rem] overflow-hidden shadow-sm bg-white">
                   <table className="w-full text-right border-collapse xo-table-print xo-table-screen">
                     <thead>
-                        <tr className="bg-zinc-100 text-zinc-600 font-black text-[11px] uppercase tracking-widest h-14">
-                          <th className="p-4 w-32 text-center border-l border-zinc-200">التاريخ</th>
-                          <th className="p-4 w-32 text-center border-l border-zinc-200">رقم السند</th>
-                          <th className="p-4 border-l border-zinc-200">البيان / الوصف</th>
-                          <th className="p-4 text-center w-48 font-black">القيمة</th>
+                        <tr className="bg-zinc-900 text-white font-black text-[11px] uppercase tracking-widest h-16">
+                          <th className="p-4 w-32 text-center border-l border-zinc-800">تاريخ القيد</th>
+                          <th className="p-4 w-32 text-center border-l border-zinc-800">رقم السند</th>
+                          <th className="p-4 border-l border-zinc-800">البيان والتفاصيل المالية</th>
+                          <th className="p-4 text-center w-52 font-black text-base bg-rose-900/20">القيمة المسجلة</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-200">
+                    <tbody className="divide-y divide-zinc-100">
                         {reportVouchers.length === 0 ? (
-                          <tr><td colSpan={4} className="p-32 text-center italic text-zinc-400 font-black text-2xl">لا توجد حركات مالية مسجلة</td></tr>
-                        ) : reportVouchers.map(v => (
-                          <tr key={v.id} className="hover:bg-zinc-100 transition-colors h-14">
+                          <tr><td colSpan={4} className="p-32 text-center italic text-zinc-400 font-black text-2xl">لا توجد حركات مالية مسجلة لهذه الفترة</td></tr>
+                        ) : reportVouchers.map((v, idx) => (
+                          <tr key={v.id} className={`hover:bg-rose-50/30 transition-colors h-14 ${idx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/30'}`}>
                               <td className="p-4 font-mono text-zinc-500 text-center border-l border-zinc-100">{v.date}</td>
-                              <td className="p-4 text-center font-black text-zinc-400 border-l border-zinc-100">#{v.voucherNumber || '---'}</td>
-                              <td className="p-4 text-zinc-800 font-bold border-l border-zinc-100">{v.statement}</td>
-                              <td className="p-4 text-center font-mono font-black text-xl text-emerald-600">{(v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD).toLocaleString()}</td>
+                              <td className="p-4 text-center font-black text-rose-900/40 border-l border-zinc-100">#{v.voucherNumber || '---'}</td>
+                              <td className="p-4 text-zinc-800 font-bold border-l border-zinc-100 leading-relaxed">{v.statement}</td>
+                              <td className="p-4 text-center font-mono font-black text-2xl text-rose-900">{ (v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD).toLocaleString()}</td>
                           </tr>
                         ))}
                     </tbody>
                   </table>
               </div>
 
-              {/* ضوابط الفلترة والأزرار */}
+              {/* التفقيط كتابةً */}
+              <div className="bg-zinc-900 text-white p-6 rounded-[2rem] shadow-xl no-print-visible">
+                 <div className="flex flex-col gap-1">
+                    <span className="text-[9px] font-black text-rose-400 uppercase tracking-[0.4em]">AMOUNT IN WORDS | الرصيد المتبقي كتابةً</span>
+                    <p className="text-xl font-black italic tracking-tight underline underline-offset-8 decoration-rose-900/50">
+                       {tafqeet(Math.abs(due - paid), settings?.currency || 'ليرة سورية')}
+                    </p>
+                 </div>
+              </div>
+
+              {/* ضوابط الفلترة والأزرار (لا تظهر في الطباعة) */}
               <div className="mt-auto no-print pt-10 flex flex-col gap-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-zinc-100 rounded-3xl border border-zinc-200">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-8 bg-white rounded-[3rem] border-2 border-zinc-100 shadow-sm">
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2">الحساب</label>
-                        <select value={reportParty} onChange={e => setReportParty(e.target.value)} className="bg-white border border-zinc-300 text-zinc-900 p-3.5 rounded-2xl font-black outline-none cursor-pointer">
-                            <option value="">-- اختر الطرف --</option>
+                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2 flex items-center gap-1"><User className="w-3 h-3" /> الحساب</label>
+                        <select value={reportParty} onChange={e => setReportParty(e.target.value)} className="bg-zinc-50 border border-zinc-200 text-zinc-900 p-4 rounded-2xl font-black outline-none cursor-pointer focus:border-rose-600 transition-all appearance-none shadow-inner">
+                            <option value="">-- اختر الحساب --</option>
                             {parties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                         </select>
                     </div>
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2">من تاريخ</label>
-                        <input type="date" value={reportStart} onChange={e => setReportStart(e.target.value)} className="bg-white border border-zinc-300 text-zinc-900 p-3.5 rounded-2xl font-mono outline-none" />
+                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2 flex items-center gap-1"><CalendarIcon className="w-3 h-3" /> من تاريخ</label>
+                        <input type="date" value={reportStart} onChange={e => setReportStart(e.target.value)} className="bg-zinc-50 border border-zinc-200 text-zinc-900 p-4 rounded-2xl font-mono outline-none focus:border-rose-600 transition-all shadow-inner" />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2">إلى تاريخ</label>
-                        <input type="date" value={reportEnd} onChange={e => setReportEnd(e.target.value)} className="bg-white border border-zinc-300 text-zinc-900 p-3.5 rounded-2xl font-mono outline-none" />
+                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2 flex items-center gap-1"><CalendarIcon className="w-3 h-3" /> إلى تاريخ</label>
+                        <input type="date" value={reportEnd} onChange={e => setReportEnd(e.target.value)} className="bg-zinc-50 border border-zinc-200 text-zinc-900 p-4 rounded-2xl font-mono outline-none focus:border-rose-600 transition-all shadow-inner" />
                     </div>
                   </div>
 
-                  <div className="flex justify-between gap-4">
-                    <button onClick={() => setShowCustomerReport(false)} className="bg-zinc-800 text-white px-10 py-3.5 rounded-2xl font-black text-lg hover:bg-zinc-700 transition-all active:scale-95">إغلاق</button>
+                  <div className="flex justify-between items-center gap-4">
+                    <button onClick={() => setShowCustomerReport(false)} className="bg-zinc-200 text-zinc-600 px-10 py-4 rounded-3xl font-black text-lg hover:bg-zinc-300 transition-all active:scale-95 flex items-center gap-2 shadow-sm">
+                       <ArrowRight className="w-5 h-5" /> إغلاق الكشف
+                    </button>
                     <div className="flex gap-4">
-                        <button onClick={handleExportReportImage} className="bg-amber-600 text-white px-8 py-3.5 rounded-2xl font-black text-lg shadow-xl hover:brightness-110 flex items-center gap-2">
+                        <button onClick={handleExportReportImage} className="bg-amber-600 text-white px-8 py-4 rounded-[2rem] font-black text-lg shadow-xl shadow-amber-900/20 hover:brightness-110 flex items-center gap-3 transition-all active:scale-95">
                           <ImageIcon className="w-6 h-6" /> حفظ كصورة
                         </button>
-                        <button onClick={() => window.print()} className="bg-rose-600 text-white px-12 py-3.5 rounded-2xl font-black text-lg shadow-xl hover:brightness-110 flex items-center gap-2">
-                          <Printer className="w-6 h-6" /> طباعة الكشف المالي
+                        <button onClick={() => window.print()} className="bg-rose-700 text-white px-12 py-4 rounded-[2rem] font-black text-lg shadow-xl shadow-rose-900/30 hover:brightness-110 flex items-center gap-3 transition-all active:scale-95">
+                          <Printer className="w-6 h-6" /> طباعة الكشف المعتمد
                         </button>
-                        <button onClick={handleExportReportPDF} className="bg-emerald-600 text-white px-12 py-3.5 rounded-2xl font-black text-lg shadow-xl hover:brightness-110 flex items-center gap-2">
-                          <FileDown className="w-6 h-6" /> تصدير نسخة PDF
+                        <button onClick={handleExportReportPDF} className="bg-emerald-600 text-white px-12 py-4 rounded-[2rem] font-black text-lg shadow-xl shadow-emerald-900/20 hover:brightness-110 flex items-center gap-3 transition-all active:scale-95">
+                          <FileDown className="w-6 h-6" /> تصدير PDF احترافي
                         </button>
                     </div>
                   </div>
               </div>
 
-              {/* تذييل الطباعة فقط */}
-              <div className="print-only mt-auto pt-10 pb-4 flex justify-between items-end text-[10px] font-black text-zinc-400 opacity-60">
-                 <div>SAMLATOR SYSTEM | SECURED FINANCIAL LOG</div>
-                 <div dir="ltr">{new Date().toLocaleString('ar-SA')}</div>
+              {/* تذييل الطباعة فقط المطور */}
+              <div className="print-only mt-auto pt-10 pb-4 border-t-2 border-zinc-100 flex justify-between items-end">
+                 <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-black text-zinc-900 uppercase">SIGNATURE | اعتماد المدير</span>
+                    <div className="w-48 border-b-2 border-rose-900/30 h-10"></div>
+                 </div>
+                 <div className="text-center flex flex-col items-center">
+                    <span className="text-[9px] font-black text-zinc-300 uppercase tracking-[0.5em] mb-1">SECURED LEDGER TERMINAL</span>
+                    <div className="flex items-center gap-2 text-[10px] font-black text-zinc-400">
+                       <span>{settings?.companyName}</span>
+                       <div className="w-1 h-1 bg-zinc-200 rounded-full"></div>
+                       <span>{new Date().toLocaleString('ar-SA')}</span>
+                    </div>
+                 </div>
               </div>
            </div>
         </div>
@@ -724,5 +777,13 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     </div>
   );
 };
+
+// أيقونة بسيطة للموقع مستخدمة في الترويسة
+const MapPin = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+  </svg>
+);
 
 export default VoucherListView;

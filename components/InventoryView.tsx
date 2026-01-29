@@ -152,10 +152,27 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
             padding: 10mm !important; 
             border: none !important; 
             box-shadow: none !important;
+            background: white !important;
+            color: black !important;
           }
-          table { width: 100% !important; border-collapse: collapse !important; }
-          th, td { border: 1px solid #e5e7eb !important; font-size: 10px !important; }
-          .print-header-xo { display: flex !important; }
+          .inventory-report-container table { 
+            width: 100% !important; 
+            border-collapse: collapse !important; 
+            background: white !important;
+          }
+          .inventory-report-container th, .inventory-report-container td { 
+            border: 1px solid #d1d5db !important; 
+            font-size: 10px !important; 
+            color: black !important;
+            background: white !important;
+          }
+          .inventory-report-container tr {
+             background: white !important;
+          }
+          .print-header-xo { display: flex !important; background: white !important; border-bottom: 2px solid #059669 !important; }
+          .text-white { color: black !important; }
+          .bg-black, .bg-zinc-950, .bg-zinc-900 { background: white !important; }
+          .font-mono { font-family: courier, monospace !important; }
         }
       `}</style>
 
@@ -250,7 +267,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
       )}
 
       {/* Main Container for PDF Ref */}
-      <div ref={reportRef} className="inventory-report-container bg-black rounded-3xl border border-zinc-800 overflow-hidden shadow-2xl p-4 md:p-8 print:p-0 print:border-none print:shadow-none">
+      <div ref={reportRef} className="inventory-report-container bg-black dark:bg-zinc-950 rounded-3xl border border-zinc-800 overflow-hidden shadow-2xl p-4 md:p-8 print:bg-white print:p-0 print:border-none print:shadow-none export-fix">
         
         {/* Professional Print Header (XO Style) */}
         <div className="hidden print:flex flex-row justify-between items-start mb-6 border-b-2 border-emerald-600 pb-4 print-header-xo bg-white p-4 rounded-xl">
@@ -284,35 +301,35 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-right border-collapse text-sm">
+          <table className="w-full text-right border-collapse text-sm bg-black dark:bg-zinc-950 print:bg-white">
             <thead>
-              <tr className="bg-zinc-900 text-[10px] text-white font-black uppercase tracking-widest border-b border-zinc-800 h-12 print:bg-emerald-700 print:text-white">
-                <th className="p-4 border-l border-zinc-800">كود</th>
-                <th className="p-4 border-l border-zinc-800">المادة</th>
-                <th className="p-4 border-l border-zinc-800">المستودع</th>
-                <th className="p-4 border-l border-zinc-800">الوحدة</th>
-                <th className="p-4 border-l border-zinc-800 text-center">السعر</th>
-                <th className="p-4 border-l border-zinc-800 text-center">أول المدة</th>
-                <th className="p-4 border-l border-zinc-800 text-center">الإضافات</th>
-                <th className="p-4 border-l border-zinc-800 text-center">الصرف</th>
-                <th className="p-4 border-l border-zinc-800 text-center">المرتجع</th>
-                <th className="p-4 text-center font-black bg-zinc-800 print:bg-emerald-900">الرصيد الكلي</th>
+              <tr className="bg-zinc-900 text-[10px] text-white font-black uppercase tracking-widest border-b border-zinc-800 h-12 print:bg-emerald-700 print:text-white print:border-zinc-300">
+                <th className="p-4 border-l border-zinc-800 print:border-zinc-300">كود</th>
+                <th className="p-4 border-l border-zinc-800 print:border-zinc-300">المادة</th>
+                <th className="p-4 border-l border-zinc-800 print:border-zinc-300">المستودع</th>
+                <th className="p-4 border-l border-zinc-800 print:border-zinc-300">الوحدة</th>
+                <th className="p-4 border-l border-zinc-800 print:border-zinc-300 text-center">السعر</th>
+                <th className="p-4 border-l border-zinc-800 print:border-zinc-300 text-center">أول المدة</th>
+                <th className="p-4 border-l border-zinc-800 print:border-zinc-300 text-center">الإضافات</th>
+                <th className="p-4 border-l border-zinc-800 print:border-zinc-300 text-center">الصرف</th>
+                <th className="p-4 border-l border-zinc-800 print:border-zinc-300 text-center">المرتجع</th>
+                <th className="p-4 text-center font-black bg-zinc-800 print:bg-emerald-900 print:text-white">الرصيد الكلي</th>
                 <th className="p-4 text-center no-print border-l border-zinc-800">إجراءات</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800 font-bold bg-black text-zinc-300 print:bg-white print:text-zinc-900 print:divide-zinc-300">
+            <tbody className="divide-y divide-zinc-800 font-bold text-zinc-300 print:bg-white print:text-zinc-900 print:divide-zinc-200">
               {filteredItems.map((item) => (
-                <tr key={item.id} className="hover:bg-zinc-900/50 transition-colors border-b border-zinc-900">
-                  <td className="p-4 font-mono text-emerald-500 border-l border-zinc-900 print:border-zinc-200">{item.code}</td>
-                  <td className="p-4 border-l border-zinc-900 print:border-zinc-200 text-white">{item.name}</td>
-                  <td className="p-4 border-l border-zinc-900 print:border-zinc-200 text-xs text-zinc-500">{item.warehouse}</td>
-                  <td className="p-4 border-l border-zinc-900 print:border-zinc-200 text-xs text-zinc-500">{item.unit}</td>
-                  <td className="p-4 text-center font-mono border-l border-zinc-900 print:border-zinc-200 text-amber-500">{item.price.toLocaleString()}</td>
-                  <td className="p-4 text-center font-mono border-l border-zinc-900 print:border-zinc-200 text-zinc-400">{item.openingStock.toLocaleString()}</td>
+                <tr key={item.id} className="hover:bg-zinc-900/50 transition-colors border-b border-zinc-900 print:border-zinc-200 print:hover:bg-zinc-50">
+                  <td className="p-4 font-mono text-emerald-500 border-l border-zinc-900 print:border-zinc-200 print:text-emerald-700">{item.code}</td>
+                  <td className="p-4 border-l border-zinc-900 print:border-zinc-200 text-white dark:text-zinc-100 print:text-zinc-900 font-black">{item.name}</td>
+                  <td className="p-4 border-l border-zinc-900 print:border-zinc-200 text-xs text-zinc-500 print:text-zinc-600">{item.warehouse}</td>
+                  <td className="p-4 border-l border-zinc-900 print:border-zinc-200 text-xs text-zinc-500 print:text-zinc-600">{item.unit}</td>
+                  <td className="p-4 text-center font-mono border-l border-zinc-900 print:border-zinc-200 text-amber-500 print:text-amber-700">{item.price.toLocaleString()}</td>
+                  <td className="p-4 text-center font-mono border-l border-zinc-900 print:border-zinc-200 text-zinc-400 print:text-zinc-500">{item.openingStock.toLocaleString()}</td>
                   <td className="p-4 text-center font-mono text-emerald-600 border-l border-zinc-900 print:border-zinc-200">+{item.added.toLocaleString()}</td>
                   <td className="p-4 text-center font-mono text-rose-500 border-l border-zinc-900 print:border-zinc-200">-{item.issued.toLocaleString()}</td>
                   <td className="p-4 text-center font-mono text-amber-500 border-l border-zinc-900 print:border-zinc-200">+{item.returned.toLocaleString()}</td>
-                  <td className={`p-4 text-center font-mono text-lg border-l border-zinc-900 print:border-zinc-200 ${item.currentBalance < 0 ? 'text-rose-600' : 'text-emerald-400 font-black'}`}>{item.currentBalance.toLocaleString()}</td>
+                  <td className={`p-4 text-center font-mono text-lg border-l border-zinc-900 print:border-zinc-200 ${item.currentBalance < 0 ? 'text-rose-600' : 'text-emerald-400 dark:text-emerald-300 print:text-emerald-800 font-black'}`}>{item.currentBalance.toLocaleString()}</td>
                   <td className="p-4 no-print border-l border-zinc-900">
                      <div className="flex justify-center gap-2">
                         <button onClick={() => { setEditingId(item.id); setFormData({...item, currentInputQty: 0}); setIsAdding(true); }} className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-500 transition-colors"><Edit2 className="w-4 h-4" /></button>

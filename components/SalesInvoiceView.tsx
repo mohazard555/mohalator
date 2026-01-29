@@ -160,7 +160,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
       items: [], usedMaterials: [], notes: '', paidAmount: 0, paymentType: 'نقداً'
     });
     
-    if (initialInvoice) onBack(); // الرجوع للسجل إذا كان تعديلاً قادماً من هناك
+    if (initialInvoice) onBack(); 
   };
 
   const handleDelete = (id: string) => {
@@ -209,22 +209,35 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
 
   return (
     <div className="space-y-6">
-      {/* Print Header Ledger Style - Ink Friendly Fix */}
+      {/* Print Header Ledger Style - Enhanced with Period Filter */}
       <div className="print-only print-header flex justify-between items-center bg-white p-6 rounded-t-xl text-zinc-900 mb-0 border-b-4 border-primary">
         <div className="flex items-center gap-4">
           {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg border border-zinc-100" />}
           <div>
             <h1 className="text-2xl font-black">{settings?.companyName}</h1>
-            <p className="text-xs text-zinc-500 font-bold uppercase">{settings?.companyType}</p>
+            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{settings?.companyType}</p>
           </div>
         </div>
-        <div className="text-center">
+
+        <div className="text-center space-y-2">
           <h2 className="text-3xl font-black underline decoration-zinc-200 underline-offset-8">سجل مبيعات المنشأة المفلتر</h2>
-          <p className="text-xs mt-3 font-bold flex items-center justify-center gap-1"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
+          
+          {/* Filter Range Display for Print */}
+          <div className="flex flex-col items-center gap-1">
+             <span className="text-[9px] font-black text-primary uppercase tracking-widest">فترة التقرير المفلترة</span>
+             <div className="bg-zinc-50 border border-zinc-200 px-6 py-1 rounded-full flex items-center gap-3">
+                <span className="font-mono font-black text-xs">{startDate || 'البداية'}</span>
+                <span className="text-zinc-300 font-bold">←</span>
+                <span className="font-mono font-black text-xs">{endDate || 'اليوم'}</span>
+             </div>
+          </div>
+
+          <p className="text-[9px] mt-3 font-bold flex items-center justify-center gap-1 opacity-50"><Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
         </div>
+
         <div className="text-left text-xs font-bold text-zinc-500 space-y-1">
-          <p>{settings?.address}</p>
-          <p>{settings?.phone}</p>
+          <p className="flex items-center justify-end gap-1">{settings?.address} <Box className="w-3 h-3 opacity-30"/></p>
+          <p className="flex items-center justify-end gap-1" dir="ltr">{settings?.phone}</p>
         </div>
       </div>
 

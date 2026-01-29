@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check, X, HardDrive, Printer, FileText, Upload, Calculator } from 'lucide-react';
+import { ArrowRight, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check, X, HardDrive, Printer, FileText, Upload, Calculator, Layers } from 'lucide-react';
 import { SalesInvoice, AppSettings, InvoiceItem } from '../types';
 import { exportToCSV } from '../utils/export';
 import { PdfExportService } from '../utils/PdfExportService';
@@ -60,11 +60,20 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
     return matchSearch && matchDate && matchItems;
   });
 
-  // حساب إجماليات الوحدات (جديد)
+  // حساب إجماليات وحدات الأصناف المباعة
   const unitTotals = filteredInvoices.reduce((acc: Record<string, number>, inv) => {
     inv.items.forEach(item => {
       const unit = item.unit || 'قطعة';
       acc[unit] = (acc[unit] || 0) + item.quantity;
+    });
+    return acc;
+  }, {});
+
+  // حساب إجماليات وحدات المواد المستخدمة (الخامات)
+  const usedMaterialUnitTotals = filteredInvoices.reduce((acc: Record<string, number>, inv) => {
+    inv.usedMaterials?.forEach(m => {
+      const unit = m.unit || 'قطعة';
+      acc[unit] = (acc[unit] || 0) + m.quantity;
     });
     return acc;
   }, {});
@@ -238,14 +247,45 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
         </div>
       </div>
 
-      {/* عرض إجماليات الوحدات في الواجهة */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 no-print">
-         {Object.entries(unitTotals).map(([unit, total]) => (
-            <div key={unit} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center shadow-sm">
-               <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">إجمالي ({unit})</span>
-               <span className="text-xl font-mono font-black text-rose-700">{total.toLocaleString()}</span>
-            </div>
-         ))}
+      {/* ملخصات الواجهة - مبيع ومواد مستخدمة */}
+      <div className="space-y-4 no-print">
+        <div className="flex items-center gap-2 mb-2">
+           <Calculator className="w-5 h-5 text-rose-700" />
+           <h3 className="text-sm font-black text-readable uppercase tracking-wider">ملخص الكميات المفلترة</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           {/* إجماليات مبيع الأصناف */}
+           <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
+              <span className="text-[10px] font-black text-rose-700 uppercase tracking-[0.2em] flex items-center gap-2">
+                 <Package className="w-4 h-4" /> الأصناف المباعة (الفواتير)
+              </span>
+              <div className="flex flex-wrap gap-4">
+                 {Object.entries(unitTotals).map(([unit, total]) => (
+                    <div key={unit} className="flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-800/50 px-6 py-3 rounded-2xl border dark:border-zinc-700 min-w-[100px]">
+                       <span className="text-[9px] font-bold text-zinc-400 mb-1">{unit}</span>
+                       <span className="text-2xl font-mono font-black text-rose-700">{total.toLocaleString()}</span>
+                    </div>
+                 ))}
+                 {Object.keys(unitTotals).length === 0 && <span className="text-xs text-zinc-400 italic">لا يوجد بيانات</span>}
+              </div>
+           </div>
+
+           {/* إجماليات المواد المستخدمة */}
+           <div className="bg-emerald-500/5 dark:bg-emerald-950/20 p-6 rounded-3xl border border-emerald-500/20 shadow-sm space-y-4">
+              <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                 <Layers className="w-4 h-4" /> المواد المستخدمة (خامات الإنتاج)
+              </span>
+              <div className="flex flex-wrap gap-4">
+                 {Object.entries(usedMaterialUnitTotals).map(([unit, total]) => (
+                    <div key={unit} className="flex flex-col items-center justify-center bg-white dark:bg-zinc-900 px-6 py-3 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 min-w-[100px]">
+                       <span className="text-[9px] font-bold text-emerald-400 mb-1">{unit}</span>
+                       <span className="text-2xl font-mono font-black text-emerald-600 dark:text-emerald-400">{total.toLocaleString()}</span>
+                    </div>
+                 ))}
+                 {Object.keys(usedMaterialUnitTotals).length === 0 && <span className="text-xs text-zinc-400 italic">لا يوجد مواد مستخدمة</span>}
+              </div>
+           </div>
+        </div>
       </div>
 
       <div ref={reportRef} className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-2xl print:border-rose-700 print:rounded-none p-4 md:p-8">
@@ -268,18 +308,38 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
           </div>
         </div>
 
-        {/* ملخص الكميات حسب الوحدة للطباعة */}
-        <div className="mb-6 p-4 bg-zinc-50 border-2 border-dashed border-zinc-200 rounded-2xl flex flex-wrap gap-6 justify-center">
-            <div className="flex items-center gap-2 border-l border-zinc-200 pl-6">
-               <Calculator className="w-5 h-5 text-rose-700" />
-               <span className="text-xs font-black">إجمالي الكميات المباعة المفلترة:</span>
-            </div>
-            {Object.entries(unitTotals).map(([unit, total]) => (
-               <div key={unit} className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-zinc-500">{unit}:</span>
-                  <span className="text-lg font-mono font-black text-rose-900">{total.toLocaleString()}</span>
+        {/* ملخصات الطباعة المطورة */}
+        <div className="mb-6 grid grid-cols-2 gap-4">
+            <div className="p-4 bg-zinc-50 border-2 border-dashed border-zinc-200 rounded-2xl space-y-3">
+               <div className="flex items-center gap-2 border-b border-zinc-200 pb-1">
+                  <Package className="w-4 h-4 text-rose-700" />
+                  <span className="text-[10px] font-black uppercase">إجمالي المبيعات (أصناف الفواتير)</span>
                </div>
-            ))}
+               <div className="flex flex-wrap gap-4">
+                  {Object.entries(unitTotals).map(([unit, total]) => (
+                     <div key={unit} className="flex items-baseline gap-1">
+                        <span className="text-[9px] font-bold text-zinc-500">{unit}:</span>
+                        <span className="text-base font-mono font-black text-rose-900">{total.toLocaleString()}</span>
+                     </div>
+                  ))}
+               </div>
+            </div>
+
+            <div className="p-4 bg-emerald-50/50 border-2 border-dashed border-emerald-200 rounded-2xl space-y-3">
+               <div className="flex items-center gap-2 border-b border-emerald-100 pb-1">
+                  <Layers className="w-4 h-4 text-emerald-600" />
+                  <span className="text-[10px] font-black uppercase text-emerald-800">إجمالي المواد المستخدمة (خامات)</span>
+               </div>
+               <div className="flex flex-wrap gap-4">
+                  {Object.entries(usedMaterialUnitTotals).map(([unit, total]) => (
+                     <div key={unit} className="flex items-baseline gap-1">
+                        <span className="text-[9px] font-bold text-emerald-600/70">{unit}:</span>
+                        <span className="text-base font-mono font-black text-emerald-800">{total.toLocaleString()}</span>
+                     </div>
+                  ))}
+                  {Object.keys(usedMaterialUnitTotals).length === 0 && <span className="text-[10px] italic text-zinc-300">لا يوجد بيانات</span>}
+               </div>
+            </div>
         </div>
 
         <div className="overflow-x-auto border rounded-xl">
@@ -322,7 +382,7 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
                   </td>
                   <td className="p-2 border-l border-zinc-100">
                     <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
-                       {inv.usedMaterials?.map((m, i) => ( <span key={i} className="bg-rose-50 text-rose-700 px-1 py-0.5 rounded-sm text-[8px] font-black border border-rose-100">{m.name} ({m.quantity})</span> ))}
+                       {inv.usedMaterials?.map((m, i) => ( <span key={i} className="bg-rose-50 text-rose-700 px-1 py-0.5 rounded-sm text-[8px] font-black border border-rose-100">{m.name} ({m.quantity} {m.unit})</span> ))}
                     </div>
                   </td>
                   <td className="p-2 border-l border-zinc-100 text-center font-mono text-zinc-700">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>

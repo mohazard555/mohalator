@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowRight, TrendingUp, TrendingDown, PieChart, BarChart3, 
   Package, DollarSign, Hourglass, Star, FileDown, Printer, Filter, 
-  Building, LayoutGrid, Calendar, Users, FileSpreadsheet, FileText
+  Building, LayoutGrid, Calendar, Users, FileSpreadsheet, FileText,
+  ArrowLeftRight, RefreshCcw, Layers
 } from 'lucide-react';
 import { 
   SalesInvoice, PurchaseInvoice, StockEntry, CashEntry, 
@@ -17,13 +18,23 @@ interface InvestmentReportsViewProps {
   onBack: () => void;
 }
 
-type ReportSubView = 'SUMMARY' | 'VALUATION' | 'PERFORMANCE' | 'HEALTH';
+type ReportSubView = 'SUMMARY' | 'VALUATION' | 'PERFORMANCE' | 'HEALTH' | 'MOVEMENTS_SUMMARY';
 
 interface BestSellerItem {
   name: string;
   code: string;
   qty: number;
   total: number;
+}
+
+interface MovementSummaryItem {
+  name: string;
+  code: string;
+  inputs: number;
+  outputs: number;
+  returns: number;
+  netChange: number;
+  unit: string;
 }
 
 const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack }) => {
@@ -65,7 +76,7 @@ const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack })
       const added = itemEntries.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
       const issued = itemEntries.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
       const returned = itemEntries.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
-      const current = item.openingStock + added - issued + returned;
+      const current = (item.openingStock || 0) + added - issued + returned;
       return { ...item, currentBalance: current };
     });
   };
@@ -79,7 +90,7 @@ const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack })
 
   const valuationByWarehouse = Array.from(new Set(stockEntries.map(e => e.warehouse))).map(wh => {
     const warehouseItems = currentInventory.filter(item => {
-      const latestMove = stockEntries.filter(e => e.itemCode === item.code).sort((a,b) => b.date.localeCompare(a.date))[0];
+      const latestMove = stockEntries.filter(e => e.itemCode === item.code && e.warehouse === wh).sort((a,b) => b.date.localeCompare(a.date))[0];
       return latestMove?.warehouse === wh;
     });
     const value = warehouseItems.reduce((s, i) => s + (i.currentBalance * i.price), 0);
@@ -96,8 +107,8 @@ const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack })
     }, new Map<string, BestSellerItem>());
 
   const bestSellers: BestSellerItem[] = (Array.from(bestSellersMap.values()) as BestSellerItem[])
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 10);
+    .sort((a, b) => b.qty - a.qty) // ترتيب حسب الكمية الأكثر مبيعاً
+    .slice(0, 15);
 
   const stagnantItems = currentInventory.filter(item => {
     const latestMove = stockEntries.filter(e => e.itemCode === item.code).sort((a, b) => b.date.localeCompare(a.date))[0];
@@ -105,6 +116,28 @@ const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack })
     const daysSince = (new Date().getTime() - new Date(latestMove.date).getTime()) / (1000 * 3600 * 24);
     return daysSince > 60 && item.currentBalance > 0;
   });
+
+  // تقرير ملخص حركات المواد (إدخال، إخراج، مرتجع)
+  const getMovementsSummary = (): MovementSummaryItem[] => {
+    return inventory.map(item => {
+      const filteredMoves = stockEntries.filter(e => e.itemCode === item.code && e.date >= startDate && e.date <= endDate);
+      const inputs = filteredMoves.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
+      const outputs = filteredMoves.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
+      const returns = filteredMoves.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
+      
+      return {
+        name: item.name,
+        code: item.code,
+        unit: item.unit,
+        inputs,
+        outputs,
+        returns,
+        netChange: inputs - outputs + returns
+      };
+    }).filter(i => i.inputs > 0 || i.outputs > 0 || i.returns > 0);
+  };
+
+  const movementsSummary = getMovementsSummary();
 
   const handleExportExcel = () => {
     let data: any[] = [];
@@ -127,6 +160,17 @@ const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack })
     } else if (subView === 'HEALTH') {
       data = stagnantItems.map(i => ({ 'المادة': i.name, 'الكود': i.code, 'الرصيد': i.currentBalance, 'القيمة': i.currentBalance * i.price }));
       filename = 'stagnant_inventory';
+    } else if (subView === 'MOVEMENTS_SUMMARY') {
+      data = movementsSummary.map(i => ({
+        'المادة': i.name,
+        'الكود': i.code,
+        'إجمالي الإدخالات': i.inputs,
+        'إجمالي الإخراجات': i.outputs,
+        'إجمالي المرتجعات': i.returns,
+        'صافي التغير': i.netChange,
+        'الوحدة': i.unit
+      }));
+      filename = 'stock_movements_summary';
     }
 
     exportToCSV(data, filename);
@@ -173,6 +217,7 @@ const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack })
       <div className="flex flex-wrap gap-2 bg-zinc-100 dark:bg-zinc-900 p-2 rounded-3xl no-print border border-zinc-200 dark:border-zinc-800">
          {[
            { id: 'SUMMARY', label: 'ملخص رأس المال والأرباح', icon: <PieChart className="w-4 h-4" /> },
+           { id: 'MOVEMENTS_SUMMARY', label: 'ملخص حركة المخزون', icon: <ArrowLeftRight className="w-4 h-4" /> },
            { id: 'VALUATION', label: 'تقييم المستودعات والأصول', icon: <Building className="w-4 h-4" /> },
            { id: 'PERFORMANCE', label: 'الأصناف الأكثر مبيعاً', icon: <Star className="w-4 h-4" /> },
            { id: 'HEALTH', label: 'الأصناف الراكدة (تنبيه)', icon: <Hourglass className="w-4 h-4" /> },
@@ -207,16 +252,30 @@ const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack })
            </div>
         </div>
 
+        {/* Filter Section Shared for some reports */}
+        {(subView === 'SUMMARY' || subView === 'PERFORMANCE' || subView === 'MOVEMENTS_SUMMARY') && (
+           <div className="bg-zinc-50 dark:bg-zinc-900 p-6 rounded-[2rem] border dark:border-zinc-800 flex flex-col md:flex-row items-center gap-6 no-print">
+              <div className="flex items-center gap-4">
+                <Calendar className="w-6 h-6 text-primary" />
+                <div>
+                   <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">نطاق تحليل البيانات من</span>
+                   <div className="flex items-center gap-2 mt-1">
+                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-white dark:bg-zinc-800 p-2 rounded-xl border dark:border-zinc-700 font-mono outline-none text-readable shadow-sm" />
+                      <span className="text-zinc-300">←</span>
+                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-white dark:bg-zinc-800 p-2 rounded-xl border dark:border-zinc-700 font-mono outline-none text-readable shadow-sm" />
+                   </div>
+                </div>
+              </div>
+              <div className="flex-1 md:border-r dark:border-zinc-800 md:pr-6">
+                 <p className="text-xs text-zinc-500 font-bold leading-relaxed">
+                   تقوم الفلاتر الزمنية بتحديث كافة الإحصائيات والأرقام الظاهرة في التقارير لتعكس الأداء المالي والمستودعي خلال الفترة المختارة فقط.
+                 </p>
+              </div>
+           </div>
+        )}
+
         {subView === 'SUMMARY' && (
           <div className="space-y-8 animate-in slide-in-from-bottom-4">
-             <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border dark:border-zinc-800 flex items-center gap-4 no-print">
-                <Calendar className="w-5 h-5 text-primary" />
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">نطاق التحليل المالي من</span>
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-zinc-50 dark:bg-zinc-800 p-2 rounded-xl border dark:border-zinc-700 font-mono outline-none text-readable" />
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">إلى</span>
-                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-zinc-50 dark:bg-zinc-800 p-2 rounded-xl border dark:border-zinc-700 font-mono outline-none text-readable" />
-             </div>
-
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-emerald-500/10 border-2 border-emerald-500/20 p-8 rounded-3xl flex flex-col items-center text-center gap-3 print:bg-transparent">
                    <div className="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg no-print"><TrendingUp className="w-8 h-8" /></div>
@@ -255,6 +314,49 @@ const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack })
                 </div>
              </div>
           </div>
+        )}
+
+        {subView === 'MOVEMENTS_SUMMARY' && (
+           <div className="animate-in slide-in-from-bottom-4 space-y-6">
+              <div className="bg-white dark:bg-zinc-900 rounded-3xl border dark:border-zinc-800 overflow-hidden shadow-2xl print:border-zinc-200">
+                 <div className="p-6 bg-zinc-50 dark:bg-zinc-800/50 border-b dark:border-zinc-700 flex items-center gap-3 print:bg-zinc-100">
+                    <ArrowLeftRight className="w-6 h-6 text-primary no-print" />
+                    <h3 className="text-lg font-black text-readable">ملخص إجمالي حركات المواد المستودعية (إدخال / إخراج / مرتجع)</h3>
+                 </div>
+                 <div className="overflow-x-auto">
+                    <table className="w-full text-right">
+                       <thead>
+                          <tr className="text-[10px] font-black uppercase text-zinc-400 bg-zinc-50 dark:bg-zinc-800/20 border-b dark:border-zinc-700 print:text-zinc-900">
+                             <th className="p-4">المادة / الصنف</th>
+                             <th className="p-4 text-center">الكود</th>
+                             <th className="p-4 text-center text-emerald-600">إجمالي الإدخالات (+)</th>
+                             <th className="p-4 text-center text-rose-600">إجمالي الإخراجات (-)</th>
+                             <th className="p-4 text-center text-amber-600">المرتجع (±)</th>
+                             <th className="p-4 text-center bg-zinc-100/50 dark:bg-zinc-800/50">صافي التغير بالفترة</th>
+                             <th className="p-4 text-center">الوحدة</th>
+                          </tr>
+                       </thead>
+                       <tbody className="divide-y dark:divide-zinc-800 font-bold print:text-zinc-900">
+                          {movementsSummary.length === 0 ? (
+                             <tr><td colSpan={7} className="p-20 text-center italic text-zinc-400">لا يوجد حركات مسجلة للفترة المختارة</td></tr>
+                          ) : movementsSummary.map((item, idx) => (
+                             <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                                <td className="p-4 text-readable">{item.name}</td>
+                                <td className="p-4 text-center font-mono text-zinc-400">{item.code}</td>
+                                <td className="p-4 text-center font-mono text-emerald-600">+{item.inputs.toLocaleString()}</td>
+                                <td className="p-4 text-center font-mono text-rose-600">-{item.outputs.toLocaleString()}</td>
+                                <td className="p-4 text-center font-mono text-amber-600">{item.returns >= 0 ? '+' : ''}{item.returns.toLocaleString()}</td>
+                                <td className={`p-4 text-center font-mono font-black text-lg bg-zinc-100/20 dark:bg-zinc-800/20 ${item.netChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                   {item.netChange.toLocaleString()}
+                                </td>
+                                <td className="p-4 text-center text-zinc-400 text-xs">{item.unit}</td>
+                             </tr>
+                          ))}
+                       </tbody>
+                    </table>
+                 </div>
+              </div>
+           </div>
         )}
 
         {subView === 'VALUATION' && (
@@ -305,23 +407,32 @@ const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack })
         {subView === 'PERFORMANCE' && (
           <div className="animate-in slide-in-from-bottom-4 space-y-6">
              <div className="bg-white dark:bg-zinc-900 rounded-3xl border dark:border-zinc-800 shadow-xl overflow-hidden print:border-zinc-200 print:shadow-none">
-                <div className="p-6 bg-emerald-500/10 border-b dark:border-zinc-700 border-emerald-500/20 flex items-center gap-3 print:bg-zinc-50">
+                <div className="p-6 bg-emerald-500/10 border-b dark:border-zinc-700 border-emerald-500/20 flex items-center gap-3 print:bg-zinc-100">
                    <Star className="text-emerald-600 dark:text-emerald-400 w-6 h-6 no-print" />
-                   <h3 className="font-black text-readable">الأصناف الذهبية (الأكثر مبيعاً)</h3>
+                   <h3 className="font-black text-readable">الأصناف الذهبية (الأكثر مبيعاً من حيث الكمية والقيمة)</h3>
                 </div>
                 <div className="p-4 space-y-3">
-                   {bestSellers.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl group transition-all print:bg-transparent print:border-b">
+                   {bestSellers.length === 0 ? (
+                      <div className="text-center py-20 italic text-zinc-400">لا يوجد بيانات مبيعات في هذه الفترة</div>
+                   ) : bestSellers.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl group transition-all border border-transparent hover:border-emerald-500/30 print:bg-transparent print:border-b">
                          <div className="flex items-center gap-4">
-                            <div className="w-8 h-8 bg-zinc-200 dark:bg-zinc-700 rounded-lg flex items-center justify-center font-black text-xs text-readable">#{idx + 1}</div>
+                            <div className="w-10 h-10 bg-zinc-200 dark:bg-zinc-700 rounded-xl flex items-center justify-center font-black text-sm text-readable">#{idx + 1}</div>
                             <div className="flex flex-col">
-                               <span className="font-black text-readable">{item.name}</span>
-                               <span className="text-[10px] text-zinc-400 font-mono">CODE: {item.code}</span>
+                               <span className="font-black text-readable text-lg">{item.name}</span>
+                               <span className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase">CODE: {item.code}</span>
                             </div>
                          </div>
-                         <div className="text-left">
-                            <div className="text-sm font-black text-emerald-600 dark:text-emerald-400">{item.total.toLocaleString()} {settings?.currencySymbol}</div>
-                            <div className="text-[9px] font-bold text-zinc-400">باعت {item.qty} وحدة</div>
+                         <div className="flex gap-8 items-center">
+                            <div className="text-center min-w-[100px]">
+                               <div className="text-[9px] font-black text-zinc-400 uppercase">الكمية المباعة</div>
+                               <div className="text-lg font-black text-primary font-mono">{item.qty.toLocaleString()}</div>
+                            </div>
+                            <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700 no-print"></div>
+                            <div className="text-left min-w-[120px]">
+                               <div className="text-[9px] font-black text-zinc-400 uppercase">إجمالي الإيراد</div>
+                               <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">{item.total.toLocaleString()} {settings?.currencySymbol}</div>
+                            </div>
                          </div>
                       </div>
                    ))}
@@ -333,7 +444,7 @@ const InvestmentReportsView: React.FC<InvestmentReportsViewProps> = ({ onBack })
         {subView === 'HEALTH' && (
           <div className="animate-in slide-in-from-bottom-4 space-y-6">
              <div className="bg-white dark:bg-zinc-900 rounded-3xl border-2 border-amber-500/30 overflow-hidden shadow-2xl print:border-zinc-200 print:shadow-none">
-                <div className="p-6 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-3 print:bg-zinc-50">
+                <div className="p-6 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-3 print:bg-zinc-100">
                    <Hourglass className="text-amber-600 dark:text-amber-400 w-6 h-6 no-print" />
                    <h3 className="font-black text-readable">الأصناف الراكدة (تجاوزت 60 يوماً بدون حركة)</h3>
                 </div>
