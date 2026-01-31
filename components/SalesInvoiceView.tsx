@@ -1,10 +1,9 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, Box, Clock, FileDown, User, Hash, HardDrive, ScrollText, Image as ImageIcon, CreditCard, Coins, Upload, Search, Filter, Calendar, Package, ChevronDown, Check } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, StockEntry, Party, PartyType, InventoryItem, CashEntry, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 import { tafqeet } from '../utils/tafqeet';
-import * as XLSX from 'https://esm.sh/xlsx';
 
 interface SalesInvoiceViewProps {
   onBack: () => void;
@@ -12,7 +11,6 @@ interface SalesInvoiceViewProps {
 }
 
 const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvoice }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [parties, setParties] = useState<Party[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -21,7 +19,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [selectedCurrencyType, setSelectedCurrencyType] = useState<'primary' | 'secondary'>('primary');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,19 +43,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
 
   // Load Initial Data
   useEffect(() => {
-    loadData();
-    if (initialInvoice && !editingId) {
-      setEditingId(initialInvoice.id);
-      setNewInvoice(initialInvoice);
-      setIsAdding(true);
-      const savedSettings = localStorage.getItem('sheno_settings');
-      if (initialInvoice.currencySymbol === (JSON.parse(savedSettings || '{}').secondaryCurrencySymbol)) {
-         setSelectedCurrencyType('secondary');
-      }
-    }
-  }, [initialInvoice]);
-
-  const loadData = () => {
     const savedInv = localStorage.getItem('sheno_sales_invoices');
     const savedParties = localStorage.getItem('sheno_parties');
     const savedInventory = localStorage.getItem('sheno_inventory_list');
@@ -84,7 +68,17 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
        setInventory(updatedInventory);
     }
     if (savedSettings) setSettings(JSON.parse(savedSettings));
-  };
+
+    // Handle Edit Mode from props once
+    if (initialInvoice && !editingId) {
+      setEditingId(initialInvoice.id);
+      setNewInvoice(initialInvoice);
+      setIsAdding(true);
+      if (initialInvoice.currencySymbol === (JSON.parse(savedSettings || '{}').secondaryCurrencySymbol)) {
+         setSelectedCurrencyType('secondary');
+      }
+    }
+  }, [initialInvoice]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -95,150 +89,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
       };
       reader.readAsDataURL(file);
     }
-  };
-
-  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsImporting(true);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = new Uint8Array(event.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
-
-        if (jsonData.length === 0) {
-          alert("الملف فارغ!");
-          setIsImporting(false);
-          return;
-        }
-
-        const currentPartiesRaw = localStorage.getItem('sheno_parties');
-        let allParties: Party[] = currentPartiesRaw ? JSON.parse(currentPartiesRaw) : [];
-        const currentSalesRaw = localStorage.getItem('sheno_sales_invoices');
-        let allSales: SalesInvoice[] = currentSalesRaw ? JSON.parse(currentSalesRaw) : [];
-        const currentStockRaw = localStorage.getItem('sheno_stock_entries');
-        let allStock: StockEntry[] = currentStockRaw ? JSON.parse(currentStockRaw) : [];
-
-        jsonData.forEach((row, idx) => {
-          const customerName = row['العميل'] || row['Customer'];
-          if (!customerName) return;
-
-          // 1. التفتيش عن العميل أو إضافته
-          let customer = allParties.find(p => p.name === customerName);
-          if (!customer) {
-            customer = {
-              id: crypto.randomUUID(),
-              code: `CUS-${Date.now().toString().slice(-4)}${idx}`,
-              name: customerName,
-              phone: '',
-              address: '',
-              type: PartyType.CUSTOMER,
-              openingBalance: 0
-            };
-            allParties.push(customer);
-          }
-
-          // 2. فرز الأصناف المباعة
-          const itemsStr = String(row['الأصناف'] || "");
-          const items: InvoiceItem[] = itemsStr.split('|').map(itemPart => {
-            const clean = itemPart.replace('•', '').trim();
-            const name = clean.split('(')[0].trim();
-            const qtyMatch = clean.match(/\(([^)]+)\)/);
-            const qty = qtyMatch ? parseFloat(qtyMatch[1]) : 1;
-            return {
-              id: crypto.randomUUID(),
-              code: 'ITEM',
-              name: name || 'صنف غير معروف',
-              quantity: isNaN(qty) ? 1 : qty,
-              price: 0, 
-              unit: 'قطعة',
-              total: 0,
-              date: row['تاريخ'] || row['Date'] || new Date().toISOString().split('T')[0],
-              notes: ''
-            };
-          }).filter(it => it.name !== 'صنف غير معروف');
-
-          // 3. فرز المواد المستخدمة
-          const usedStr = String(row['المواد المستخدمة'] || "");
-          const usedMaterials = usedStr.split('|').map(uPart => {
-             const clean = uPart.trim();
-             const name = clean.split('(')[0].trim();
-             const qtyMatch = clean.match(/\(([^)]+)\)/);
-             const qty = qtyMatch ? parseFloat(qtyMatch[1]) : 1;
-             const invItem = inventory.find(i => i.name === name);
-             return {
-               id: crypto.randomUUID(),
-               code: invItem?.code || 'RAW',
-               name: name,
-               quantity: isNaN(qty) ? 1 : qty,
-               unit: invItem?.unit || 'قطعة'
-             };
-          }).filter(u => u.name !== "");
-
-          const totalAmount = parseFloat(String(row['الإجمالي'] || "0").replace(/,/g, ''));
-          const paidAmount = parseFloat(String(row['المدفوع'] || "0").replace(/,/g, ''));
-          const invoiceNumber = String(row['رقم'] || row['InvoiceNo'] || Date.now() + idx);
-
-          const invoice: SalesInvoice = {
-            id: crypto.randomUUID(),
-            invoiceNumber: invoiceNumber,
-            date: row['تاريخ'] || row['Date'] || new Date().toISOString().split('T')[0],
-            time: new Date().toLocaleTimeString('ar-SA'),
-            customerName: customerName,
-            items: items,
-            usedMaterials: usedMaterials,
-            totalAmount: totalAmount,
-            totalAmountLiteral: row['التفقيط (كتابة)'] || tafqeet(totalAmount, settings?.currency || "ليرة سورية"),
-            notes: row['ملاحظات'] || "",
-            paidAmount: paidAmount,
-            paymentType: 'نقداً',
-            currencySymbol: settings?.currencySymbol || 'ل.س'
-          };
-
-          // إضافة حركات المستودع للمواد المستخدمة
-          usedMaterials.forEach(m => {
-            allStock.push({
-              id: crypto.randomUUID(),
-              date: invoice.date,
-              day: new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(new Date(invoice.date)),
-              department: 'مبيعات (استيراد)',
-              itemCode: m.code,
-              itemName: m.name,
-              unit: m.unit,
-              price: 0,
-              warehouse: 'المستودع الرئيسي',
-              movementType: 'صرف',
-              quantity: m.quantity,
-              invoiceNumber: invoice.invoiceNumber,
-              partyName: invoice.customerName,
-              statement: `مواد مستخدمة مستوردة من ملف إكسل`
-            });
-          });
-
-          allSales.push(invoice);
-        });
-
-        // حفظ البيانات
-        localStorage.setItem('sheno_parties', JSON.stringify(allParties));
-        localStorage.setItem('sheno_sales_invoices', JSON.stringify(allSales));
-        localStorage.setItem('sheno_stock_entries', JSON.stringify(allStock));
-
-        alert(`تم استيراد ${jsonData.length} فاتورة بنجاح، وتحديث قاعدة بيانات العملاء والمستودع.`);
-        loadData();
-      } catch (err) {
-        console.error(err);
-        alert('حدث خطأ أثناء معالجة الملف. يرجى التأكد من تطابق الأعمدة مع السجل.');
-      } finally {
-        setIsImporting(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
-    };
-    reader.readAsArrayBuffer(file);
   };
 
   const handleEdit = (inv: SalesInvoice) => {
@@ -415,22 +265,11 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
         </div>
         <div className="flex gap-2">
           {!isAdding && (
-            <>
-              <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleImportExcel} />
-              <button 
-                onClick={() => fileInputRef.current?.click()} 
-                disabled={isImporting}
-                className="bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110 disabled:opacity-50 transition-all"
-              >
-                {isImporting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Upload className="w-5 h-5" />}
-                استيراد سجلات (Excel)
-              </button>
-              <button onClick={() => { setIsAdding(true); setEditingId(null); }} className="bg-primary text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110">
-                <Plus className="w-5 h-5" /> فاتورة مبيعات جديدة
-              </button>
-            </>
+            <button onClick={() => { setIsAdding(true); setEditingId(null); }} className="bg-primary text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110">
+              <Plus className="w-5 h-5" /> فاتورة مبيعات جديدة
+            </button>
           )}
-          <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-zinc-200 shadow-sm">
+          <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-zinc-200">
              <Printer className="w-5 h-5" /> طباعة السجل المفلتر
           </button>
           <button onClick={() => exportToCSV(filteredInvoices, 'sales_report')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">

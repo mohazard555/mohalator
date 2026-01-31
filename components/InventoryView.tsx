@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Search, Package, Plus, Trash2, Edit2, FileDown, Printer, Box, Save, X, Warehouse as WarehouseIcon, Calendar, Coins, Hash, FileSpreadsheet, FileText } from 'lucide-react';
+import { ArrowRight, Search, Package, Plus, Trash2, Edit2, FileDown, Printer, Box, Save, X, Warehouse as WarehouseIcon, Calendar, Coins, Hash, FileSpreadsheet, FileText, Upload } from 'lucide-react';
 import { StockEntry, InventoryItem, WarehouseEntity, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
+import * as XLSX from 'https://esm.sh/xlsx';
 
 declare var html2pdf: any;
 
@@ -12,12 +13,14 @@ interface InventoryViewProps {
 
 const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
   const reportRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [warehouses, setWarehouses] = useState<WarehouseEntity[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
   const [formData, setFormData] = useState<any>({
     code: '', name: '', category: 'عام', unit: 'قطعة', price: 0, openingStock: 0, currentInputQty: 0, warehouse: 'المستودع الرئيسي', movementType: 'إدخال'
   });
@@ -54,6 +57,93 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
     });
 
     setItems(updatedItems);
+  };
+
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+        if (jsonData.length === 0) {
+          alert("المستند فارغ!");
+          setIsImporting(false);
+          return;
+        }
+
+        const savedItems = localStorage.getItem('sheno_inventory_list');
+        let currentItems: InventoryItem[] = savedItems ? JSON.parse(savedItems) : [];
+        const savedEntries = localStorage.getItem('sheno_stock_entries');
+        let currentEntries: StockEntry[] = savedEntries ? JSON.parse(savedEntries) : [];
+
+        let addedCount = 0;
+
+        jsonData.forEach(row => {
+          const code = String(row['كود'] || row['Code'] || row['رقم الصنف'] || '').trim();
+          const name = String(row['المادة'] || row['Item'] || row['الاسم'] || '').trim();
+          
+          if (!code || !name) return;
+
+          // التحقق من وجود الكود مسبقاً
+          if (currentItems.some(i => i.code === code)) return;
+
+          const newItem: InventoryItem = {
+            id: crypto.randomUUID(),
+            code: code,
+            name: name,
+            category: row['الفئة'] || row['Category'] || 'عام',
+            unit: row['الوحدة'] || row['Unit'] || 'قطعة',
+            price: parseFloat(row['السعر'] || row['Price'] || '0'),
+            openingStock: parseFloat(row['أول المدة'] || row['Opening'] || '0'),
+            warehouse: row['المستودع'] || row['Warehouse'] || 'المستودع الرئيسي',
+            currentBalance: 0, added: 0, issued: 0, returned: 0
+          };
+
+          currentItems.push(newItem);
+          addedCount++;
+
+          // إذا كان هناك رصيد أول مدة، نسجله كحركة إدخال أولية
+          if (newItem.openingStock > 0) {
+            currentEntries.push({
+              id: crypto.randomUUID(),
+              date: new Date().toISOString().split('T')[0],
+              day: new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(new Date()),
+              department: 'إدخال أولي (استيراد)',
+              itemCode: newItem.code,
+              itemName: newItem.name,
+              unit: newItem.unit,
+              price: newItem.price,
+              warehouse: newItem.warehouse || 'المستودع الرئيسي',
+              movementType: 'إدخال',
+              quantity: 0, // الرصيد الافتتاحي لا يحتاج حركة إضافية لأنه يحسب من openingStock
+              invoiceNumber: 'IMPORT',
+              statement: 'رصيد مستورد من ملف إكسل'
+            });
+          }
+        });
+
+        localStorage.setItem('sheno_inventory_list', JSON.stringify(currentItems));
+        localStorage.setItem('sheno_stock_entries', JSON.stringify(currentEntries));
+        
+        alert(`تم استيراد ${addedCount} مادة جديدة بنجاح.`);
+        loadData();
+      } catch (err) {
+        console.error(err);
+        alert('حدث خطأ أثناء معالجة ملف الإكسل.');
+      } finally {
+        setIsImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   const handleExportPDF = () => {
@@ -184,6 +274,19 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
           <h2 className="text-2xl font-black text-emerald-600">قائمة المواد والجرد العام</h2>
         </div>
         <div className="flex gap-2">
+          {!isAdding && (
+            <>
+              <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls" onChange={handleImportExcel} />
+              <button 
+                onClick={() => fileInputRef.current?.click()} 
+                disabled={isImporting}
+                className="bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110 disabled:opacity-50 transition-all"
+              >
+                {isImporting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Upload className="w-5 h-5" />}
+                استيراد Excel
+              </button>
+            </>
+          )}
           <button onClick={() => { setIsAdding(true); setEditingId(null); }} className="bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110 active:scale-95 transition-all">
              <Plus className="w-5 h-5" /> إضافة صنف
           </button>

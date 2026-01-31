@@ -1,43 +1,60 @@
 
+import * as XLSX from 'https://esm.sh/xlsx';
+
+/**
+ * خدمة التصدير الاحترافية إلى ملفات Excel (XLSX)
+ * تضمن هذه الوظيفة توزيع البيانات في أعمدة صحيحة ودعم كامل للعربية.
+ */
 export const exportToCSV = (data: any[], filename: string) => {
-  if (!data || data.length === 0) return;
-  
-  // استخراج العناوين
-  const headers = Object.keys(data[0]);
-  
-  // تجهيز الأسطر
-  const csvRows = [
-    headers.join(','), // سطر العناوين
-    ...data.map(row => headers.map(header => {
-      let cell = row[header] === null || row[header] === undefined ? '' : row[header];
-      
-      // تحويل المصفوفات أو الكائنات لنصوص
-      if (Array.isArray(cell)) {
-        cell = cell.map(item => item.name || item.itemName || JSON.stringify(item)).join(' | ');
-      } else if (typeof cell === 'object') {
-        cell = JSON.stringify(cell);
-      }
+  if (!data || data.length === 0) {
+    console.error("لا توجد بيانات للتصدير");
+    return;
+  }
 
-      // تنظيف القيم وتغليفها لضمان عدم تداخل الفواصل
-      const cellStr = String(cell).replace(/"/g, '""');
-      return `"${cellStr}"`;
-    }).join(','))
-  ];
+  try {
+    // 1. تنظيف وتجهيز البيانات
+    const processedData = data.map(row => {
+      const cleanRow: any = {};
+      Object.keys(row).forEach(key => {
+        let value = row[key];
 
-  const csvContent = csvRows.join('\r\n');
+        // معالجة المصفوفات (مثل قائمة الأصناف داخل الفاتورة)
+        if (Array.isArray(value)) {
+          value = value.map(item => {
+            if (typeof item === 'object') {
+              // استخراج اسم المادة والكمية إذا كان كائناً
+              return `${item.name || item.itemName || ''} (${item.quantity || ''})`;
+            }
+            return String(item);
+          }).join(' | ');
+        } 
+        // معالجة القيم الفارغة
+        else if (value === null || value === undefined) {
+          value = '';
+        }
+        
+        cleanRow[key] = value;
+      });
+      return cleanRow;
+    });
 
-  // إضافة BOM لترميز UTF-8 لضمان قراءة Excel للغة العربية فوراً
-  const BOM = '\uFEFF';
-  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-  
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  
-  link.setAttribute("href", url);
-  link.setAttribute("download", `${filename}_${new Date().toLocaleDateString('ar-SA').replace(/\//g, '-')}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+    // 2. إنشاء ورقة عمل (Worksheet) من البيانات
+    const worksheet = XLSX.utils.json_to_sheet(processedData);
+
+    // 3. ضبط اتجاه الصفحة للعربية (Right-to-Left)
+    if (!worksheet['!views']) worksheet['!views'] = [];
+    worksheet['!views'].push({ RTL: true });
+
+    // 4. إنشاء كتاب عمل (Workbook) وإضافة الورقة إليه
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+
+    // 5. توليد وحفظ الملف بتنسيق XLSX (وليس CSV لضمان التوافق)
+    const fullFilename = `${filename}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(workbook, fullFilename);
+
+  } catch (error) {
+    console.error("خطأ أثناء تصدير ملف Excel:", error);
+    alert("حدث خطأ أثناء محاولة تصدير البيانات. يرجى التأكد من توفر مكتبة التصدير.");
+  }
 };

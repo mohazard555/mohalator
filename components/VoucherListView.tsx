@@ -473,6 +473,10 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
 
              @media print {
                @page { size: A4 portrait; margin: 10mm !important; }
+               body { 
+                 background: white !important; 
+                 color: black !important;
+               }
                .xo-report-container-styled {
                  background: white !important;
                  color: black !important;
@@ -538,7 +542,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
              }
            `}</style>
            
-           <div ref={reportRef} className="xo-report-container-styled w-full max-w-4xl p-8 flex flex-col gap-6 relative export-fix">
+           <div ref={reportRef} className="xo-report-container-styled w-full max-w-4xl p-8 flex flex-col gap-6 relative export-fix bg-white">
               {/* ترويسة التقرير المطورة */}
               <div className="flex justify-between items-start mb-2 xo-report-header-print">
                  <div className="text-right space-y-2">
@@ -592,7 +596,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
 
               {/* بطاقات الإجماليات المطورة */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 xo-summary-grid">
-                  <div className="xo-card-print xo-card-screen p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 relative overflow-hidden group">
+                  <div className="xo-card-print xo-card-screen p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 relative overflow-hidden group bg-white">
                      <div className="absolute top-0 right-0 w-16 h-16 bg-zinc-100 opacity-20 -mr-8 -mt-8 rounded-full"></div>
                      <ArrowUpRight className="w-6 h-6 text-zinc-300 no-print" />
                      <span className="text-[11px] font-black xo-summary-label uppercase tracking-[0.2em] mb-1">إجمالي المسحوبات</span>
@@ -600,14 +604,14 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                      <span className="text-[9px] font-bold text-zinc-400">{settings?.currencySymbol}</span>
                   </div>
                   
-                  <div className="xo-card-print xo-card-screen p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 relative overflow-hidden bg-emerald-50/30 border-emerald-100/50">
+                  <div className="xo-card-print xo-card-screen p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 relative overflow-hidden bg-white">
                      <ArrowDownLeft className="w-6 h-6 text-emerald-200 no-print" />
                      <span className="text-[11px] font-black text-emerald-700 uppercase tracking-[0.2em] mb-1">إجمالي المدفوعات</span>
                      <span className="text-4xl font-mono font-black text-emerald-600 leading-none">{paid.toLocaleString()}</span>
                      <span className="text-[9px] font-bold text-emerald-400">{settings?.currencySymbol}</span>
                   </div>
                   
-                  <div className="xo-card-print xo-card-screen border-4 border-rose-600/30 p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 ring-8 ring-rose-600/5 bg-rose-50/20 relative">
+                  <div className="xo-card-print xo-card-screen border-4 border-rose-600/30 p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 ring-8 ring-rose-600/5 bg-white relative">
                      <Calculator className="w-6 h-6 text-rose-300 no-print" />
                      <span className="text-[11px] font-black text-rose-600 uppercase tracking-[0.2em] mb-1">صافي الرصيد المتبقي</span>
                      <div className="flex items-center gap-2">
@@ -620,7 +624,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
 
               {/* جدول البيانات المطور */}
               <div className="flex-1 border border-zinc-200 rounded-[2.5rem] overflow-hidden shadow-sm bg-white">
-                  <table className="w-full text-right border-collapse xo-table-print xo-table-screen">
+                  <table className="w-full text-right border-collapse xo-table-print xo-table-screen bg-white">
                     <thead>
                         <tr className="bg-zinc-900 text-white font-black text-[11px] uppercase tracking-widest h-16 print:bg-zinc-100 print:text-black">
                           <th className="p-4 w-32 text-center border-l border-zinc-800 print:border-zinc-300">تاريخ القيد</th>
@@ -633,7 +637,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                         {reportVouchers.length === 0 ? (
                           <tr><td colSpan={4} className="p-32 text-center italic text-zinc-400 font-black text-2xl">لا توجد حركات مالية مسجلة لهذه الفترة</td></tr>
                         ) : reportVouchers.map((v, idx) => (
-                          <tr key={v.id} className={`hover:bg-rose-50/30 transition-colors h-14 ${idx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/30'}`}>
+                          <tr key={v.id} className={`hover:bg-rose-50/30 transition-colors h-14 ${idx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/30'} print:bg-white`}>
                               <td className="p-4 font-mono text-zinc-500 text-center border-l border-zinc-100">{v.date}</td>
                               <td className="p-4 text-center font-black text-rose-900/40 border-l border-zinc-100">#{v.voucherNumber || '---'}</td>
                               <td className="p-4 text-zinc-800 font-bold border-l border-zinc-100 leading-relaxed">{v.statement}</td>
@@ -644,8 +648,8 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                   </table>
               </div>
 
-              {/* التفقيط كتابةً - تم تعديل الخلفية السوداء للأبيض */}
-              <div className="xo-tafqeet-print bg-zinc-50 text-zinc-900 p-6 rounded-[2rem] border-2 border-zinc-100 shadow-sm">
+              {/* التفقيط كتابةً - تم تعديل الخلفية السوداء للأبيض بالكامل */}
+              <div className="xo-tafqeet-print bg-white text-zinc-900 p-6 rounded-[2rem] border-2 border-zinc-100 shadow-sm print:bg-white">
                  <div className="flex flex-col gap-1">
                     <span className="text-[9px] font-black text-rose-600 uppercase tracking-[0.4em] mb-1">AMOUNT IN WORDS | الرصيد المتبقي كتابةً</span>
                     <p className="text-xl font-black italic tracking-tight border-b border-rose-100 pb-1 inline-block">
@@ -693,7 +697,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
               </div>
 
               {/* تذييل الطباعة فقط المطور */}
-              <div className="print-only mt-auto pt-10 pb-4 border-t-2 border-zinc-100 flex justify-between items-end">
+              <div className="print-only mt-auto pt-10 pb-4 border-t-2 border-zinc-100 flex justify-between items-end bg-white">
                  <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-black text-zinc-900 uppercase">SIGNATURE | اعتماد المدير</span>
                     <div className="w-48 border-b-2 border-rose-900/30 h-10"></div>
