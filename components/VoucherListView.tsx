@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, FileDown, Calendar as CalendarIcon, FileText, Search, User, Hash, MessageSquare, Coins, CreditCard, ImageIcon, LayoutDashboard, CheckCircle, Calculator, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, FileDown, Calendar as CalendarIcon, FileText, Search, User, Hash, MessageSquare, Coins, CreditCard, ImageIcon, LayoutDashboard, CheckCircle, Calculator, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, MapPin } from 'lucide-react';
 import { CashEntry, Party, AppSettings, SalesInvoice, PurchaseInvoice, PartyType } from '../types';
 import { tafqeet } from '../utils/tafqeet';
 import { ImageExportService } from '../utils/ImageExportService';
@@ -29,15 +29,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
   const [reportParty, setReportParty] = useState('');
   const [reportStart, setReportStart] = useState('');
   const [reportEnd, setReportEnd] = useState('');
-
-  const [formData, setFormData] = useState<Partial<CashEntry>>({
-    voucherNumber: '',
-    date: new Date().toISOString().split('T')[0],
-    statement: '',
-    partyName: '',
-    amount: 0,
-    notes: ''
-  });
 
   useEffect(() => {
     const savedSettings = localStorage.getItem('sheno_settings');
@@ -201,7 +192,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
         margin: 0,
         filename: `Statement_${reportParty || 'Report'}.pdf`,
         image: { type: 'jpeg', quality: 1.0 },
-        html2canvas: { scale: 3, useCORS: true, letterRendering: false, windowWidth: 1000 },
+        html2canvas: { scale: 3, useCORS: true, letterRendering: false, windowWidth: 1200 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
       await html2pdf().set(opt).from(element).save();
@@ -229,6 +220,15 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     v.statement?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     v.voucherNumber?.includes(searchTerm)
   );
+
+  const [formData, setFormData] = useState<Partial<CashEntry>>({
+    voucherNumber: '',
+    date: new Date().toISOString().split('T')[0],
+    statement: '',
+    partyName: '',
+    amount: 0,
+    notes: ''
+  });
 
   if (printingVoucher) {
     const isVoucherPrimary = (printingVoucher.receivedSYP || 0) > 0 || (printingVoucher.paidSYP || 0) > 0;
@@ -442,7 +442,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
       )}
 
       {showCustomerReport && (
-        <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-0 md:p-8 animate-in fade-in duration-300 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-start p-0 md:p-8 animate-in fade-in duration-300 overflow-y-auto">
            <style>{`
              @media screen {
                .xo-report-container-styled {
@@ -451,6 +451,8 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                   border: 1px solid #e5e7eb;
                   border-radius: 40px;
                   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                  height: auto !important;
+                  min-height: 100vh !important;
                }
                .xo-card-screen {
                   background: #f9fafb !important;
@@ -470,7 +472,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
              }
 
              @media print {
-               @page { size: A4 portrait; margin: 15mm !important; }
+               @page { size: A4 portrait; margin: 10mm !important; }
                .xo-report-container-styled {
                  background: white !important;
                  color: black !important;
@@ -480,6 +482,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  margin: 0 !important;
                  width: 100% !important;
                  max-width: 100% !important;
+                 height: auto !important;
                }
                .xo-report-header-print {
                  display: flex !important;
@@ -496,8 +499,8 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  margin-bottom: 30px !important;
                }
                .xo-card-print {
-                  background: #fffafa !important;
-                  border: 1px solid #ffe4e6 !important;
+                  background: white !important;
+                  border: 1px solid #eee !important;
                   border-radius: 15px !important;
                   padding: 15px !important;
                   text-align: center !important;
@@ -511,25 +514,31 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                }
                .xo-table-print th {
                  background-color: #f8fafc !important;
-                 color: #1e293b !important;
+                 color: #000 !important;
                  font-size: 11px !important;
                  font-weight: 900 !important;
                  text-transform: uppercase !important;
-                 border: 1px solid #eee !important;
+                 border: 1px solid #ddd !important;
                  padding: 12px 10px !important;
                }
                .xo-table-print td {
-                 border: 1px solid #f1f5f9 !important;
+                 border: 1px solid #eee !important;
                  font-size: 12px !important;
                  padding: 12px 10px !important;
                  color: black !important;
+               }
+               .xo-tafqeet-print {
+                 background-color: white !important;
+                 color: black !important;
+                 border: 2px solid #eee !important;
+                 box-shadow: none !important;
                }
                .no-print { display: none !important; }
                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
              }
            `}</style>
            
-           <div ref={reportRef} className="xo-report-container-styled w-full max-w-4xl min-h-screen p-8 flex flex-col gap-6 relative export-fix">
+           <div ref={reportRef} className="xo-report-container-styled w-full max-w-4xl p-8 flex flex-col gap-6 relative export-fix">
               {/* ترويسة التقرير المطورة */}
               <div className="flex justify-between items-start mb-2 xo-report-header-print">
                  <div className="text-right space-y-2">
@@ -543,7 +552,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  <div className="text-center">
                     <h2 className="text-4xl font-black border-b-4 border-rose-600 inline-block px-10 pb-3 text-zinc-900 mb-4">كشف حساب مالي تفصيلي</h2>
                     
-                    {/* إضافة نطاق التاريخ هنا */}
                     <div className="flex flex-col items-center justify-center gap-1">
                        <span className="text-[10px] font-black text-rose-600 uppercase tracking-[0.3em]">REPORT PERIOD | فترة التقرير</span>
                        <div className="bg-zinc-50 border border-zinc-200 px-6 py-1.5 rounded-full flex items-center gap-3 shadow-sm">
@@ -568,9 +576,9 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
               </div>
 
               {/* بطاقة معلومات الحساب */}
-              <div className="bg-rose-900/5 border-2 border-rose-900/10 p-5 rounded-[2rem] flex items-center justify-between no-print-visible">
+              <div className="bg-rose-900/5 border-2 border-rose-900/10 p-5 rounded-[2rem] flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                     <div className="w-12 h-12 bg-rose-900 rounded-2xl flex items-center justify-center text-white shadow-lg"><User className="w-7 h-7" /></div>
+                     <div className="w-12 h-12 bg-rose-900 rounded-2xl flex items-center justify-center text-white shadow-lg no-print"><User className="w-7 h-7" /></div>
                      <div>
                         <span className="text-[10px] font-black text-rose-900 uppercase tracking-widest block opacity-60">ACCOUNT NAME | اسم الحساب</span>
                         <span className="text-3xl font-black text-zinc-900 italic tracking-tight">{reportParty || 'جميع الأطراف'}</span>
@@ -614,11 +622,11 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
               <div className="flex-1 border border-zinc-200 rounded-[2.5rem] overflow-hidden shadow-sm bg-white">
                   <table className="w-full text-right border-collapse xo-table-print xo-table-screen">
                     <thead>
-                        <tr className="bg-zinc-900 text-white font-black text-[11px] uppercase tracking-widest h-16">
-                          <th className="p-4 w-32 text-center border-l border-zinc-800">تاريخ القيد</th>
-                          <th className="p-4 w-32 text-center border-l border-zinc-800">رقم السند</th>
-                          <th className="p-4 border-l border-zinc-800">البيان والتفاصيل المالية</th>
-                          <th className="p-4 text-center w-52 font-black text-base bg-rose-900/20">القيمة المسجلة</th>
+                        <tr className="bg-zinc-900 text-white font-black text-[11px] uppercase tracking-widest h-16 print:bg-zinc-100 print:text-black">
+                          <th className="p-4 w-32 text-center border-l border-zinc-800 print:border-zinc-300">تاريخ القيد</th>
+                          <th className="p-4 w-32 text-center border-l border-zinc-800 print:border-zinc-300">رقم السند</th>
+                          <th className="p-4 border-l border-zinc-800 print:border-zinc-300">البيان والتفاصيل المالية</th>
+                          <th className="p-4 text-center w-52 font-black text-base bg-rose-900/20 print:bg-zinc-50">القيمة المسجلة</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100">
@@ -636,11 +644,11 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                   </table>
               </div>
 
-              {/* التفقيط كتابةً */}
-              <div className="bg-zinc-900 text-white p-6 rounded-[2rem] shadow-xl no-print-visible">
+              {/* التفقيط كتابةً - تم تعديل الخلفية السوداء للأبيض */}
+              <div className="xo-tafqeet-print bg-zinc-50 text-zinc-900 p-6 rounded-[2rem] border-2 border-zinc-100 shadow-sm">
                  <div className="flex flex-col gap-1">
-                    <span className="text-[9px] font-black text-rose-400 uppercase tracking-[0.4em]">AMOUNT IN WORDS | الرصيد المتبقي كتابةً</span>
-                    <p className="text-xl font-black italic tracking-tight underline underline-offset-8 decoration-rose-900/50">
+                    <span className="text-[9px] font-black text-rose-600 uppercase tracking-[0.4em] mb-1">AMOUNT IN WORDS | الرصيد المتبقي كتابةً</span>
+                    <p className="text-xl font-black italic tracking-tight border-b border-rose-100 pb-1 inline-block">
                        {tafqeet(Math.abs(due - paid), settings?.currency || 'ليرة سورية')}
                     </p>
                  </div>
@@ -703,7 +711,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
         </div>
       )}
 
-      {/* الجزء العلوي الرئيسي لصفحة سجلات القبض/الدفع */}
       <div className="flex flex-col md:flex-row items-center justify-between no-print gap-4">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-3 bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-rose-900 rounded-xl transition-all shadow-lg"><ArrowRight className="w-6 h-6" /></button>
@@ -777,13 +784,5 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     </div>
   );
 };
-
-// أيقونة بسيطة للموقع مستخدمة في الترويسة
-const MapPin = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-  </svg>
-);
 
 export default VoucherListView;
