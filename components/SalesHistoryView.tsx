@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check, X, HardDrive, Printer, FileText, Upload, Calculator, Layers } from 'lucide-react';
+import { ArrowRight, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check, X, HardDrive, Printer, FileText, Upload, Calculator, Layers, ImageIcon } from 'lucide-react';
 import { SalesInvoice, AppSettings, InvoiceItem } from '../types';
 import { exportToCSV } from '../utils/export';
 import { PdfExportService } from '../utils/PdfExportService';
+import { ImageExportService } from '../utils/ImageExportService';
 import { tafqeet } from '../utils/tafqeet';
 import * as XLSX from 'https://esm.sh/xlsx';
 
@@ -24,8 +25,10 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [showItemDropdown, setShowItemDropdown] = useState(false);
   const [uniqueItems, setUniqueItems] = useState<string[]>([]);
+  const [itemDropdownSearch, setItemDropdownSearch] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isExportingImage, setIsExportingImage] = useState(false);
 
   useEffect(() => {
     loadInvoices();
@@ -60,7 +63,10 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
     return matchSearch && matchDate && matchItems;
   });
 
-  // حساب إجماليات وحدات الأصناف المباعة
+  const filteredUniqueItems = uniqueItems.filter(item => 
+    item.toLowerCase().includes(itemDropdownSearch.toLowerCase())
+  );
+
   const unitTotals = filteredInvoices.reduce((acc: Record<string, number>, inv) => {
     inv.items.forEach(item => {
       const unit = item.unit || 'قطعة';
@@ -69,7 +75,6 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
     return acc;
   }, {});
 
-  // حساب إجماليات وحدات المواد المستخدمة (الخامات)
   const usedMaterialUnitTotals = filteredInvoices.reduce((acc: Record<string, number>, inv) => {
     inv.usedMaterials?.forEach(m => {
       const unit = m.unit || 'قطعة';
@@ -86,6 +91,19 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
       orientation: 'landscape',
       format: 'a4'
     });
+  };
+
+  const handleExportImage = async () => {
+    if (!reportRef.current) return;
+    setIsExportingImage(true);
+    try {
+      await ImageExportService.exportAsPng(
+        reportRef.current,
+        `لقطة_سجل_المبيعات_${new Date().toISOString().split('T')[0]}`
+      );
+    } finally {
+      setIsExportingImage(false);
+    }
   };
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -204,6 +222,14 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
              {isImporting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Upload className="w-5 h-5" />}
              استيراد Excel
           </button>
+          <button 
+            onClick={handleExportImage} 
+            disabled={isExportingImage}
+            className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg disabled:opacity-50"
+          >
+            {isExportingImage ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <ImageIcon className="w-5 h-5" />}
+            حفظ كصورة
+          </button>
           <button onClick={handleExportPDF} className="bg-rose-700 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
              <FileText className="w-5 h-5" /> تصدير PDF
           </button>
@@ -232,11 +258,28 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
               <ChevronDown className={`w-4 h-4 transition-transform ${showItemDropdown ? 'rotate-180' : ''}`} />
             </button>
             {showItemDropdown && (
-              <div className="absolute top-full right-0 left-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50 max-h-60 overflow-y-auto p-2">
-                <button onClick={() => setSelectedItems([])} className="w-full text-right p-2 text-[10px] font-black text-rose-500 border-b mb-1 hover:bg-rose-50 rounded-lg">إعادة تعيين</button>
-                {uniqueItems.map(item => (
-                  <div key={item} onClick={() => toggleItemSelection(item)} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${selectedItems.includes(item) ? 'bg-rose-500/10 text-rose-600' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}><span className="font-bold text-xs">{item}</span>{selectedItems.includes(item) && <Check className="w-4 h-4" />}</div>
-                ))}
+              <div className="absolute top-full right-0 left-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto p-3 space-y-2 animate-in zoom-in-95">
+                <div className="relative mb-2">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                  <input 
+                    type="text" 
+                    placeholder="ابحث ضمن القائمة..." 
+                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl py-2 pr-9 pl-3 text-xs font-bold outline-none focus:border-rose-500 transition-all"
+                    value={itemDropdownSearch}
+                    onChange={e => setItemDropdownSearch(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <button onClick={() => { setSelectedItems([]); setItemDropdownSearch(''); }} className="w-full text-right p-2 text-[10px] font-black text-rose-500 border-b mb-1 hover:bg-rose-50 rounded-lg">إعادة تعيين (عرض الكل)</button>
+                <div className="max-h-52 overflow-y-auto custom-scrollbar">
+                  {filteredUniqueItems.map(item => (
+                    <div key={item} onClick={() => toggleItemSelection(item)} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all mb-1 ${selectedItems.includes(item) ? 'bg-rose-500/10 text-rose-600' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                      <span className="font-bold text-xs">{item}</span>
+                      {selectedItems.includes(item) && <Check className="w-4 h-4" />}
+                    </div>
+                  ))}
+                  {filteredUniqueItems.length === 0 && <div className="text-center py-4 text-xs text-zinc-400 italic">لا توجد مواد تطابق البحث</div>}
+                </div>
               </div>
             )}
           </div>
@@ -288,7 +331,7 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
         </div>
       </div>
 
-      <div ref={reportRef} className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-2xl print:border-rose-700 print:rounded-none p-4 md:p-8">
+      <div ref={reportRef} className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-2xl print:border-rose-700 print:rounded-none p-4 md:p-8 export-fix">
         {/* Professional Print Header */}
         <div className="mb-6 border-b-4 border-rose-700 pb-6 flex justify-between items-center bg-white text-black p-4 rounded-xl">
           <div className="flex items-center gap-4">
@@ -372,6 +415,13 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
                     <div className="flex flex-col gap-0.5 max-h-12 overflow-y-auto">
                       {inv.items.map((it, i) => (
                         <div key={i} className="flex items-center gap-1 truncate text-[10px]">
+                          {it.image && (
+                            <img 
+                              src={it.image} 
+                              className="w-5 h-5 object-cover rounded border border-zinc-200 cursor-zoom-in" 
+                              onClick={() => setPreviewImage(it.image!)} 
+                            />
+                          )}
                           • {it.name} ({it.quantity} {it.unit})
                         </div>
                       ))}

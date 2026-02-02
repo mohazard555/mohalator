@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Save, X, ShoppingBag, Truck, ScrollText, Calendar, Hash, Box, Printer, FileDown } from 'lucide-react';
-import { PurchaseInvoice, InvoiceItem, StockEntry, Party, PartyType, CashEntry } from '../types';
+import { ArrowRight, Plus, Trash2, Edit2, Save, X, ShoppingBag, Truck, ScrollText, Calendar, Hash, Box, Printer, FileDown, Coins, CreditCard } from 'lucide-react';
+import { PurchaseInvoice, InvoiceItem, StockEntry, Party, PartyType, CashEntry, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
 interface PurchaseInvoiceViewProps {
@@ -13,6 +13,8 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
   const [parties, setParties] = useState<Party[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [selectedCurrencyType, setSelectedCurrencyType] = useState<'primary' | 'secondary'>('primary');
   
   const [newInvoice, setNewInvoice] = useState<Partial<PurchaseInvoice>>({
     invoiceNumber: '',
@@ -28,7 +30,9 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
   useEffect(() => {
     const saved = localStorage.getItem('sheno_purchases');
     const savedParties = localStorage.getItem('sheno_parties');
+    const savedSettings = localStorage.getItem('sheno_settings');
     if (saved) setPurchases(JSON.parse(saved));
+    if (savedSettings) setSettings(JSON.parse(savedSettings));
     if (savedParties) {
        const allParties = JSON.parse(savedParties);
        setParties(allParties.filter((p: Party) => p.type === PartyType.SUPPLIER || p.type === PartyType.BOTH));
@@ -55,6 +59,8 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
   const handleEdit = (p: PurchaseInvoice) => {
     setEditingId(p.id);
     setNewInvoice(p);
+    if (p.currencySymbol === settings?.secondaryCurrencySymbol) setSelectedCurrencyType('secondary');
+    else setSelectedCurrencyType('primary');
     setIsAdding(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -84,11 +90,14 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
 
     const total = (newInvoice.items || []).reduce((s, i) => s + i.total, 0);
     const time = new Date().toLocaleTimeString('ar-SA');
+    const currencySymbol = selectedCurrencyType === 'primary' ? (settings?.currencySymbol || 'ل.س') : (settings?.secondaryCurrencySymbol || '$');
+    
     const invoice: PurchaseInvoice = {
       ...newInvoice as PurchaseInvoice,
       id: editingId || crypto.randomUUID(),
       time: editingId ? (newInvoice.time || time) : time,
-      totalAmount: total
+      totalAmount: total,
+      currencySymbol: currencySymbol
     };
 
     if (editingId) {
@@ -117,10 +126,14 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
     if (invoice.paidAmount > 0) {
       const savedCash = localStorage.getItem('sheno_cash_journal');
       let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
+      const isPrimary = selectedCurrencyType === 'primary';
       const cashMove: CashEntry = {
         id: crypto.randomUUID(), date: invoice.date,
         statement: `دفعة مقابل فاتورة مشتريات رقم ${invoice.invoiceNumber} - المورد: ${invoice.supplierName}`,
-        receivedSYP: 0, paidSYP: invoice.paidAmount, receivedUSD: 0, paidUSD: 0,
+        receivedSYP: 0, 
+        paidSYP: isPrimary ? invoice.paidAmount : 0, 
+        receivedUSD: 0, 
+        paidUSD: !isPrimary ? invoice.paidAmount : 0,
         notes: invoice.notes, type: 'شراء'
       };
       localStorage.setItem('sheno_cash_journal', JSON.stringify([cashMove, ...cashEntries]));
@@ -147,7 +160,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
 
        {isAdding && (
          <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl space-y-8 animate-in zoom-in-95">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                <div className="flex flex-col gap-1">
                   <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المورد</label>
                   <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={newInvoice.supplierName} onChange={e => setNewInvoice({...newInvoice, supplierName: e.target.value})}>
@@ -156,6 +169,13 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                   </select>
                </div>
                <div className="flex flex-col gap-1"><label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">رقم الفاتورة</label><input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={newInvoice.invoiceNumber} onChange={e => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})} /></div>
+               <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">العملة</label>
+                  <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-900 p-1 rounded-2xl border border-zinc-200 dark:border-zinc-700 h-[52px]">
+                      <button onClick={() => setSelectedCurrencyType('primary')} className={`flex-1 h-full rounded-xl text-[10px] font-black transition-all ${selectedCurrencyType === 'primary' ? 'bg-amber-600 text-white shadow-lg' : 'text-zinc-500'}`}>{settings?.currencySymbol || 'ل.س'}</button>
+                      <button onClick={() => setSelectedCurrencyType('secondary')} className={`flex-1 h-full rounded-xl text-[10px] font-black transition-all ${selectedCurrencyType === 'secondary' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500'}`}>{settings?.secondaryCurrencySymbol || '$'}</button>
+                  </div>
+               </div>
                <div className="flex flex-col gap-1"><label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">تاريخ التوريد</label><input type="date" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={newInvoice.date} onChange={e => setNewInvoice({...newInvoice, date: e.target.value})} /></div>
                <div className="flex flex-col gap-1"><label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المدفوع نقداً</label><input type="number" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-black text-rose-500 outline-none" value={newInvoice.paidAmount} onChange={e => setNewInvoice({...newInvoice, paidAmount: Number(e.target.value)})} /></div>
             </div>
@@ -197,6 +217,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                       <th className="p-4 border-l border-zinc-800 text-center w-32">التاريخ</th>
                       <th className="p-4 border-l border-zinc-800">المورد</th>
                       <th className="p-4 border-l border-zinc-800">الأصناف</th>
+                      <th className="p-4 border-l border-zinc-800 text-center w-24">العملة</th>
                       <th className="p-4 border-l border-zinc-800 text-center w-32">إجمالي الشراء</th>
                       <th className="p-4 border-l border-zinc-800 text-center w-32 text-rose-500">الواصل نقداً</th>
                       <th className="p-4 text-center w-32 no-print">إجراءات</th>
@@ -212,6 +233,11 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                             <div className="flex flex-wrap gap-1">
                                {p.items.map((it, i) => (<span key={i} className="bg-amber-900/20 text-amber-500 px-2 py-0.5 rounded-sm text-[9px] border border-amber-900/30">{it.name} ({it.quantity})</span>))}
                             </div>
+                         </td>
+                         <td className="p-4 border-l border-zinc-900 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${p.currencySymbol === '$' ? 'text-amber-500 border-amber-500/20 bg-amber-500/5' : 'text-zinc-400 border-zinc-800 bg-zinc-900'}`}>
+                               {p.currencySymbol || settings?.currencySymbol}
+                            </span>
                          </td>
                          <td className="p-4 border-l border-zinc-900 text-center font-mono text-white text-lg">{p.totalAmount.toLocaleString()}</td>
                          <td className="p-4 border-l border-zinc-900 text-center font-mono text-rose-500 text-lg">{p.paidAmount?.toLocaleString() || '0'}</td>

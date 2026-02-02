@@ -27,6 +27,9 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  // Used Material Search
+  const [materialSearch, setMaterialSearch] = useState('');
+
   const [newInvoice, setNewInvoice] = useState<Partial<SalesInvoice>>({
     invoiceNumber: '',
     customerName: '',
@@ -207,6 +210,11 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     if (initialInvoice) onBack();
   };
 
+  const filteredInventoryForUsed = inventory.filter(i => 
+    i.name.toLowerCase().includes(materialSearch.toLowerCase()) || 
+    i.code.toLowerCase().includes(materialSearch.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
       {/* Print Header Ledger Style - Enhanced with Period Filter */}
@@ -367,23 +375,41 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
 
              <div className="bg-rose-500/5 dark:bg-rose-950/20 p-5 rounded-[2rem] border border-rose-500/20 space-y-4 shadow-inner">
                 <h4 className="text-sm font-black text-rose-500 flex items-center justify-end gap-2 pb-2 uppercase tracking-widest border-b border-rose-500/10">المواد المستخدمة (خصم مخزني) <HardDrive className="w-5 h-5" /></h4>
-                <div className="flex items-center gap-2">
-                   <button onClick={() => {
-                      const mat = inventory.find(i => i.code === usedMaterial.code);
-                      if (!mat) return;
-                      const item = { id: crypto.randomUUID(), code: mat.code, name: mat.name, quantity: usedMaterial.quantity, unit: mat.unit };
-                      setNewInvoice({ ...newInvoice, usedMaterials: [...(newInvoice.usedMaterials || []), item] });
-                      setUsedMaterial({ code: '', name: '', quantity: 1 });
-                   }} className="bg-primary text-white px-6 py-3 rounded-xl font-black shadow-lg hover:brightness-110 active:scale-95 transition-all">خصم</button>
-                   <input type="number" placeholder="الكمية" className="w-24 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center font-black text-rose-500 outline-none" value={usedMaterial.quantity} onChange={e => setUsedMaterial({...usedMaterial, quantity: Number(e.target.value)})} />
-                   <select className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-right font-black text-white outline-none appearance-none" value={usedMaterial.code} onChange={e => {
-                      const mat = inventory.find(i => i.code === e.target.value);
-                      setUsedMaterial({ ...usedMaterial, code: e.target.value, name: mat?.name || '' });
-                   }}>
-                      <option value="">-- اختر مادة مخزنية --</option>
-                      {inventory.map(i => <option key={i.id} value={i.code}>{i.name} (رصيد متاح: {i.currentBalance})</option>)}
-                   </select>
+                
+                {/* Searchable Dropdown Implementation */}
+                <div className="space-y-2">
+                   <div className="relative">
+                      <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                      <input 
+                        type="text" 
+                        placeholder="ابحث في المخزن..." 
+                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl py-2 pr-10 pl-4 text-xs font-bold outline-none focus:border-rose-500 transition-all shadow-sm"
+                        value={materialSearch}
+                        onChange={e => setMaterialSearch(e.target.value)}
+                      />
+                   </div>
+                   <div className="flex items-center gap-2">
+                      <button onClick={() => {
+                         const mat = inventory.find(i => i.code === usedMaterial.code);
+                         if (!mat) return;
+                         const item = { id: crypto.randomUUID(), code: mat.code, name: mat.name, quantity: usedMaterial.quantity, unit: mat.unit };
+                         setNewInvoice({ ...newInvoice, usedMaterials: [...(newInvoice.usedMaterials || []), item] });
+                         setUsedMaterial({ code: '', name: '', quantity: 1 });
+                         setMaterialSearch('');
+                      }} className="bg-primary text-white px-6 py-3 rounded-xl font-black shadow-lg hover:brightness-110 active:scale-95 transition-all">خصم</button>
+                      <input type="number" placeholder="الكمية" className="w-24 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center font-black text-rose-500 outline-none" value={usedMaterial.quantity} onChange={e => setUsedMaterial({...usedMaterial, quantity: Number(e.target.value)})} />
+                      <select className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-right font-black text-white outline-none appearance-none cursor-pointer" value={usedMaterial.code} onChange={e => {
+                         const mat = inventory.find(i => i.code === e.target.value);
+                         setUsedMaterial({ ...usedMaterial, code: e.target.value, name: mat?.name || '' });
+                      }}>
+                         <option value="">-- اختر مادة مخزنية --</option>
+                         {filteredInventoryForUsed.map(i => (
+                           <option key={i.id} value={i.code}>{i.name} (رصيد متاح: {i.currentBalance})</option>
+                         ))}
+                      </select>
+                   </div>
                 </div>
+
                 <div className="flex flex-wrap gap-2 mt-4">
                    {newInvoice.usedMaterials?.map(m => (
                       <div key={m.id} className="bg-white dark:bg-zinc-900 border border-rose-200 dark:border-rose-900/50 px-3 py-1.5 rounded-xl flex items-center gap-2">
@@ -495,9 +521,16 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                   <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-400 print:border-zinc-200">{inv.date}</td>
                   <td className="p-2 border-l border-zinc-900 text-zinc-100 truncate max-w-[100px] print:text-zinc-900 print:border-zinc-200">{inv.customerName}</td>
                   <td className="p-2 border-l border-zinc-900 print:border-zinc-200">
-                    <div className="flex flex-col gap-0.5 max-h-12 overflow-y-auto">
+                    <div className="flex flex-col gap-0.5 max-h-16 overflow-y-auto">
                       {inv.items.map((it, i) => ( 
                         <div key={i} className="flex items-center gap-1 truncate text-[10px] text-zinc-100 print:text-zinc-900">
+                          {it.image && (
+                            <img 
+                              src={it.image} 
+                              className="w-5 h-5 object-cover rounded border border-zinc-800 cursor-zoom-in" 
+                              onClick={() => setPreviewImage(it.image!)} 
+                            />
+                          )}
                           • {it.name} ({it.quantity})
                         </div>
                       ))}

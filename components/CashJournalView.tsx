@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Save, X, TrendingUp, TrendingDown, Search, Calendar, Filter, Coins, CreditCard, Printer, Tags, ImageIcon } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Edit2, Save, X, TrendingUp, TrendingDown, Search, Calendar, Filter, Coins, CreditCard, Printer, Tags, ImageIcon, FileSpreadsheet } from 'lucide-react';
 import { CashEntry, AppSettings, AccountingCategory } from '../types';
 import { ImageExportService } from '../utils/ImageExportService';
+import { exportToCSV } from '../utils/export';
 
 interface CashJournalViewProps {
   onBack: () => void;
@@ -112,10 +113,33 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
 
   const filteredEntries = entries.filter(e => {
     const matchStatement = e.statement.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          e.notes.toLowerCase().includes(searchTerm.toLowerCase());
+                          (e.notes || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchDate = (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate);
     return matchStatement && matchDate;
   });
+
+  const handleExportExcel = () => {
+    if (filteredEntries.length === 0) {
+      alert("لا توجد بيانات مفلترة للتصدير");
+      return;
+    }
+
+    const exportData = filteredEntries.map(e => {
+      const category = categories.find(c => c.id === e.categoryId);
+      return {
+        'التاريخ': e.date,
+        'البند / القسم': category ? `${category.name} (${category.type})` : '-',
+        'البيان': e.statement,
+        [`مقبوض (${settings?.currencySymbol || 'أساسي'})`]: e.receivedSYP || 0,
+        [`مدفوع (${settings?.currencySymbol || 'أساسي'})`]: e.paidSYP || 0,
+        [`مقبوض ($)`]: e.receivedUSD || 0,
+        [`مدفوع ($)`]: e.paidUSD || 0,
+        'الملاحظات': e.notes || '-'
+      };
+    });
+
+    exportToCSV(exportData, `دفتر_اليومية_المفلتر_${new Date().toISOString().split('T')[0]}`);
+  };
 
   const totalPrimary = filteredEntries.reduce((acc, curr) => acc + (curr.receivedSYP - curr.paidSYP), 0);
   const totalSecondary = filteredEntries.reduce((acc, curr) => acc + (curr.receivedUSD - curr.paidUSD), 0);
@@ -130,6 +154,12 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
           <h2 className="text-2xl font-black text-readable">دفتر اليومية الشامل</h2>
         </div>
         <div className="flex gap-2">
+          <button 
+            onClick={handleExportExcel}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg"
+          >
+            <FileSpreadsheet className="w-5 h-5" /> تصدير Excel المفلتر
+          </button>
           <button 
             onClick={() => setIsAdding(true)}
             className="bg-primary hover:brightness-110 text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-primary/20"
@@ -193,7 +223,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
               <input type="text" value={formData.statement} onChange={e => setFormData({...formData, statement: e.target.value})} placeholder="مثلاً: دفعة من حساب زبون، مصاريف نثرية..." className="bg-zinc-50 dark:bg-zinc-800 border-2 border-transparent focus:border-primary p-3 rounded-2xl font-bold outline-none transition-all" />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">القسم / بند التصنيف (جديد)</label>
+              <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">القسم / بند التصنيف</label>
               <div className="relative">
                 <Tags className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
                 <select 
@@ -218,7 +248,6 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-             {/* Primary Currency Section */}
              <div className="bg-primary/5 p-6 rounded-3xl border-2 border-primary/20 space-y-4">
                 <div className="flex items-center gap-3 text-primary border-b border-primary/10 pb-3">
                    <div className="bg-primary text-white p-2 rounded-xl shadow-lg"><Coins className="w-5 h-5"/></div>
@@ -239,7 +268,6 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
                 </div>
              </div>
 
-             {/* Secondary Currency Section */}
              <div className="bg-amber-500/5 p-6 rounded-3xl border-2 border-amber-500/20 space-y-4">
                 <div className="flex items-center gap-3 text-amber-600 border-b border-amber-500/10 pb-3">
                    <div className="bg-amber-500 text-white p-2 rounded-xl shadow-lg"><CreditCard className="w-5 h-5"/></div>
@@ -278,10 +306,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
         </div>
       )}
 
-      {/* Exportable content wrapper */}
       <div ref={exportRef} className="space-y-6 bg-white dark:bg-zinc-950 p-6 rounded-[2.5rem] shadow-sm export-fix print:bg-white print:p-0 print:shadow-none">
-        
-        {/* Print Header - Fixed to be ink-friendly */}
         <div className="print-only flex justify-between items-center bg-white p-6 border-b-4 border-zinc-200 text-black mb-4">
           <div className="flex items-center gap-4">
             {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" />}
@@ -301,7 +326,6 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* Summary Area - Ink friendly on print */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:gap-4 no-print-visible">
           <div className="bg-emerald-500/5 p-8 rounded-3xl border-2 border-emerald-500/20 flex flex-col items-center text-center shadow-sm print:bg-transparent print:p-4 print:rounded-xl">
             <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-emerald-500/20 no-print">
@@ -377,7 +401,6 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* Print Only Footer */}
         <div className="print-only mt-10 pt-6 border-t border-zinc-200 flex justify-between items-end text-[10px] font-black text-zinc-400">
            <div className="flex flex-col">
               <span>SAMLATOR SYSTEM | SECURED FINANCIAL LOG</span>

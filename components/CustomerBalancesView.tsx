@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Search, UserCheck, Printer, FileDown, Filter, Calendar, Coins, CreditCard, Building, RefreshCcw, Calculator, ChevronDown, Users, Briefcase, Share2, MapPin, Phone } from 'lucide-react';
+import { ArrowRight, Search, UserCheck, Printer, FileDown, Filter, Calendar, Coins, CreditCard, Building, RefreshCcw, Calculator, ChevronDown, Users, Briefcase, Share2, MapPin, Phone, ImageIcon } from 'lucide-react';
 import { Party, PartyType, SalesInvoice, CashEntry, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
+import { ImageExportService } from '../utils/ImageExportService';
 
 interface CustomerBalancesViewProps {
   onBack: () => void;
@@ -19,6 +20,7 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
   // Converter States
   const [exchangeRate, setExchangeRate] = useState(11500);
   const [isUnifiedView, setIsUnifiedView] = useState(false);
+  const [isExportingImage, setIsExportingImage] = useState(false);
 
   const [parties, setParties] = useState<Party[]>([]);
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
@@ -96,6 +98,19 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
   const totalPrimaryAll = balancesData.reduce((sum, p) => sum + p.primary.netBalance, 0);
   const totalSecondaryAll = balancesData.reduce((sum, p) => sum + p.secondary.netBalance, 0);
 
+  const handleExportImage = async () => {
+    if (!reportRef.current || isExportingImage) return;
+    setIsExportingImage(true);
+    try {
+      await ImageExportService.exportAsPng(
+        reportRef.current,
+        `أرصدة_${partyType}_${new Date().toISOString().split('T')[0]}`
+      );
+    } finally {
+      setIsExportingImage(false);
+    }
+  };
+
   return (
     <div className="space-y-6 text-right" dir="rtl">
       {/* UI Action Bar (No Print) */}
@@ -109,6 +124,14 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
         <div className="flex gap-2">
            <button onClick={() => exportToCSV(balancesData, 'customer_balances')} className="bg-slate-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-slate-700 hover:bg-slate-700 transition-all">
              <FileDown className="w-5 h-5" /> تصدير XLSX
+           </button>
+           <button 
+             onClick={handleExportImage}
+             disabled={isExportingImage}
+             className="bg-amber-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:bg-amber-500 transition-all disabled:opacity-50"
+           >
+             {isExportingImage ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <ImageIcon className="w-5 h-5" />}
+             حفظ كصورة
            </button>
            <button onClick={() => window.print()} className="bg-[#e11d48] text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-rose-900/20 hover:brightness-110 transition-all">
              <Printer className="w-5 h-5" /> طباعة الكشف

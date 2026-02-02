@@ -3,9 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Printer, Search, FileOutput, X, Users, Box, HardDrive, Calendar, Eye, EyeOff, FileDown, ImageIcon, Calculator, FileStack } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, CashEntry, Party, PartyType, AppSettings } from '../types';
 import { tafqeet } from '../utils/tafqeet';
+import { ImageExportService } from '../utils/ImageExportService';
 
 declare var html2pdf: any;
-declare var html2canvas: any;
 
 interface DetailedSalesReportViewProps {
   onBack: () => void;
@@ -22,6 +22,7 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isExportingImage, setIsExportingImage] = useState(false);
   
   const [showUsedMaterials, setShowUsedMaterials] = useState(true);
 
@@ -80,20 +81,15 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
   };
 
   const handleExportImage = async () => {
-    if (!reportRef.current || isProcessing) return;
-    setIsProcessing(true);
+    if (!reportRef.current || isExportingImage) return;
+    setIsExportingImage(true);
     try {
-      const canvas = await (window as any).html2canvas(reportRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff'
-      });
-      const link = document.createElement('a');
-      link.download = `Statement_${customerFilter || 'Customer'}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      await ImageExportService.exportAsPng(
+        reportRef.current,
+        `كشف_حساب_${customerFilter || 'عميل'}_${new Date().toISOString().split('T')[0]}`
+      );
     } finally {
-      setIsProcessing(false);
+      setIsExportingImage(false);
     }
   };
 
@@ -131,8 +127,13 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
          </div>
          <h1 className="text-2xl font-black flex-1 text-center tracking-tight text-readable">كشف حساب زبون مفصل</h1>
          <div className="flex gap-2">
-            <button onClick={handleExportImage} className="bg-amber-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-black shadow-lg hover:brightness-110 transition-all">
-               <ImageIcon className="w-5 h-5" /> صورة PNG
+            <button 
+              onClick={handleExportImage} 
+              disabled={isExportingImage}
+              className="bg-amber-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-black shadow-lg hover:brightness-110 transition-all disabled:opacity-50"
+            >
+               {isExportingImage ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <ImageIcon className="w-5 h-5" />}
+               حفظ كصورة
             </button>
             <button onClick={() => window.print()} className="bg-rose-900 text-white px-6 py-2 rounded-xl flex items-center gap-2 font-black shadow-lg hover:brightness-110 transition-all">
                <Printer className="w-5 h-5" /> طباعة التقرير
@@ -252,7 +253,7 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
                   <td className="p-1 border-zinc-200 font-mono text-center text-zinc-400">{row.invoiceDate}</td>
                   <td className="p-1 border-zinc-200 text-right pr-4">
                     <div className="flex items-center gap-2">
-                       {row.image && <img src={row.image} className="w-6 h-6 object-cover rounded shadow-sm border border-zinc-200 cursor-zoom-in no-print" onClick={() => setPreviewImage(row.image!)} />}
+                       {row.image && <img src={row.image} className="w-6 h-6 object-cover rounded shadow-sm border border-zinc-200 cursor-zoom-in" onClick={() => setPreviewImage(row.image!)} />}
                        <div className="flex flex-col">
                           <span className="text-zinc-900">{row.name}</span>
                           {row.serialNumber && <span className="text-[8px] text-zinc-400 font-mono uppercase">SN: {row.serialNumber}</span>}
@@ -337,8 +338,13 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
             العودة للرئيسية
          </button>
          <div className="flex gap-2">
-            <button onClick={handleExportImage} className="bg-amber-600 text-white px-8 py-3 rounded-2xl flex items-center gap-2 font-black shadow-xl hover:bg-amber-500 transition-all active:scale-95">
-               <ImageIcon className="w-6 h-6" /> حفظ كصورة
+            <button 
+              onClick={handleExportImage} 
+              disabled={isExportingImage}
+              className="bg-amber-600 text-white px-8 py-3 rounded-2xl flex items-center gap-2 font-black shadow-xl hover:bg-amber-500 transition-all active:scale-95 disabled:opacity-50"
+            >
+               {isExportingImage ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <ImageIcon className="w-6 h-6" />}
+               حفظ كصورة
             </button>
             <button onClick={handleExportPDF} className="bg-rose-900 text-white px-12 py-3 rounded-2xl flex items-center gap-2 font-black shadow-xl hover:bg-rose-800 transition-all active:scale-95">
                <FileDown className="w-6 h-6" /> تصدير PDF

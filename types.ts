@@ -108,6 +108,7 @@ export interface PurchaseInvoice {
   totalAmount: number;
   paidAmount: number;
   notes: string;
+  currencySymbol?: string;
 }
 
 export interface StockEntry {

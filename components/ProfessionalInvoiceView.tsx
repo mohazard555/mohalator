@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Printer, ChevronDown, Globe, FileText, RotateCcw, Truck, ShoppingBag, X, FileDown, MessageSquare, Coins } from 'lucide-react';
+import { ArrowRight, Printer, ChevronDown, Globe, FileText, RotateCcw, Truck, ShoppingBag, X, FileDown, MessageSquare, Coins, ImageIcon } from 'lucide-react';
 import { AppSettings } from '../types';
+import { ImageExportService } from '../utils/ImageExportService';
+import { tafqeet } from '../utils/tafqeet';
 
 declare var html2pdf: any;
 
@@ -20,6 +22,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
   const [list, setList] = useState<any[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [customNotes, setCustomNotes] = useState('');
+  const [isExportingImage, setIsExportingImage] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -65,7 +68,6 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
   const handleExportPDF = () => {
     if (!invoiceRef.current || !document) return;
     
-    // إعداد اسم الملف
     const fileName = `${getDocTitle()}_${document.invoiceNumber || 'document'}.pdf`;
     
     const element = invoiceRef.current;
@@ -87,8 +89,20 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
       }
     };
 
-    // تشغيل التصدير
     html2pdf().set(opt).from(element).save();
+  };
+
+  const handleExportImage = async () => {
+    if (!invoiceRef.current || !document || isExportingImage) return;
+    setIsExportingImage(true);
+    try {
+      await ImageExportService.exportAsPng(
+        invoiceRef.current,
+        `فاتورة_${document.invoiceNumber || 'احترافية'}_${new Date().getTime()}`
+      );
+    } finally {
+      setIsExportingImage(false);
+    }
   };
 
   const getDocTitle = () => {
@@ -174,7 +188,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
             </div>
          </div>
          
-         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-end">
+         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-end">
             <div className="lg:col-span-1 flex flex-col gap-2">
                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-1">1. اختر المستند المطلوب</label>
                <select value={selectedId} onChange={e => handleSelect(e.target.value)} className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-800 text-readable rounded-2xl py-4 px-4 outline-none w-full text-lg font-black appearance-none cursor-pointer focus:border-primary transition-all">
@@ -193,7 +207,15 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                ></textarea>
             </div>
 
-            <div className="lg:col-span-1 flex gap-2">
+            <div className="lg:col-span-2 flex gap-2">
+                <button 
+                  onClick={handleExportImage} 
+                  disabled={isExportingImage}
+                  className="flex-1 bg-amber-600 text-white px-4 py-4 rounded-2xl font-black shadow-lg flex items-center justify-center gap-2 hover:brightness-110 transition-all disabled:opacity-50"
+                >
+                   {isExportingImage ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <ImageIcon className="w-5 h-5" />}
+                   حفظ كصورة
+                </button>
                 <button onClick={handleExportPDF} className="flex-1 bg-rose-800 text-white px-4 py-4 rounded-2xl font-black shadow-lg flex items-center justify-center gap-2 hover:brightness-110 transition-all">
                    <FileDown className="w-5 h-5" /> تصدير PDF
                 </button>
@@ -206,7 +228,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
 
       {/* Document View */}
       <div className="flex justify-center p-0 md:p-10 bg-zinc-200 dark:bg-zinc-800/50 rounded-[4rem] overflow-hidden border-4 border-white dark:border-zinc-800 shadow-inner">
-         <div ref={invoiceRef} className="professional-invoice-box bg-white text-zinc-900 w-[210mm] h-[148.5mm] shadow-2xl flex flex-col relative overflow-hidden p-8" id="professional-document">
+         <div ref={invoiceRef} className="professional-invoice-box bg-white text-zinc-900 w-[210mm] h-[148.5mm] shadow-2xl flex flex-col relative overflow-hidden p-8 export-fix" id="professional-document">
             
             {/* Header */}
             <div className="flex justify-between items-start mb-4">
@@ -339,6 +361,14 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
       </div>
 
       <div className="flex justify-center gap-6 no-print pb-20 pt-4">
+         <button 
+           onClick={handleExportImage} 
+           disabled={isExportingImage}
+           className="bg-amber-600 text-white px-12 py-5 rounded-[2rem] font-black shadow-2xl flex items-center gap-4 hover:scale-105 transition-all text-xl disabled:opacity-50"
+         >
+            {isExportingImage ? <div className="w-7 h-7 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <ImageIcon className="w-7 h-7" />}
+            حفظ كصورة PNG
+         </button>
          <button onClick={handleExportPDF} className="bg-rose-800 text-white px-12 py-5 rounded-[2rem] font-black shadow-2xl flex items-center gap-4 hover:scale-105 transition-all text-xl">
             <FileDown className="w-7 h-7" /> تصدير نسخة PDF
          </button>
