@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { 
   CashEntry, SalesInvoice, PurchaseInvoice, 
-  Party, AppSettings, OpeningEntry 
+  Party, AppSettings, OpeningEntry, AccountingCategory 
 } from '../types';
 import { exportToCSV } from '../utils/export';
 import { ImageExportService } from '../utils/ImageExportService';
@@ -30,6 +30,7 @@ interface LedgerTransaction {
 const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
   const reportRef = useRef<HTMLDivElement>(null);
   const [transactions, setTransactions] = useState<LedgerTransaction[]>([]);
+  const [categories, setCategories] = useState<AccountingCategory[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -47,27 +48,39 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
   const loadLedger = () => {
     const journalRaw = localStorage.getItem('sheno_cash_journal');
     const openingRaw = localStorage.getItem('sheno_opening_entries');
+    const catRaw = localStorage.getItem('sheno_accounting_categories');
     
     const journal: CashEntry[] = journalRaw ? JSON.parse(journalRaw) : [];
     const opening: OpeningEntry[] = openingRaw ? JSON.parse(openingRaw) : [];
+    const cats: AccountingCategory[] = catRaw ? JSON.parse(catRaw) : [];
+    
+    setCategories(cats);
 
     const ledger: LedgerTransaction[] = [];
 
     // إدراج القيود الافتتاحية
     opening.forEach(e => {
       ledger.push({
-        id: e.id, date: e.date, statement: `قيد افتتاحي: ${e.notes || e.accountName}`,
+        id: e.id, date: e.date, statement: `قيد افتتاحي ميزانية: ${e.notes || e.accountName}`,
         debit: e.debit, credit: e.credit, type: 'افتتاحي', ref: 'OP', account: e.accountName
       });
     });
 
-    // إدراج كافة حركات اليومية
+    // إدراج حركات اليومية وربطها بالأقسام
     journal.forEach(j => {
+      let accountName = j.partyName || 'الصندوق العام';
+      
+      // إذا كانت الحركة مرتبطة بقسم محاسبي، نستخدم اسم القسم كحساب في الأستاذ
+      if (j.categoryId) {
+        const catMatch = cats.find(c => c.id === j.categoryId);
+        if (catMatch) accountName = catMatch.name;
+      }
+
       ledger.push({
         id: j.id, date: j.date, statement: j.statement,
-        debit: j.receivedSYP + (j.receivedUSD || 0), // تبسيط للعملة الموحدة في الدفتر العام
-        credit: j.paidSYP + (j.paidUSD || 0),
-        type: j.type || 'يومية', ref: j.voucherNumber || 'VOU', account: j.partyName || 'الصندوق العام'
+        debit: (j.receivedSYP || 0) + (j.receivedUSD || 0), 
+        credit: (j.paidSYP || 0) + (j.paidUSD || 0),
+        type: j.type || 'يومية', ref: j.voucherNumber || 'VOU', account: accountName
       });
     });
 
@@ -104,7 +117,7 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
       'نوع القيد': t.type,
       'المرجع': t.ref
     }));
-    exportToCSV(data, 'general_ledger_report');
+    exportToCSV(data, 'general_ledger_detailed');
   };
 
   const handleExportImage = async () => {
@@ -120,38 +133,40 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 no-print">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors">
+          <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all shadow-sm">
             <ArrowRight className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-3">
              <BookOpen className="w-8 h-8 text-primary" />
-             <h2 className="text-2xl font-black text-readable tracking-tight">دفتر الأستاذ العام (General Ledger)</h2>
+             <div>
+                <h2 className="text-2xl font-black text-readable tracking-tight">دفتر الأستاذ العام الشامل</h2>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">يشمل الأقسام المحاسبية، الزبائن، والموردين</p>
+             </div>
           </div>
         </div>
         <div className="flex gap-2">
            <button onClick={handleExportExcel} className="bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
-              <FileDown className="w-5 h-5" /> تصدير XLSX
+              <FileDown className="w-5 h-5" /> تصدير Excel
            </button>
            <button onClick={handleExportImage} className="bg-amber-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
               <ImageIcon className="w-5 h-5" /> حفظ كصورة
            </button>
            <button onClick={() => window.print()} className="bg-zinc-900 text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl">
-              <Printer className="w-5 h-5" /> طباعة الدفتر
+              <Printer className="w-5 h-5" /> طباعة
            </button>
         </div>
       </div>
 
-      {/* Modern Filter Engine */}
       <div className="bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-800 shadow-2xl flex flex-wrap items-end gap-6 no-print relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full"></div>
         
         <div className="flex-1 min-w-[250px] space-y-1 relative z-10">
-           <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest mr-1">البحث الشامل</label>
+           <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest mr-1">بحث في العمليات</label>
            <div className="relative">
               <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
               <input 
                 type="text" 
-                placeholder="ابحث بالبيان، المرجع، أو الحساب..." 
+                placeholder="ابحث بالبيان أو رقم السند..." 
                 className="w-full bg-slate-900/60 border border-slate-700 rounded-2xl py-3.5 pr-12 pl-4 outline-none font-bold text-white focus:border-primary transition-all shadow-inner"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
@@ -160,14 +175,19 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
         </div>
 
         <div className="w-64 space-y-1 relative z-10">
-           <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest mr-1">تحديد الحساب</label>
+           <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest mr-1">فلترة حسب الحساب / القسم</label>
            <select 
              value={accountFilter} 
              onChange={e => setAccountFilter(e.target.value)}
              className="w-full bg-slate-900 border border-slate-700 text-white p-3.5 rounded-2xl font-black text-sm outline-none focus:border-primary transition-all appearance-none cursor-pointer text-center"
            >
-              <option value="الكل">جميع الحسابات</option>
-              {uniqueAccounts.map(acc => <option key={acc} value={acc}>{acc}</option>)}
+              <option value="الكل">عرض كافة الحسابات</option>
+              <optgroup label="الأقسام المحاسبية">
+                {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+              </optgroup>
+              <optgroup label="جهات أخرى وأرصدة">
+                {uniqueAccounts.filter(acc => !categories.some(c => c.name === acc)).map(acc => <option key={acc} value={acc}>{acc}</option>)}
+              </optgroup>
            </select>
         </div>
 
@@ -181,32 +201,26 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
         </div>
       </div>
 
-      {/* Ledger Report Canvas */}
       <div ref={reportRef} className="bg-white rounded-[2.5rem] border border-zinc-200 overflow-hidden shadow-2xl export-fix p-4 md:p-10">
-         {/* Professional Header */}
          <div className="flex justify-between items-start mb-8 border-b-4 border-zinc-900 pb-8 bg-white text-zinc-900">
             <div className="flex items-center gap-4">
                {settings?.logoUrl ? <img src={settings.logoUrl} className="w-20 h-20 object-contain" /> : <div className="w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center text-white font-black text-3xl">SH</div>}
-               <div>
-                  <h1 className="text-3xl font-black text-zinc-900 leading-none mb-1">{settings?.companyName}</h1>
-                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{settings?.companyType}</p>
-               </div>
+               <div><h1 className="text-3xl font-black text-zinc-900 leading-none mb-1">{settings?.companyName}</h1><p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{settings?.companyType}</p></div>
             </div>
             <div className="text-center">
-               <h2 className="text-4xl font-black border-b-2 border-zinc-100 inline-block px-10 pb-2 mb-4">دفتر الأستاذ العام التفصيلي</h2>
+               <h2 className="text-4xl font-black border-b-2 border-zinc-100 inline-block px-10 pb-2 mb-4">كشف حساب الأستاذ العام</h2>
                <div className="flex flex-col items-center gap-1">
-                  <span className="bg-zinc-900 text-white px-6 py-1.5 rounded-full text-xs font-black uppercase tracking-widest">{accountFilter === 'الكل' ? 'جميع السجلات المعتمدة' : accountFilter}</span>
+                  <span className="bg-zinc-900 text-white px-6 py-1.5 rounded-full text-xs font-black uppercase tracking-widest">{accountFilter === 'الكل' ? 'جميع القيود والبنود' : accountFilter}</span>
                   <p className="text-[9px] mt-2 font-bold text-zinc-400">الفترة: {startDate || 'الأول'} إلى {endDate || 'اليوم'}</p>
                </div>
             </div>
             <div className="text-left text-xs font-bold text-zinc-500 space-y-1">
-               <p className="flex items-center justify-end gap-2">{settings?.address} <Building2 className="w-3 h-3"/></p>
-               <p dir="ltr" className="flex items-center justify-end gap-2">{settings?.phone} <Tag className="w-3 h-3"/></p>
-               <p className="text-[10px] font-black text-zinc-400 opacity-50 uppercase pt-4">SAMLATOR SECURED LEDGER TERMINAL</p>
+               <p>{settings?.address}</p>
+               <p dir="ltr">{settings?.phone}</p>
+               <p className="text-[10px] font-black text-zinc-400 opacity-50 uppercase pt-4">SAMLATOR SECURED SYSTEM</p>
             </div>
          </div>
 
-         {/* Summary Row */}
          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 no-print-visible">
             <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-3xl flex flex-col items-center">
                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">إجمالي المدين (+)</span>
@@ -217,19 +231,18 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
                <span className="text-3xl font-mono font-black text-rose-700">{totalCredit.toLocaleString()}</span>
             </div>
             <div className="bg-zinc-900 p-6 rounded-3xl flex flex-col items-center text-white shadow-xl">
-               <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">صافي رصيد الدفتر</span>
+               <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">الرصيد النهائي للدفتر</span>
                <span className="text-3xl font-mono font-black text-emerald-400">{(totalDebit - totalCredit).toLocaleString()}</span>
             </div>
          </div>
 
-         {/* Ledger Table */}
          <div className="overflow-x-auto">
             <table className="w-full text-right border-collapse text-sm">
                <thead>
                   <tr className="bg-zinc-900 text-white font-black text-[10px] uppercase tracking-widest border-b h-14 print:bg-zinc-100 print:text-black">
-                     <th className="p-4 border-l border-zinc-800 w-32">تاريخ القيد</th>
-                     <th className="p-4 border-l border-zinc-800">الحساب الرئيسي</th>
-                     <th className="p-4 border-l border-zinc-800 w-64">البيان الرسمي للعملية</th>
+                     <th className="p-4 border-l border-zinc-800 w-32">التاريخ</th>
+                     <th className="p-4 border-l border-zinc-800">الحساب الرئيسي / القسم</th>
+                     <th className="p-4 border-l border-zinc-800 w-64">البيان الرسمي</th>
                      <th className="p-4 border-l border-zinc-800 text-center w-32 bg-emerald-900/20 print:bg-transparent">مدين (+)</th>
                      <th className="p-4 border-l border-zinc-800 text-center w-32 bg-rose-900/20 print:bg-transparent">دائن (-)</th>
                      <th className="p-4 border-l border-zinc-800 text-center w-40 font-black text-base bg-zinc-900/40 print:bg-zinc-50">الرصيد الجاري</th>
@@ -238,11 +251,16 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
                </thead>
                <tbody className="divide-y font-bold text-zinc-800">
                   {ledgerWithBalance.length === 0 ? (
-                    <tr><td colSpan={7} className="p-32 text-center italic text-zinc-300 text-xl font-black uppercase">لا توجد حركات مسجلة تطابق الفلاتر</td></tr>
+                    <tr><td colSpan={7} className="p-32 text-center italic text-zinc-400 font-black text-2xl">لا يوجد حركات مسجلة تطابق الفلاتر المختارة</td></tr>
                   ) : ledgerWithBalance.map((t, idx) => (
-                    <tr key={idx} className={`hover:bg-zinc-50 transition-colors h-14 ${idx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/30'}`}>
+                    <tr key={idx} className={`h-14 ${idx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/30'}`}>
                        <td className="p-4 font-mono text-zinc-400 border-l border-zinc-100">{t.date}</td>
-                       <td className="p-4 border-l border-zinc-100 font-black text-zinc-900">{t.account}</td>
+                       <td className="p-4 border-l border-zinc-100 font-black text-zinc-900">
+                          {t.account}
+                          {categories.some(c => c.name === t.account) && (
+                            <span className="mr-2 text-[8px] px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-400 font-black uppercase">بند</span>
+                          )}
+                       </td>
                        <td className="p-4 border-l border-zinc-100 text-zinc-500 font-normal leading-relaxed">{t.statement}</td>
                        <td className="p-4 text-center font-mono text-emerald-600 border-l border-zinc-100">{t.debit > 0 ? t.debit.toLocaleString() : '-'}</td>
                        <td className="p-4 text-center font-mono text-rose-600 border-l border-zinc-100">{t.credit > 0 ? t.credit.toLocaleString() : '-'}</td>
@@ -254,19 +272,12 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
             </table>
          </div>
 
-         {/* Official Footer */}
          <div className="hidden print:flex justify-between items-end mt-12 pt-8 border-t border-zinc-200 text-[10px] font-black text-zinc-400">
            <div className="flex flex-col gap-1">
-              <span>SAMLATOR SYSTEM | SECURED FINANCIAL LOG TERMINAL</span>
+              <span>SAMLATOR SYSTEM | SECURED LEDGER TERMINAL</span>
               <span>تاريخ استخراج الكشف: {new Date().toLocaleString('ar-SA')}</span>
            </div>
-           <div className="text-center">
-              <div className="w-48 border-b-2 border-zinc-200 mb-2 mx-auto"></div>
-              <span>توقيع مدير الحسابات / والختم الرسمي</span>
-           </div>
-           <div className="text-left italic opacity-50">
-              {settings?.companyName} Accounting Ledger v4.1
-           </div>
+           <div className="text-center"><div className="w-48 border-b-2 border-zinc-200 mb-2 mx-auto"></div><span>توقيع مدير الحسابات / والختم الرسمي</span></div>
         </div>
       </div>
     </div>
