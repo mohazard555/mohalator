@@ -28,12 +28,13 @@ const DollarBalancesView: React.FC<DollarBalancesViewProps> = ({ onBack }) => {
     const dollarStats = new Map<string, { received: number, paid: number, net: number }>();
     
     entries.forEach(e => {
-      // التحقق من وجود قيم بالدولار في القيد
-      if ((e.receivedUSD && e.receivedUSD > 0) || (e.paidUSD && e.paidUSD > 0)) {
+      const rec = Number(e.receivedUSD) || 0;
+      const pd = Number(e.paidUSD) || 0;
+      if (rec > 0 || pd > 0) {
         const key = e.partyName || 'الصندوق العام';
         const current = dollarStats.get(key) || { received: 0, paid: 0, net: 0 };
-        current.received += (e.receivedUSD || 0);
-        current.paid += (e.paidUSD || 0);
+        current.received += rec;
+        current.paid += pd;
         current.net = current.received - current.paid;
         dollarStats.set(key, current);
       }
@@ -46,12 +47,11 @@ const DollarBalancesView: React.FC<DollarBalancesViewProps> = ({ onBack }) => {
     b.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // تم تصحيح الخطأ هنا من once إلى reduce
   const totalIn = dollarBalances.reduce((s, c) => s + c.received, 0);
   const totalOut = dollarBalances.reduce((s, c) => s + c.paid, 0);
   
   const selectedPartyMovements = selectedParty 
-    ? entries.filter(e => (e.partyName === selectedParty || e.statement.includes(selectedParty)) && ((e.receivedUSD || 0) > 0 || (e.paidUSD || 0) > 0))
+    ? entries.filter(e => (e.partyName === selectedParty || e.statement.includes(selectedParty)) && ((Number(e.receivedUSD) || 0) > 0 || (Number(e.paidUSD) || 0) > 0))
     : [];
 
   const handleExportExcel = () => {
@@ -164,8 +164,8 @@ const DollarBalancesView: React.FC<DollarBalancesViewProps> = ({ onBack }) => {
                              <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 h-14 transition-colors">
                                 <td className="p-4 font-mono text-zinc-400 border-l border-zinc-50 dark:border-zinc-800">{m.date}</td>
                                 <td className="p-4 text-readable border-l border-zinc-50 dark:border-zinc-800">{m.statement}</td>
-                                <td className="p-4 text-center font-mono text-emerald-600 text-lg border-l border-zinc-50 dark:border-zinc-800">{m.receivedUSD && m.receivedUSD > 0 ? m.receivedUSD.toLocaleString() : '-'}</td>
-                                <td className="p-4 text-center font-mono text-rose-600 text-lg border-l border-zinc-50 dark:border-zinc-800">{m.paidUSD && m.paidUSD > 0 ? m.paidUSD.toLocaleString() : '-'}</td>
+                                <td className="p-4 text-center font-mono text-emerald-600 text-lg border-l border-zinc-50 dark:border-zinc-800">{(Number(m.receivedUSD) || 0) > 0 ? (Number(m.receivedUSD) || 0).toLocaleString() : '-'}</td>
+                                <td className="p-4 text-center font-mono text-rose-600 text-lg border-l border-zinc-50 dark:border-zinc-800">{(Number(m.paidUSD) || 0) > 0 ? (Number(m.paidUSD) || 0).toLocaleString() : '-'}</td>
                                 <td className="p-4 text-zinc-400 font-normal italic text-xs">{m.notes || '-'}</td>
                              </tr>
                           ))}
