@@ -1,30 +1,27 @@
 
 import React from 'react';
-import { ShoppingCart, Warehouse, Wallet, Settings, TrendingUp, Landmark, BookOpen, Scale, Box, PieChart, Activity, BarChart3 } from 'lucide-react';
+import { ShoppingCart, Warehouse, Wallet, Settings, TrendingUp, Landmark, BookOpen } from 'lucide-react';
 import { AppView } from './types';
 
 export const MENU_GROUPS = [
   {
-    title: 'المركز المحاسبي والختامي',
+    title: 'المركز المحاسبي المالي',
     icon: <Landmark className="w-5 h-5" />,
     items: [
-      { label: 'الميزانية العمومية (Assets)', view: AppView.BALANCE_SHEET },
-      { label: 'حساب المتاجرة (Trading)', view: AppView.TRADING_ACCOUNT },
-      { label: 'قائمة الأرباح والخسائر', view: AppView.INCOME_STATEMENT },
-      { label: 'القيد الافتتاحي العام', view: AppView.OPENING_ENTRIES },
-      { label: 'إدارة جرد أول/آخر المدة', view: AppView.PERIODIC_INVENTORY },
+      { label: 'المركز المحاسبي العام', view: AppView.ACCOUNTING_CENTER },
+      { label: 'دفتر الأستاذ العام', view: AppView.GENERAL_LEDGER },
+      { label: 'إدارة البنود والأقسام', view: AppView.ACCOUNTING_CATEGORIES },
+      { label: 'ميزان المراجعة والأرباح', view: AppView.REPORTS },
     ]
   },
   {
     title: 'الصندوق والمالية',
     icon: <Wallet className="w-5 h-5" />,
     items: [
-      { label: 'دفتر الأستاذ العام', view: AppView.GENERAL_LEDGER },
       { label: 'ملف الصندوق اليومي', view: AppView.CASH_FILE },
+      { label: 'سندات القبض', view: AppView.RECEIPT_VOUCHER },
+      { label: 'سندات الدفع', view: AppView.PAYMENT_VOUCHER },
       { label: 'دفتر اليومية الشامل', view: AppView.CASH_JOURNAL },
-      { label: 'سندات القبض والدفع', view: AppView.RECEIPT_VOUCHER },
-      // Corrected the enum reference to ACCOUNTING_CATEGORIES to match types.ts
-      { label: 'إدارة البنود والأقسام', view: AppView.ACCOUNTING_CATEGORIES },
     ]
   },
   {
@@ -33,7 +30,9 @@ export const MENU_GROUPS = [
     items: [
       { label: 'فاتورة مبيعات ذكية', view: AppView.SALES_INVOICE },
       { label: 'سجل المبيعات العام', view: AppView.SALES_HISTORY },
-      { label: 'مرتجع مبيعات', view: AppView.SALES_RETURN },
+      { label: 'سجل مرتجع مبيعات', view: AppView.SALES_RETURN_HISTORY },
+      { label: 'مرتجع مبيعات (جديد)', view: AppView.SALES_RETURN },
+      { label: 'تصدير فاتورة احترافي', view: AppView.PROFESSIONAL_INVOICE },
       { label: 'كشف حساب زبون مفصل', view: AppView.DETAILED_SALES_REPORT },
       { label: 'أرصدة العملاء والموردين', view: AppView.CUSTOMER_BALANCES },
     ]
@@ -44,9 +43,13 @@ export const MENU_GROUPS = [
     items: [
       { label: 'فاتورة مشتريات', view: AppView.PURCHASE_INVOICE },
       { label: 'سجل المشتريات', view: AppView.PURCHASE_HISTORY },
+      { label: 'سجل مرتجع مشتريات', view: AppView.PURCHASE_RETURN_HISTORY },
+      { label: 'حركة مادة مفصلة', view: AppView.DETAILED_ITEM_MOVEMENT },
+      { label: 'تكاليف فاتورة محددة', view: AppView.CUSTOMER_INVOICE_COSTS },
       { label: 'قائمة المواد والجرد', view: AppView.INVENTORY },
       { label: 'إدارة ملف المستودعات', view: AppView.WAREHOUSE_MANAGEMENT },
       { label: 'إدخالات وصرف المواد', view: AppView.STOCK_ENTRIES },
+      { label: 'إدارة الحسابات (جهات)', view: AppView.PARTY_MANAGEMENT },
     ]
   },
   {
@@ -55,6 +58,7 @@ export const MENU_GROUPS = [
     items: [
       { label: 'تقارير استثمارية وشاملة', view: AppView.INVESTMENT_REPORTS },
       { label: 'تحليلات المستودع', view: AppView.WAREHOUSE_ANALYTICS },
+      { label: 'الأرشفة والتدوير', view: AppView.ARCHIVES },
       { label: 'إعدادات النظام', view: AppView.SETTINGS },
     ]
   }
