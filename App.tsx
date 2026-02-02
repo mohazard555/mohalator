@@ -202,8 +202,15 @@ const App: React.FC = () => {
             case AppView.ARCHIVES: return <ArchivesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.INVESTMENT_REPORTS: return <InvestmentReportsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.ACCOUNTING_CATEGORIES: return <AccountingCategoriesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
-            case AppView.ACCOUNTING_CENTER: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.GENERAL_LEDGER: return <GeneralLedgerView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            
+            // الربط الجديد للأقسام المستقلة بوضع isSingleView={true}
+            case AppView.BALANCE_SHEET: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="REPORTS" initialReportType="BALANCE_SHEET" isSingleView={true} />;
+            case AppView.TRADING_ACCOUNT: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="REPORTS" initialReportType="TRADING" isSingleView={true} />;
+            case AppView.INCOME_STATEMENT: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="REPORTS" initialReportType="INCOME_STATEMENT" isSingleView={true} />;
+            case AppView.OPENING_ENTRIES: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="OPENING_ENTRY" isSingleView={true} />;
+            case AppView.PERIODIC_INVENTORY: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="INVENTORY_TOOLS" isSingleView={true} />;
+            
             default: return <Dashboard setView={setCurrentView} />;
           }
         })()}
