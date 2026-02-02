@@ -205,7 +205,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     if (!reportRef.current || isProcessing) return;
     setIsProcessing(true);
     
-    // إظهار العناصر المخصصة للطباعة مؤقتاً للالتقاط
     const reportElement = reportRef.current;
     const printOnlyElements = reportElement.querySelectorAll('.xo-report-header-print, .print-only');
     
@@ -221,7 +220,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
         `كشف_حساب_${reportParty || 'عميل'}_${new Date().getTime()}`
       );
     } finally {
-      // إعادة العناصر لوضعها الأصلي
       printOnlyElements.forEach((el: any) => {
         el.style.display = '';
         el.style.visibility = '';
@@ -274,16 +272,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
             }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           }
-          .receipt-inner-container {
-             box-sizing: border-box;
-             width: 100%;
-             height: 100%;
-             padding: 8mm;
-             display: flex;
-             flex-direction: column;
-             background: white !important;
-             color: black !important;
-          }
         `}</style>
         
         <div className="w-full max-w-2xl mb-6 no-print flex justify-between items-center bg-white p-6 rounded-3xl shadow-xl border border-zinc-200">
@@ -291,20 +279,20 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
               <ArrowRight className="w-5 h-5" /> رجوع
            </button>
            <div className="flex gap-2">
-              <button onClick={handleExportImage} className="bg-amber-600 text-white px-4 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg hover:brightness-110 active:scale-95 transition-all">
-                <ImageIcon className="w-5 h-5" /> حفظ كصورة PNG
+              <button onClick={handleExportImage} className="bg-amber-600 text-white px-4 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg">
+                <ImageIcon className="w-5 h-5" /> حفظ كصورة
               </button>
               <button onClick={handleExportPDF} className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg">
                 <FileDown className="w-5 h-5" /> تصدير PDF
               </button>
-              <button onClick={() => window.print()} className="bg-rose-900 text-white px-6 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg hover:brightness-110 transition-all">
+              <button onClick={() => window.print()} className="bg-rose-900 text-white px-6 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg">
                 <Printer className="w-5 h-5" /> طباعة
               </button>
            </div>
         </div>
 
         <div ref={printableRef} className="print-receipt-half export-fix bg-white text-zinc-900 w-[210mm] h-[148.5mm] shadow-2xl flex flex-col relative overflow-hidden">
-          <div className="receipt-inner-container">
+          <div className="receipt-inner-container p-8 h-full flex flex-col bg-white">
             <div className="absolute inset-0 flex items-center justify-center opacity-[0.04] pointer-events-none -rotate-12">
                <span className="text-[70px] font-black uppercase text-rose-900 leading-none text-center">
                  {settings?.companyName}<br/><span className="text-xl">SECURED SYSTEM</span>
@@ -371,10 +359,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                   <div className="w-32 border-b-2 border-rose-900 mb-2"></div>
                   <span className="text-[8px] font-black text-rose-900 uppercase tracking-widest">توقيع المحاسب المعتمد</span>
                </div>
-            </div>
-            
-            <div className="absolute bottom-3 left-0 right-0 text-center">
-               <span className="text-[6px] font-bold text-zinc-300 italic opacity-40 uppercase tracking-[0.6em]">SAMLATOR SECURED LEDGER SYSTEM V4.0</span>
             </div>
           </div>
         </div>
@@ -443,9 +427,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                        <input type="number" value={formData.amount} onChange={e => setFormData({...formData, amount: Number(e.target.value)})} className="w-full bg-transparent border-b-4 border-zinc-200 dark:border-zinc-800 text-center text-6xl font-mono font-black text-readable outline-none focus:border-rose-900 transition-all" autoFocus />
                        <div className="absolute right-0 top-1/2 -translate-y-1/2 text-zinc-300 font-black text-2xl uppercase">{selectedCurrencyType === 'primary' ? settings?.currencySymbol : settings?.secondaryCurrencySymbol}</div>
                     </div>
-                    <div className="text-sm font-black text-rose-900 dark:text-rose-500 italic text-center">
-                       {tafqeet(formData.amount || 0, selectedCurrencyType === 'primary' ? settings?.currency || 'ليرة' : settings?.secondaryCurrency || 'دولار')}
-                    </div>
                  </div>
               </div>
 
@@ -459,41 +440,24 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
       )}
 
       {showCustomerReport && (
-        <div className="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-start p-0 md:p-8 animate-in fade-in duration-300 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-start p-0 md:p-8 animate-in fade-in duration-300 overflow-y-auto no-print-bg">
            <style>{`
-             @media screen {
-               .xo-report-container-styled {
-                  background: white !important;
-                  color: black !important;
-                  border: 1px solid #e5e7eb;
-                  border-radius: 40px;
-                  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-                  height: auto !important;
-                  min-height: 100vh !important;
-               }
-               .xo-card-screen {
-                  background: #f9fafb !important;
-                  border: 1px solid #e5e7eb !important;
-                  color: #111827 !important;
-               }
-               .xo-table-screen th {
-                  background: #f3f4f6 !important;
-                  color: #374151 !important;
-               }
-               .xo-table-screen td {
-                  color: #1f2937 !important;
-               }
-               .xo-summary-label {
-                  color: #6b7280 !important;
-               }
-             }
-
+             /* إجبار الخلفية البيضاء عند الطباعة لضمان عدم ظهور السواد */
              @media print {
-               @page { size: A4 portrait; margin: 10mm !important; }
+               @page { size: auto; margin: 10mm !important; }
+               
+               /* إخفاء طبقة التعتيم الخلفية السوداء */
+               .no-print-bg { 
+                 background: white !important; 
+                 position: static !important;
+                 padding: 0 !important;
+               }
+
                body { 
                  background: white !important; 
                  color: black !important;
                }
+
                .xo-report-container-styled {
                  background: white !important;
                  color: black !important;
@@ -505,62 +469,57 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  max-width: 100% !important;
                  height: auto !important;
                }
+
                .xo-report-header-print {
                  display: flex !important;
-                 justify-content: space-between;
-                 align-items: center;
-                 border-bottom: 3px solid #e11d48;
-                 padding-bottom: 20px;
-                 margin-bottom: 25px;
+                 justify-content: space-between !important;
+                 align-items: center !important;
+                 border-bottom: 3px solid #e11d48 !important;
+                 padding-bottom: 20px !important;
+                 margin-bottom: 25px !important;
                }
-               .xo-summary-grid {
-                 display: grid !important;
-                 grid-template-columns: repeat(3, 1fr) !important;
-                 gap: 15px !important;
-                 margin-bottom: 30px !important;
-               }
+
                .xo-card-print {
                   background: white !important;
-                  border: 1px solid #eee !important;
-                  border-radius: 15px !important;
-                  padding: 15px !important;
-                  text-align: center !important;
-                  box-shadow: none !important;
+                  border: 1px solid #ddd !important;
                   color: black !important;
+                  box-shadow: none !important;
                }
+
                .xo-table-print {
-                 border: 1px solid #eee !important;
-                 width: 100% !important;
-                 border-collapse: collapse !important;
-               }
-               .xo-table-print th {
-                 background-color: #f8fafc !important;
-                 color: #000 !important;
-                 font-size: 11px !important;
-                 font-weight: 900 !important;
-                 text-transform: uppercase !important;
                  border: 1px solid #ddd !important;
-                 padding: 12px 10px !important;
+                 width: 100% !important;
                }
+
+               .xo-table-print th {
+                 background-color: #f9fafb !important;
+                 color: black !important;
+                 border: 1px solid #ddd !important;
+               }
+
                .xo-table-print td {
                  border: 1px solid #eee !important;
-                 font-size: 12px !important;
-                 padding: 12px 10px !important;
                  color: black !important;
                }
-               .xo-tafqeet-print {
-                 background-color: white !important;
-                 color: black !important;
-                 border: 2px solid #eee !important;
-                 box-shadow: none !important;
-               }
+
                .no-print { display: none !important; }
                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+             }
+
+             @media screen {
+               .xo-report-container-styled {
+                  background: white !important;
+                  color: black !important;
+                  border: 1px solid #e5e7eb;
+                  border-radius: 40px;
+                  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                  min-height: 100vh !important;
+               }
              }
            `}</style>
            
            <div ref={reportRef} className="xo-report-container-styled w-full max-w-4xl p-8 flex flex-col gap-6 relative export-fix bg-white">
-              {/* ترويسة التقرير المطورة */}
+              {/* ترويسة التقرير */}
               <div className="flex justify-between items-start mb-2 xo-report-header-print">
                  <div className="text-right space-y-2">
                     <p className="text-[14px] font-black text-rose-600 uppercase tracking-widest border-b-2 border-rose-100 pb-1 inline-block">FINANCIAL STATEMENT</p>
@@ -572,7 +531,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
 
                  <div className="text-center">
                     <h2 className="text-4xl font-black border-b-4 border-rose-600 inline-block px-10 pb-3 text-zinc-900 mb-4">كشف حساب مالي تفصيلي</h2>
-                    
                     <div className="flex flex-col items-center justify-center gap-1">
                        <span className="text-[10px] font-black text-rose-600 uppercase tracking-[0.3em]">REPORT PERIOD | فترة التقرير</span>
                        <div className="bg-zinc-50 border border-zinc-200 px-6 py-1.5 rounded-full flex items-center gap-3 shadow-sm">
@@ -605,115 +563,109 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                         <span className="text-3xl font-black text-zinc-900 italic tracking-tight">{reportParty || 'جميع الأطراف'}</span>
                      </div>
                   </div>
-                  <div className="text-left">
+                  <div className="text-left no-print">
                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">REPORT STATUS</span>
                      <span className="bg-emerald-500/10 text-emerald-600 px-4 py-1 rounded-full text-[10px] font-black border border-emerald-500/20">معتمد وحقيقي</span>
                   </div>
               </div>
 
-              {/* بطاقات الإجماليات المطورة */}
+              {/* بطاقات الإجماليات */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 xo-summary-grid">
-                  <div className="xo-card-print xo-card-screen p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 relative overflow-hidden group bg-white">
-                     <div className="absolute top-0 right-0 w-16 h-16 bg-zinc-100 opacity-20 -mr-8 -mt-8 rounded-full"></div>
-                     <ArrowUpRight className="w-6 h-6 text-zinc-300 no-print" />
-                     <span className="text-[11px] font-black xo-summary-label uppercase tracking-[0.2em] mb-1">إجمالي المسحوبات</span>
+                  <div className="xo-card-print p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 relative overflow-hidden bg-zinc-50 border border-zinc-100">
+                     <span className="text-[11px] font-black uppercase tracking-[0.2em] mb-1">إجمالي المسحوبات</span>
                      <span className="text-4xl font-mono font-black text-zinc-900 leading-none">{due.toLocaleString()}</span>
                      <span className="text-[9px] font-bold text-zinc-400">{settings?.currencySymbol}</span>
                   </div>
                   
-                  <div className="xo-card-print xo-card-screen p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 relative overflow-hidden bg-white">
-                     <ArrowDownLeft className="w-6 h-6 text-emerald-200 no-print" />
+                  <div className="xo-card-print p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 relative overflow-hidden bg-zinc-50 border border-zinc-100">
                      <span className="text-[11px] font-black text-emerald-700 uppercase tracking-[0.2em] mb-1">إجمالي المدفوعات</span>
                      <span className="text-4xl font-mono font-black text-emerald-600 leading-none">{paid.toLocaleString()}</span>
                      <span className="text-[9px] font-bold text-emerald-400">{settings?.currencySymbol}</span>
                   </div>
                   
-                  <div className="xo-card-print xo-card-screen border-4 border-rose-600/30 p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 ring-8 ring-rose-600/5 bg-white relative">
-                     <Calculator className="w-6 h-6 text-rose-300 no-print" />
+                  <div className="xo-card-print border-4 border-rose-600/30 p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 bg-white relative">
                      <span className="text-[11px] font-black text-rose-600 uppercase tracking-[0.2em] mb-1">صافي الرصيد المتبقي</span>
                      <div className="flex items-center gap-2">
                         <span className="text-5xl font-mono font-black text-rose-700 leading-none">{(due - paid).toLocaleString()}</span>
-                        {(due - paid) < 0 && <span className="text-3xl text-rose-700 font-black">-</span>}
                      </div>
                      <span className="text-[9px] font-bold text-rose-400">{settings?.currencySymbol}</span>
                   </div>
               </div>
 
-              {/* جدول البيانات المطور */}
+              {/* جدول البيانات */}
               <div className="flex-1 border border-zinc-200 rounded-[2.5rem] overflow-hidden shadow-sm bg-white">
-                  <table className="w-full text-right border-collapse xo-table-print xo-table-screen bg-white">
+                  <table className="w-full text-right border-collapse xo-table-print">
                     <thead>
                         <tr className="bg-zinc-900 text-white font-black text-[11px] uppercase tracking-widest h-16 print:bg-zinc-100 print:text-black">
-                          <th className="p-4 w-32 text-center border-l border-zinc-800 print:border-zinc-300">تاريخ القيد</th>
-                          <th className="p-4 w-32 text-center border-l border-zinc-800 print:border-zinc-300">رقم السند</th>
-                          <th className="p-4 border-l border-zinc-800 print:border-zinc-300">البيان والتفاصيل المالية</th>
-                          <th className="p-4 text-center w-52 font-black text-base bg-rose-900/20 print:bg-zinc-50">القيمة المسجلة</th>
+                          <th className="p-4 w-32 text-center border-l print:border-zinc-300">تاريخ القيد</th>
+                          <th className="p-4 w-32 text-center border-l print:border-zinc-300">رقم السند</th>
+                          <th className="p-4 border-l print:border-zinc-300">البيان والتفاصيل المالية</th>
+                          <th className="p-4 text-center w-52 font-black text-base bg-rose-900/10 print:bg-zinc-50">القيمة المسجلة</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100">
                         {reportVouchers.length === 0 ? (
                           <tr><td colSpan={4} className="p-32 text-center italic text-zinc-400 font-black text-2xl">لا توجد حركات مالية مسجلة لهذه الفترة</td></tr>
                         ) : reportVouchers.map((v, idx) => (
-                          <tr key={v.id} className={`hover:bg-rose-50/30 transition-colors h-14 ${idx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/30'} print:bg-white`}>
-                              <td className="p-4 font-mono text-zinc-500 text-center border-l border-zinc-100">{v.date}</td>
-                              <td className="p-4 text-center font-black text-rose-900/40 border-l border-zinc-100">#{v.voucherNumber || '---'}</td>
-                              <td className="p-4 text-zinc-800 font-bold border-l border-zinc-100 leading-relaxed">{v.statement}</td>
-                              <td className="p-4 text-center font-mono font-black text-2xl text-rose-900">{ (v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD).toLocaleString()}</td>
+                          <tr key={v.id} className={`h-14 ${idx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/30'}`}>
+                              <td className="p-4 font-mono text-zinc-500 text-center border-l">{v.date}</td>
+                              <td className="p-4 text-center font-black text-rose-900/40 border-l">#{v.voucherNumber || '---'}</td>
+                              <td className="p-4 text-zinc-800 font-bold border-l">{v.statement}</td>
+                              <td className="p-4 text-center font-mono font-black text-2xl text-rose-900">{(v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD).toLocaleString()}</td>
                           </tr>
                         ))}
                     </tbody>
                   </table>
               </div>
 
-              {/* التفقيط كتابةً - تم تعديل الخلفية السوداء للأبيض بالكامل */}
-              <div className="xo-tafqeet-print bg-white text-zinc-900 p-6 rounded-[2rem] border-2 border-zinc-100 shadow-sm print:bg-white">
+              <div className="bg-white text-zinc-900 p-6 rounded-[2rem] border-2 border-zinc-100 shadow-sm xo-card-print">
                  <div className="flex flex-col gap-1">
                     <span className="text-[9px] font-black text-rose-600 uppercase tracking-[0.4em] mb-1">AMOUNT IN WORDS | الرصيد المتبقي كتابةً</span>
-                    <p className="text-xl font-black italic tracking-tight border-b border-rose-100 pb-1 inline-block">
+                    <p className="text-xl font-black italic tracking-tight border-b border-rose-100 pb-1">
                        {tafqeet(Math.abs(due - paid), settings?.currency || 'ليرة سورية')}
                     </p>
                  </div>
               </div>
 
-              {/* ضوابط الفلترة والأزرار (لا تظهر في الطباعة) */}
+              {/* ضوابط الفلترة (لا تظهر في الطباعة) */}
               <div className="mt-auto no-print pt-10 flex flex-col gap-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-8 bg-white rounded-[3rem] border-2 border-zinc-100 shadow-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-8 bg-zinc-50 rounded-[3rem] border-2 border-zinc-100 shadow-inner">
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2 flex items-center gap-1"><User className="w-3 h-3" /> الحساب</label>
-                        <select value={reportParty} onChange={e => setReportParty(e.target.value)} className="bg-zinc-50 border border-zinc-200 text-zinc-900 p-4 rounded-2xl font-black outline-none cursor-pointer focus:border-rose-600 transition-all appearance-none shadow-inner">
+                        <select value={reportParty} onChange={e => setReportParty(e.target.value)} className="bg-white border border-zinc-200 text-zinc-900 p-4 rounded-2xl font-black outline-none cursor-pointer focus:border-rose-600 transition-all appearance-none shadow-sm">
                             <option value="">-- اختر الحساب --</option>
                             {parties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                         </select>
                     </div>
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2 flex items-center gap-1"><CalendarIcon className="w-3 h-3" /> من تاريخ</label>
-                        <input type="date" value={reportStart} onChange={e => setReportStart(e.target.value)} className="bg-zinc-50 border border-zinc-200 text-zinc-900 p-4 rounded-2xl font-mono outline-none focus:border-rose-600 transition-all shadow-inner" />
+                        <input type="date" value={reportStart} onChange={e => setReportStart(e.target.value)} className="bg-white border border-zinc-200 text-zinc-900 p-4 rounded-2xl font-mono outline-none focus:border-rose-600 transition-all shadow-sm" />
                     </div>
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2 flex items-center gap-1"><CalendarIcon className="w-3 h-3" /> إلى تاريخ</label>
-                        <input type="date" value={reportEnd} onChange={e => setReportEnd(e.target.value)} className="bg-zinc-50 border border-zinc-200 text-zinc-900 p-4 rounded-2xl font-mono outline-none focus:border-rose-600 transition-all shadow-inner" />
+                        <input type="date" value={reportEnd} onChange={e => setReportEnd(e.target.value)} className="bg-white border border-zinc-200 text-zinc-900 p-4 rounded-2xl font-mono outline-none focus:border-rose-600 transition-all shadow-sm" />
                     </div>
                   </div>
 
                   <div className="flex justify-between items-center gap-4">
-                    <button onClick={() => setShowCustomerReport(false)} className="bg-zinc-200 text-zinc-600 px-10 py-4 rounded-3xl font-black text-lg hover:bg-zinc-300 transition-all active:scale-95 flex items-center gap-2 shadow-sm">
+                    <button onClick={() => setShowCustomerReport(false)} className="bg-zinc-200 text-zinc-600 px-10 py-4 rounded-3xl font-black text-lg hover:bg-zinc-300 transition-all flex items-center gap-2">
                        <ArrowRight className="w-5 h-5" /> إغلاق الكشف
                     </button>
                     <div className="flex gap-4">
-                        <button onClick={handleExportReportImage} className="bg-amber-600 text-white px-8 py-4 rounded-[2rem] font-black text-lg shadow-xl shadow-amber-900/20 hover:brightness-110 flex items-center gap-3 transition-all active:scale-95">
+                        <button onClick={handleExportReportImage} className="bg-amber-600 text-white px-8 py-4 rounded-[2rem] font-black text-lg shadow-xl hover:brightness-110 flex items-center gap-3 transition-all">
                           <ImageIcon className="w-6 h-6" /> حفظ كصورة
                         </button>
-                        <button onClick={() => window.print()} className="bg-rose-700 text-white px-12 py-4 rounded-[2rem] font-black text-lg shadow-xl shadow-rose-900/30 hover:brightness-110 flex items-center gap-3 transition-all active:scale-95">
+                        <button onClick={() => window.print()} className="bg-rose-700 text-white px-12 py-4 rounded-[2rem] font-black text-lg shadow-xl hover:brightness-110 flex items-center gap-3 transition-all">
                           <Printer className="w-6 h-6" /> طباعة الكشف المعتمد
                         </button>
-                        <button onClick={handleExportReportPDF} className="bg-emerald-600 text-white px-12 py-4 rounded-[2rem] font-black text-lg shadow-xl shadow-emerald-900/20 hover:brightness-110 flex items-center gap-3 transition-all active:scale-95">
-                          <FileDown className="w-6 h-6" /> تصدير PDF احترافي
+                        <button onClick={handleExportReportPDF} className="bg-emerald-600 text-white px-12 py-4 rounded-[2rem] font-black text-lg shadow-xl hover:brightness-110 flex items-center gap-3 transition-all">
+                          <FileDown className="w-6 h-6" /> تصدير PDF
                         </button>
                     </div>
                   </div>
               </div>
 
-              {/* تذييل الطباعة فقط المطور */}
+              {/* تذييل الطباعة */}
               <div className="print-only mt-auto pt-10 pb-4 border-t-2 border-zinc-100 flex justify-between items-end bg-white">
                  <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-black text-zinc-900 uppercase">SIGNATURE | اعتماد المدير</span>
@@ -723,7 +675,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                     <span className="text-[9px] font-black text-zinc-300 uppercase tracking-[0.5em] mb-1">SECURED LEDGER TERMINAL</span>
                     <div className="flex items-center gap-2 text-[10px] font-black text-zinc-400">
                        <span>{settings?.companyName}</span>
-                       <div className="w-1 h-1 bg-zinc-200 rounded-full"></div>
                        <span>{new Date().toLocaleString('ar-SA')}</span>
                     </div>
                  </div>

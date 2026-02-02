@@ -1,19 +1,27 @@
 
 import React from 'react';
-import { ShoppingCart, Warehouse, Wallet, Settings, TrendingUp } from 'lucide-react';
+import { ShoppingCart, Warehouse, Wallet, Settings, TrendingUp, Landmark, BookOpen } from 'lucide-react';
 import { AppView } from './types';
 
 export const MENU_GROUPS = [
+  {
+    title: 'المركز المحاسبي المالي',
+    icon: <Landmark className="w-5 h-5" />,
+    items: [
+      { label: 'المركز المحاسبي العام', view: AppView.ACCOUNTING_CENTER },
+      { label: 'دفتر الأستاذ العام', view: AppView.GENERAL_LEDGER },
+      { label: 'إدارة البنود والأقسام', view: AppView.ACCOUNTING_CATEGORIES },
+      { label: 'ميزان المراجعة والأرباح', view: AppView.REPORTS },
+    ]
+  },
   {
     title: 'الصندوق والمالية',
     icon: <Wallet className="w-5 h-5" />,
     items: [
       { label: 'ملف الصندوق اليومي', view: AppView.CASH_FILE },
-      { label: 'إدارة البنود والأقسام', view: AppView.ACCOUNTING_CATEGORIES },
       { label: 'سندات القبض', view: AppView.RECEIPT_VOUCHER },
       { label: 'سندات الدفع', view: AppView.PAYMENT_VOUCHER },
       { label: 'دفتر اليومية الشامل', view: AppView.CASH_JOURNAL },
-      { label: 'ميزان المراجعة والأرباح', view: AppView.REPORTS },
     ]
   },
   {

@@ -29,6 +29,8 @@ import ProfessionalInvoiceView from './components/ProfessionalInvoiceView';
 import CustomerInvoiceCostsView from './components/CustomerInvoiceCostsView';
 import InvestmentReportsView from './components/InvestmentReportsView';
 import AccountingCategoriesView from './components/AccountingCategoriesView';
+import AccountingCenterView from './components/AccountingCenterView';
+import GeneralLedgerView from './components/GeneralLedgerView';
 import LoginView from './components/LoginView';
 
 const App: React.FC = () => {
@@ -200,6 +202,8 @@ const App: React.FC = () => {
             case AppView.ARCHIVES: return <ArchivesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.INVESTMENT_REPORTS: return <InvestmentReportsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.ACCOUNTING_CATEGORIES: return <AccountingCategoriesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.ACCOUNTING_CENTER: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.GENERAL_LEDGER: return <GeneralLedgerView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             default: return <Dashboard setView={setCurrentView} />;
           }
         })()}

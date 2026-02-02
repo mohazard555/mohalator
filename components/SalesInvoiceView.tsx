@@ -45,8 +45,8 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
   const [manualItem, setManualItem] = useState({ name: '', quantity: 1, price: 0, serialNumber: '', image: '' });
   const [usedMaterial, setUsedMaterial] = useState({ code: '', name: '', quantity: 1 });
 
-  // Load Initial Data
-  useEffect(() => {
+  // Load Initial Data Function
+  const loadData = () => {
     const savedInv = localStorage.getItem('sheno_sales_invoices');
     const savedParties = localStorage.getItem('sheno_parties');
     const savedInventory = localStorage.getItem('sheno_inventory_list');
@@ -79,12 +79,15 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
        }
     }
     if (savedSettings) setSettings(JSON.parse(savedSettings));
+  };
 
+  useEffect(() => {
+    loadData();
     if (initialInvoice && !editingId) {
       setEditingId(initialInvoice.id);
       setNewInvoice(initialInvoice);
       setIsAdding(true);
-      const s = JSON.parse(savedSettings || '{}');
+      const s = JSON.parse(localStorage.getItem('sheno_settings') || '{}');
       if (initialInvoice.currencySymbol === s.secondaryCurrencySymbol) {
          setSelectedCurrencyType('secondary');
       }
@@ -170,6 +173,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
       items: [], usedMaterials: [], notes: '', paidAmount: 0, paymentType: 'نقداً'
     });
     
+    loadData(); // Re-load to update inventory balances
     if (initialInvoice) onBack(); 
   };
 
@@ -187,6 +191,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
            localStorage.setItem('sheno_stock_entries', JSON.stringify(stock));
         }
       }
+      loadData();
     }
   };
 
@@ -215,6 +220,14 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
       items: [], usedMaterials: [], notes: '', paidAmount: 0, paymentType: 'نقداً'
     });
     if (initialInvoice) onBack();
+  };
+
+  // Dynamic balance calculation that accounts for pending deductions in current invoice
+  const getDynamicBalance = (item: InventoryItem) => {
+    const pendingQty = (newInvoice.usedMaterials || [])
+      .filter(m => m.code === item.code)
+      .reduce((sum, m) => sum + m.quantity, 0);
+    return item.currentBalance - pendingQty;
   };
 
   const filteredInventoryForUsed = inventory.filter(i => 
@@ -310,7 +323,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
             </div>
             <div className="flex flex-col gap-1">
                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">رقم الفاتورة</label>
-               <input type="text" className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-readable" value={newInvoice.invoiceNumber} onChange={e => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})} placeholder="تلقائي" />
+               <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-readable" value={newInvoice.invoiceNumber} onChange={e => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})} placeholder="تلقائي" />
             </div>
             <div className="flex flex-col gap-1">
                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">العملة</label>
@@ -418,22 +431,25 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                                 {filteredInventoryForUsed.length === 0 ? (
                                   <div className="p-4 text-center text-xs text-zinc-400 italic font-bold">لا يوجد نتائج تطابق بحثك</div>
                                 ) : (
-                                  filteredInventoryForUsed.map(item => (
-                                    <div 
-                                      key={item.id} 
-                                      onClick={() => handleSelectUsedMaterial(item)}
-                                      className="p-3 border-b dark:border-zinc-800 hover:bg-rose-50 dark:hover:bg-rose-900/20 cursor-pointer flex justify-between items-center group transition-colors"
-                                    >
-                                      <div className="flex flex-col">
-                                        <span className="text-[11px] font-black group-hover:text-rose-600">{item.name}</span>
-                                        <span className="text-[8px] font-mono text-zinc-400">{item.code}</span>
+                                  filteredInventoryForUsed.map(item => {
+                                    const activeBalance = getDynamicBalance(item);
+                                    return (
+                                      <div 
+                                        key={item.id} 
+                                        onClick={() => handleSelectUsedMaterial(item)}
+                                        className="p-3 border-b dark:border-zinc-800 hover:bg-rose-50 dark:hover:bg-rose-900/20 cursor-pointer flex justify-between items-center group transition-colors"
+                                      >
+                                        <div className="flex flex-col">
+                                          <span className="text-[11px] font-black group-hover:text-rose-600">{item.name}</span>
+                                          <span className="text-[8px] font-mono text-zinc-400">{item.code}</span>
+                                        </div>
+                                        <div className="text-left flex flex-col items-end">
+                                          <span className={`text-[10px] font-black ${activeBalance <= 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{activeBalance} {item.unit}</span>
+                                          <span className="text-[7px] text-zinc-400 uppercase font-black">الرصيد المتاح حالياً</span>
+                                        </div>
                                       </div>
-                                      <div className="text-left flex flex-col items-end">
-                                        <span className={`text-[10px] font-black ${item.currentBalance <= 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{item.currentBalance} {item.unit}</span>
-                                        <span className="text-[7px] text-zinc-400 uppercase font-black">الرصيد المتاح</span>
-                                      </div>
-                                    </div>
-                                  ))
+                                    );
+                                  })
                                 )}
                              </div>
                            )}

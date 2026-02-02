@@ -29,13 +29,40 @@ export enum AppView {
   ARCHIVES = 'ARCHIVES',
   CASH_FILE = 'CASH_FILE',
   INVESTMENT_REPORTS = 'INVESTMENT_REPORTS',
-  ACCOUNTING_CATEGORIES = 'ACCOUNTING_CATEGORIES'
+  ACCOUNTING_CATEGORIES = 'ACCOUNTING_CATEGORIES',
+  ACCOUNTING_CENTER = 'ACCOUNTING_CENTER',
+  GENERAL_LEDGER = 'GENERAL_LEDGER'
 }
 
 export enum PartyType {
   CUSTOMER = 'عميل',
   SUPPLIER = 'مورد',
   BOTH = 'عميل ومورد'
+}
+
+export interface OpeningEntry {
+  id: string;
+  accountName: string;
+  accountType: 'أصول' | 'خصوم' | 'حقوق ملكية';
+  debit: number;
+  credit: number;
+  date: string;
+  notes: string;
+}
+
+export interface PeriodicInventory {
+  id: string;
+  date: string;
+  type: 'OPENING' | 'CLOSING';
+  items: {
+    itemCode: string;
+    itemName: string;
+    quantity: number;
+    price: number;
+    total: number;
+  }[];
+  totalValue: number;
+  notes: string;
 }
 
 export interface AccountingCategory {
@@ -166,12 +193,12 @@ export interface CashEntry {
   receivedUSD: number;
   paidUSD: number;
   notes: string;
-  type?: 'قبض' | 'دفع' | 'بيع' | 'شراء' | 'مرتجع';
+  type?: 'قبض' | 'دفع' | 'بيع' | 'شراء' | 'مرتجع' | 'افتتاحي';
   voucherNumber?: string;
   partyName?: string;
   amount?: number;
   amountLiteral?: string;
-  categoryId?: string; // ربط القيد بالقسم
+  categoryId?: string; 
 }
 
 export interface ArchiveEntry {
