@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Plus, Trash2, Edit2, Search, Users, Building2, Save, X, Phone, MapPin, Printer, Calendar } from 'lucide-react';
-import { Party, PartyType, AppSettings } from '../types';
+import { Party, PartyType, AppSettings, AccountNode } from '../types';
 
 interface PartyManagementViewProps {
   onBack: () => void;
@@ -26,36 +26,80 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
     if (savedSettings) setSettings(JSON.parse(savedSettings));
   }, []);
 
+  const syncToChartOfAccounts = (party: Party, isDelete: boolean = false) => {
+    const savedChart = localStorage.getItem('sheno_chart_accounts');
+    if (!savedChart) return;
+    
+    let chart: AccountNode[] = JSON.parse(savedChart);
+    
+    // تحديد المجلد الأب بناءً على نوع الطرف
+    // 121 للزبائن و 221 للموردين (بناءً على التنسيق الافتراضي للدليل)
+    const parentId = party.type === PartyType.SUPPLIER ? '211' : '121'; 
+    const reportType = party.type === PartyType.SUPPLIER ? 'الميزانية' : 'الميزانية';
+
+    if (isDelete) {
+      chart = chart.filter(acc => acc.name !== party.name);
+    } else {
+      const existingIdx = chart.findIndex(acc => acc.name === party.name || acc.code === `ACC-${party.code}`);
+      const accountData: AccountNode = {
+        id: editingId ? (chart[existingIdx]?.id || crypto.randomUUID()) : crypto.randomUUID(),
+        code: party.code ? `ACC-${party.code}` : `ACC-${Math.floor(Math.random() * 1000)}`,
+        name: party.name,
+        parentId: parentId,
+        type: 'ACCOUNT',
+        reportType: reportType as any
+      };
+
+      if (existingIdx > -1) chart[existingIdx] = accountData;
+      else chart.push(accountData);
+    }
+
+    localStorage.setItem('sheno_chart_accounts', JSON.stringify(chart));
+  };
+
   const handleSave = () => {
     if (!formData.name) return;
     
     let updated: Party[];
+    const partyToSave = { ...formData, id: editingId || crypto.randomUUID() } as Party;
+
     if (editingId) {
-      updated = parties.map(p => p.id === editingId ? { ...p, ...formData } as Party : p);
+      updated = parties.map(p => p.id === editingId ? partyToSave : p);
     } else {
-      updated = [...parties, { ...formData, id: crypto.randomUUID() } as Party];
+      updated = [...parties, partyToSave];
     }
 
     setParties(updated);
     localStorage.setItem('sheno_parties', JSON.stringify(updated));
+    
+    // المزامنة مع دليل الحسابات
+    syncToChartOfAccounts(partyToSave);
+    
     setIsAdding(false);
     setEditingId(null);
     setFormData({ name: '', code: '', phone: '', address: '', type: PartyType.CUSTOMER, openingBalance: 0 });
   };
 
+  const handleDelete = (id: string) => {
+    const party = parties.find(p => p.id === id);
+    if (party && window.confirm('حذف هذا الحساب نهائياً من النظام؟ سيتم حذفه من دليل الحسابات أيضاً.')) {
+      const updated = parties.filter(x => x.id !== id);
+      setParties(updated);
+      localStorage.setItem('sheno_parties', JSON.stringify(updated));
+      syncToChartOfAccounts(party, true);
+    }
+  };
+
   const filteredParties = parties.filter(p => {
-    const matchSearch = p.name.includes(searchTerm) || p.code.includes(searchTerm);
+    const nameStr = p.name || '';
+    const codeStr = p.code || '';
+    const matchSearch = nameStr.includes(searchTerm) || codeStr.includes(searchTerm);
     const matchType = filterType === 'الكل' || p.type === filterType;
     return matchSearch && matchType;
   });
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
     <div className="space-y-6">
-      {/* Print Header - Updated to white background for eye comfort */}
       <div className="print-only print-header flex justify-between items-center bg-white p-6 rounded-t-xl text-zinc-900 mb-0 border-b-2 border-zinc-200">
         <div className="flex items-center gap-4">
           {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg border border-zinc-100" />}
@@ -82,7 +126,7 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
           <h2 className="text-2xl font-black text-readable">إدارة العملاء والموردين</h2>
         </div>
         <div className="flex gap-2">
-          <button onClick={handlePrint} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:bg-zinc-700 transition-all">
+          <button onClick={() => window.print()} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:bg-zinc-700 transition-all">
             <Printer className="w-5 h-5" /> طباعة القائمة
           </button>
           <button onClick={() => { setIsAdding(true); setEditingId(null); }} className="bg-primary text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-primary/20 transition-all hover:brightness-110 active:scale-95">
@@ -162,17 +206,11 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
               <div className={`absolute left-0 top-0 bottom-0 w-2 ${p.type === PartyType.CUSTOMER ? 'bg-blue-600' : p.type === PartyType.SUPPLIER ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
               <div className="flex justify-between items-start mb-4">
                  <div className={`p-4 rounded-2xl ${p.type === PartyType.CUSTOMER ? 'bg-blue-600/10 text-blue-600' : p.type === PartyType.SUPPLIER ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                    {p.type === PartyType.CUSTOMER ? <Users className="w-7 h-7" /> : p.type === PartyType.SUPPLIER ? <Building2 className="w-7 h-7" /> : <Users className="w-7 h-7" />}
+                    <Users className="w-7 h-7" />
                  </div>
                  <div className="flex gap-1">
                     <button onClick={() => { setEditingId(p.id); setFormData(p); setIsAdding(true); }} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl text-zinc-400 hover:text-primary transition-all shadow-sm"><Edit2 className="w-4 h-4" /></button>
-                    <button onClick={() => {
-                       if(window.confirm('حذف هذا الحساب نهائياً من النظام؟')) {
-                          const updated = parties.filter(x => x.id !== p.id);
-                          setParties(updated);
-                          localStorage.setItem('sheno_parties', JSON.stringify(updated));
-                       }
-                    }} className="p-2 hover:bg-rose-500/10 rounded-xl text-zinc-400 hover:text-rose-500 transition-all shadow-sm"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => handleDelete(p.id)} className="p-2 hover:bg-rose-500/10 rounded-xl text-zinc-400 hover:text-rose-500 transition-all shadow-sm"><Trash2 className="w-4 h-4" /></button>
                  </div>
               </div>
               <div className="flex-1">
@@ -196,46 +234,6 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
               </div>
            </div>
          ))}
-      </div>
-
-      {/* Printable Table Section - Enhanced for professional output */}
-      <div className="print-only">
-        <table className="w-full text-right border-collapse">
-          <thead>
-            <tr className="bg-zinc-100 font-black text-xs border-y-2 border-zinc-900 h-12">
-              <th className="p-3 border border-zinc-300 w-24">كود الحساب</th>
-              <th className="p-3 border border-zinc-300">الاسم والبيان</th>
-              <th className="p-3 border border-zinc-300 text-center w-28">النوع</th>
-              <th className="p-3 border border-zinc-300 w-32">رقم الهاتف</th>
-              <th className="p-3 border border-zinc-300">العنوان الرسمي</th>
-              <th className="p-3 border border-zinc-300 text-left w-36 bg-zinc-50">رصيد افتتاحي</th>
-            </tr>
-          </thead>
-          <tbody className="text-xs font-bold text-zinc-800">
-            {filteredParties.map(p => (
-              <tr key={p.id} className="h-10 border-b border-zinc-200 hover:bg-zinc-50 transition-colors">
-                <td className="p-3 border border-zinc-300 font-mono text-zinc-500">#{p.code}</td>
-                <td className="p-3 border border-zinc-300 text-sm font-black text-zinc-900">{p.name}</td>
-                <td className="p-3 border border-zinc-300 text-center">{p.type}</td>
-                <td className="p-3 border border-zinc-300 font-mono" dir="ltr">{p.phone}</td>
-                <td className="p-3 border border-zinc-300">{p.address}</td>
-                <td className="p-3 border border-zinc-300 text-left font-mono font-black text-rose-900 bg-zinc-50/50">{p.openingBalance.toLocaleString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* Print Only Footer Branding */}
-        <div className="mt-12 pt-8 border-t border-zinc-200 flex justify-between items-end text-[10px] font-black text-zinc-400">
-           <div className="flex flex-col gap-1">
-              <span>SAMLATOR SECURED LEDGER SYSTEM V4.1</span>
-              <span>تاريخ استخراج المستند: {new Date().toLocaleString('ar-SA')}</span>
-           </div>
-           <div className="text-center">
-              <div className="w-48 border-b-2 border-zinc-200 mb-2 mx-auto"></div>
-              <span>توقيع مدير الحسابات / الختم الرسمي</span>
-           </div>
-        </div>
       </div>
     </div>
   );

@@ -37,7 +37,9 @@ export enum AppView {
   TRADING_ACCOUNT = 'TRADING_ACCOUNT',
   INCOME_STATEMENT = 'INCOME_STATEMENT',
   OPENING_ENTRIES = 'OPENING_ENTRIES',
-  PERIODIC_INVENTORY = 'PERIODIC_INVENTORY'
+  PERIODIC_INVENTORY = 'PERIODIC_INVENTORY',
+  DOLLAR_BALANCES = 'DOLLAR_BALANCES',
+  INVOICE_GALLERY = 'INVOICE_GALLERY'
 }
 
 export interface AccountNode {
@@ -85,6 +87,7 @@ export interface AccountingCategory {
   name: string;
   type: 'مصروفات' | 'إيرادات';
   notes?: string;
+  linkedAccountId?: string;
 }
 
 export interface AppSettings {
@@ -216,6 +219,15 @@ export interface CashEntry {
   categoryId?: string; 
 }
 
+// Added missing WarehouseEntity interface
+export interface WarehouseEntity {
+  id: string;
+  name: string;
+  location: string;
+  isMain: boolean;
+}
+
+// Added missing ArchiveEntry interface
 export interface ArchiveEntry {
   id: string;
   archiveDate: string;
@@ -223,11 +235,4 @@ export interface ArchiveEntry {
   periodStart: string;
   periodEnd: string;
   data: string;
-}
-
-export interface WarehouseEntity {
-  id: string;
-  name: string;
-  location: string;
-  isMain: boolean;
 }

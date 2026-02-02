@@ -33,6 +33,8 @@ import AccountingCenterView from './components/AccountingCenterView';
 import GeneralLedgerView from './components/GeneralLedgerView';
 import ChartOfAccountsView from './components/ChartOfAccountsView';
 import LoginView from './components/LoginView';
+import DollarBalancesView from './components/DollarBalancesView';
+import InvoiceGalleryView from './components/InvoiceGalleryView';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
@@ -204,6 +206,8 @@ const App: React.FC = () => {
             case AppView.INVESTMENT_REPORTS: return <InvestmentReportsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.ACCOUNTING_CATEGORIES: return <AccountingCategoriesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.GENERAL_LEDGER: return <GeneralLedgerView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.DOLLAR_BALANCES: return <DollarBalancesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.INVOICE_GALLERY: return <InvoiceGalleryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             
             // الروابط المباشرة للمركز المحاسبي بوضع isSingleView
             case AppView.CHART_OF_ACCOUNTS: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="CHART_OF_ACCOUNTS" isSingleView={true} />;

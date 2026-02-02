@@ -4,7 +4,7 @@ import {
   ShoppingCart, Warehouse, Wallet, Settings, TrendingUp, 
   Landmark, BookOpen, Scale, Box, PieChart, Activity, 
   BarChart3, ListTree, History, FileOutput, Users, 
-  ClipboardList, Receipt, Layers
+  ClipboardList, Receipt, Layers, Coins, ImageIcon
 } from 'lucide-react';
 import { AppView } from './types';
 
@@ -26,6 +26,7 @@ export const MENU_GROUPS = [
     icon: <Wallet className="w-5 h-5" />,
     items: [
       { label: 'دفتر الأستاذ العام', view: AppView.GENERAL_LEDGER },
+      { label: 'أرصدة وحركات الدولار', view: AppView.DOLLAR_BALANCES },
       { label: 'ملف الصندوق اليومي', view: AppView.CASH_FILE },
       { label: 'دفتر اليومية الشامل', view: AppView.CASH_JOURNAL },
       { label: 'سندات القبض والدفع', view: AppView.RECEIPT_VOUCHER },
@@ -61,6 +62,7 @@ export const MENU_GROUPS = [
     title: 'التقارير المتقدمة',
     icon: <TrendingUp className="w-5 h-5" />,
     items: [
+      { label: 'صور وبطاقات الفواتير', view: AppView.INVOICE_GALLERY },
       { label: 'حركة مادة مفصلة', view: AppView.DETAILED_ITEM_MOVEMENT },
       { label: 'تكاليف فاتورة محددة', view: AppView.CUSTOMER_INVOICE_COSTS },
       { label: 'تصدير فاتورة احترافي', view: AppView.PROFESSIONAL_INVOICE },
