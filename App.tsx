@@ -31,6 +31,7 @@ import InvestmentReportsView from './components/InvestmentReportsView';
 import AccountingCategoriesView from './components/AccountingCategoriesView';
 import AccountingCenterView from './components/AccountingCenterView';
 import GeneralLedgerView from './components/GeneralLedgerView';
+import ChartOfAccountsView from './components/ChartOfAccountsView';
 import LoginView from './components/LoginView';
 
 const App: React.FC = () => {
@@ -202,8 +203,16 @@ const App: React.FC = () => {
             case AppView.ARCHIVES: return <ArchivesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.INVESTMENT_REPORTS: return <InvestmentReportsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.ACCOUNTING_CATEGORIES: return <AccountingCategoriesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
-            case AppView.ACCOUNTING_CENTER: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.GENERAL_LEDGER: return <GeneralLedgerView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            
+            // الروابط المباشرة للمركز المحاسبي بوضع isSingleView
+            case AppView.CHART_OF_ACCOUNTS: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="CHART_OF_ACCOUNTS" isSingleView={true} />;
+            case AppView.BALANCE_SHEET: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="REPORTS" initialReportType="BALANCE_SHEET" isSingleView={true} />;
+            case AppView.TRADING_ACCOUNT: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="REPORTS" initialReportType="TRADING" isSingleView={true} />;
+            case AppView.INCOME_STATEMENT: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="REPORTS" initialReportType="INCOME_STATEMENT" isSingleView={true} />;
+            case AppView.OPENING_ENTRIES: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="OPENING_ENTRY" isSingleView={true} />;
+            case AppView.PERIODIC_INVENTORY: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="INVENTORY_TOOLS" isSingleView={true} />;
+            
             default: return <Dashboard setView={setCurrentView} />;
           }
         })()}

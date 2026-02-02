@@ -4,7 +4,7 @@ import {
   ArrowRight, Landmark, PieChart, TrendingUp, TrendingDown, 
   DollarSign, Calculator, Printer, ImageIcon, 
   Plus, Save, Trash2, X, ChevronDown, ChevronRight, MinusSquare, PlusSquare,
-  Box, Search, RefreshCw, Scale
+  Box, Search, RefreshCw, Scale, ListTree
 } from 'lucide-react';
 import { 
   OpeningEntry, PeriodicInventory, AppSettings, CashEntry, 
@@ -13,10 +13,11 @@ import {
 import { ImageExportService } from '../utils/ImageExportService';
 import { exportToCSV } from '../utils/export';
 import { tafqeet } from '../utils/tafqeet';
+import ChartOfAccountsView from './ChartOfAccountsView';
 
 interface AccountingCenterViewProps {
   onBack: () => void;
-  initialTab?: 'REPORTS' | 'OPENING_ENTRY' | 'INVENTORY_TOOLS';
+  initialTab?: 'REPORTS' | 'OPENING_ENTRY' | 'INVENTORY_TOOLS' | 'CHART_OF_ACCOUNTS';
   initialReportType?: 'BALANCE_SHEET' | 'INCOME_STATEMENT' | 'TRADING';
   isSingleView?: boolean;
 }
@@ -28,7 +29,7 @@ const AccountingCenterView: React.FC<AccountingCenterViewProps> = ({
   isSingleView = false 
 }) => {
   const reportRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<'REPORTS' | 'OPENING_ENTRY' | 'INVENTORY_TOOLS'>(initialTab || 'REPORTS');
+  const [activeTab, setActiveTab] = useState<'REPORTS' | 'OPENING_ENTRY' | 'INVENTORY_TOOLS' | 'CHART_OF_ACCOUNTS'>(initialTab || 'REPORTS');
   const [reportType, setReportType] = useState<'BALANCE_SHEET' | 'INCOME_STATEMENT' | 'TRADING'>(initialReportType || 'BALANCE_SHEET');
   
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -53,7 +54,6 @@ const AccountingCenterView: React.FC<AccountingCenterViewProps> = ({
   const [invItems, setInvItems] = useState<PeriodicInventory['items']>([]);
   const [itemSearch, setItemSearch] = useState('');
   const [showItemResults, setShowItemResults] = useState(false);
-  // Add dedicated state for periodic inventory total to avoid type conflicts with OpeningEntry
   const [inventoryTotal, setInventoryTotal] = useState<number>(0);
 
   useEffect(() => {
@@ -182,7 +182,8 @@ const AccountingCenterView: React.FC<AccountingCenterViewProps> = ({
                       reportType === 'BALANCE_SHEET' ? 'الميزانية العمومية' :
                       reportType === 'TRADING' ? 'حساب المتاجرة' :
                       reportType === 'INCOME_STATEMENT' ? 'الأرباح والخسائر' : 
-                      activeTab === 'OPENING_ENTRY' ? 'القيود الافتتاحية' : 'الجرد الدوري'
+                      activeTab === 'OPENING_ENTRY' ? 'القيود الافتتاحية' : 
+                      activeTab === 'CHART_OF_ACCOUNTS' ? 'دليل الحسابات' : 'الجرد الدوري'
                    ) : 'المركز المحاسبي المالي الذكي'}
                 </h2>
                 <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">إدارة الدورة المحاسبية الكاملة</p>
@@ -204,6 +205,9 @@ const AccountingCenterView: React.FC<AccountingCenterViewProps> = ({
            <button onClick={() => setActiveTab('REPORTS')} className={`flex-1 py-4 rounded-3xl font-black text-sm flex items-center justify-center gap-3 transition-all ${activeTab === 'REPORTS' ? 'bg-primary text-white shadow-xl' : 'text-zinc-500 hover:text-zinc-700'}`}>
               <PieChart className="w-5 h-5" /> التقارير الختامية
            </button>
+           <button onClick={() => setActiveTab('CHART_OF_ACCOUNTS')} className={`flex-1 py-4 rounded-3xl font-black text-sm flex items-center justify-center gap-3 transition-all ${activeTab === 'CHART_OF_ACCOUNTS' ? 'bg-primary text-white shadow-xl' : 'text-zinc-500 hover:text-zinc-700'}`}>
+              <ListTree className="w-5 h-5" /> دليل الحسابات
+           </button>
            <button onClick={() => setActiveTab('OPENING_ENTRY')} className={`flex-1 py-4 rounded-3xl font-black text-sm flex items-center justify-center gap-3 transition-all ${activeTab === 'OPENING_ENTRY' ? 'bg-primary text-white shadow-xl' : 'text-zinc-500 hover:text-zinc-700'}`}>
               <Scale className="w-5 h-5" /> القيد الافتتاحي
            </button>
@@ -213,6 +217,9 @@ const AccountingCenterView: React.FC<AccountingCenterViewProps> = ({
         </div>
       )}
 
+      {activeTab === 'CHART_OF_ACCOUNTS' ? (
+         <ChartOfAccountsView />
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {!isSingleView && (
           <div className="lg:col-span-1 space-y-6 no-print">
@@ -395,6 +402,7 @@ const AccountingCenterView: React.FC<AccountingCenterViewProps> = ({
            )}
         </div>
       </div>
+      )}
 
       {isAddingEntry && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
@@ -427,16 +435,14 @@ const AccountingCenterView: React.FC<AccountingCenterViewProps> = ({
               </div>
               <div className="space-y-4">
                  <p className="text-xs text-zinc-500 font-bold">يرجى إدخال القيمة الكلية المقدرة للجرد حسب {invType === 'OPENING' ? 'بداية الفترة' : 'نهاية الفترة'}</p>
-                 {/* FIX: Use inventoryTotal state instead of formData.openingStock which caused type errors */}
                  <input type="number" placeholder="القيمة المالية الكلية للجرد..." className="w-full bg-zinc-50 dark:bg-zinc-950 border-4 border-zinc-100 p-6 rounded-2xl text-center text-3xl font-mono font-black text-primary outline-none focus:border-primary transition-all" value={inventoryTotal} onChange={e => setInventoryTotal(Number(e.target.value))} />
                  <button onClick={() => {
-                    /* FIX: Use inventoryTotal instead of formData.openingStock */
                     const total = inventoryTotal || 0;
                     const newInv: PeriodicInventory = { id: crypto.randomUUID(), date: new Date().toISOString().split('T')[0], type: invType, items: [], totalValue: total, notes: '' };
                     const updated = [newInv, ...inventories];
                     localStorage.setItem('sheno_periodic_inventories', JSON.stringify(updated));
                     setIsAddingInventory(false);
-                    setInventoryTotal(0); // Reset for next use
+                    setInventoryTotal(0); 
                     loadData();
                  }} className="w-full bg-zinc-900 text-white py-4 rounded-2xl font-black shadow-lg">تثبيت واعتماد الجرد</button>
               </div>

@@ -31,7 +31,22 @@ export enum AppView {
   INVESTMENT_REPORTS = 'INVESTMENT_REPORTS',
   ACCOUNTING_CATEGORIES = 'ACCOUNTING_CATEGORIES',
   ACCOUNTING_CENTER = 'ACCOUNTING_CENTER',
-  GENERAL_LEDGER = 'GENERAL_LEDGER'
+  GENERAL_LEDGER = 'GENERAL_LEDGER',
+  CHART_OF_ACCOUNTS = 'CHART_OF_ACCOUNTS',
+  BALANCE_SHEET = 'BALANCE_SHEET',
+  TRADING_ACCOUNT = 'TRADING_ACCOUNT',
+  INCOME_STATEMENT = 'INCOME_STATEMENT',
+  OPENING_ENTRIES = 'OPENING_ENTRIES',
+  PERIODIC_INVENTORY = 'PERIODIC_INVENTORY'
+}
+
+export interface AccountNode {
+  id: string;
+  code: string;
+  name: string;
+  parentId: string | null;
+  type: 'FOLDER' | 'ACCOUNT';
+  reportType: 'الميزانية' | 'المتاجرة' | 'الأرباح والخسائر';
 }
 
 export enum PartyType {
