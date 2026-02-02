@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Save, X, ShoppingBag, Truck, ScrollText, Calendar, Hash, Box, Printer, FileDown, Coins, CreditCard } from 'lucide-react';
-import { PurchaseInvoice, InvoiceItem, StockEntry, Party, PartyType, CashEntry, AppSettings } from '../types';
+import { ArrowRight, Plus, Trash2, Edit2, Save, X, ShoppingBag, Truck, ScrollText, Calendar, Hash, Box, Printer, FileDown, Coins, CreditCard, Search, MessageSquare, Tag } from 'lucide-react';
+import { PurchaseInvoice, InvoiceItem, StockEntry, Party, PartyType, CashEntry, AppSettings, InventoryItem } from '../types';
 import { exportToCSV } from '../utils/export';
 
 interface PurchaseInvoiceViewProps {
@@ -11,11 +11,16 @@ interface PurchaseInvoiceViewProps {
 const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => {
   const [purchases, setPurchases] = useState<PurchaseInvoice[]>([]);
   const [parties, setParties] = useState<Party[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [selectedCurrencyType, setSelectedCurrencyType] = useState<'primary' | 'secondary'>('primary');
   
+  // States for search and selection
+  const [itemSearch, setItemSearch] = useState('');
+  const [showItemResults, setShowItemResults] = useState(false);
+
   const [newInvoice, setNewInvoice] = useState<Partial<PurchaseInvoice>>({
     invoiceNumber: '',
     supplierName: '',
@@ -25,35 +30,66 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
     paidAmount: 0
   });
 
-  const [newItem, setNewItem] = useState({ name: '', quantity: 1, unit: 'قطعة', price: 0 });
+  const [newItem, setNewItem] = useState({ 
+    name: '', 
+    code: '', 
+    quantity: 1, 
+    unit: 'قطعة', 
+    price: 0, 
+    notes: '',
+    isCustomUnit: false,
+    customUnit: ''
+  });
 
   useEffect(() => {
     const saved = localStorage.getItem('sheno_purchases');
     const savedParties = localStorage.getItem('sheno_parties');
     const savedSettings = localStorage.getItem('sheno_settings');
+    const savedInventory = localStorage.getItem('sheno_inventory_list');
+
     if (saved) setPurchases(JSON.parse(saved));
     if (savedSettings) setSettings(JSON.parse(savedSettings));
+    if (savedInventory) setInventory(JSON.parse(savedInventory));
+    
     if (savedParties) {
        const allParties = JSON.parse(savedParties);
        setParties(allParties.filter((p: Party) => p.type === PartyType.SUPPLIER || p.type === PartyType.BOTH));
     }
   }, []);
 
+  const handleSelectItem = (item: InventoryItem) => {
+    setNewItem({
+      ...newItem,
+      name: item.name,
+      code: item.code,
+      unit: item.unit,
+      price: item.price,
+      isCustomUnit: !['قطعة', 'كيلو', 'متر', 'طرد', 'كرتونة'].includes(item.unit)
+    });
+    setItemSearch(item.name);
+    setShowItemResults(false);
+  };
+
   const handleAddItem = () => {
     if (!newItem.name || newItem.quantity <= 0) return;
+    
+    const finalUnit = newItem.isCustomUnit ? newItem.customUnit : newItem.unit;
+    
     const item: InvoiceItem = {
       id: crypto.randomUUID(),
-      code: 'PUR-' + Math.floor(Math.random() * 1000),
+      code: newItem.code || ('PUR-' + Math.floor(Math.random() * 1000)),
       name: newItem.name,
       quantity: newItem.quantity,
-      unit: newItem.unit,
+      unit: finalUnit || 'قطعة',
       price: newItem.price,
       total: newItem.quantity * newItem.price,
       date: newInvoice.date!,
-      notes: ''
+      notes: newItem.notes
     };
+
     setNewInvoice({ ...newInvoice, items: [...(newInvoice.items || []), item] });
-    setNewItem({ name: '', quantity: 1, unit: 'قطعة', price: 0 });
+    setNewItem({ name: '', code: '', quantity: 1, unit: 'قطعة', price: 0, notes: '', isCustomUnit: false, customUnit: '' });
+    setItemSearch('');
   };
 
   const handleEdit = (p: PurchaseInvoice) => {
@@ -119,7 +155,8 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
       department: 'مشتريات وتوريد', itemCode: i.code, itemName: i.name,
       unit: i.unit, price: i.price, warehouse: 'المستودع الرئيسي',
       movementType: 'إدخال', quantity: i.quantity, invoiceNumber: invoice.invoiceNumber,
-      statement: `شراء من المورد: ${invoice.supplierName}`
+      statement: `شراء من المورد: ${invoice.supplierName}`,
+      notes: i.notes
     }));
     localStorage.setItem('sheno_stock_entries', JSON.stringify([...stockMoves, ...stockEntries]));
 
@@ -144,6 +181,11 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
     setNewInvoice({ invoiceNumber: '', supplierName: '', date: new Date().toISOString().split('T')[0], items: [], notes: '', paidAmount: 0 });
   };
 
+  const filteredInventory = inventory.filter(i => 
+    i.name.toLowerCase().includes(itemSearch.toLowerCase()) || 
+    i.code.toLowerCase().includes(itemSearch.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
        <div className="flex items-center justify-between no-print">
@@ -159,7 +201,14 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
        </div>
 
        {isAdding && (
-         <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl space-y-8 animate-in zoom-in-95">
+         <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl space-y-8 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b pb-4 dark:border-zinc-800">
+               <h3 className="text-xl font-black text-amber-600 flex items-center gap-2">
+                  <Truck className="w-6 h-6" /> {editingId ? 'تعديل فاتورة توريد' : 'إنشاء فاتورة توريد جديدة'}
+               </h3>
+               <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="text-zinc-400 hover:text-rose-500 transition-all"><X className="w-6 h-6"/></button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                <div className="flex flex-col gap-1">
                   <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المورد</label>
@@ -168,7 +217,10 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                     {parties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                   </select>
                </div>
-               <div className="flex flex-col gap-1"><label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">رقم الفاتورة</label><input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={newInvoice.invoiceNumber} onChange={e => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})} /></div>
+               <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">رقم الفاتورة</label>
+                  <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={newInvoice.invoiceNumber} onChange={e => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})} placeholder="رقم الفاتورة..." />
+               </div>
                <div className="flex flex-col gap-1">
                   <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">العملة</label>
                   <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-900 p-1 rounded-2xl border border-zinc-200 dark:border-zinc-700 h-[52px]">
@@ -176,34 +228,154 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                       <button onClick={() => setSelectedCurrencyType('secondary')} className={`flex-1 h-full rounded-xl text-[10px] font-black transition-all ${selectedCurrencyType === 'secondary' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500'}`}>{settings?.secondaryCurrencySymbol || '$'}</button>
                   </div>
                </div>
-               <div className="flex flex-col gap-1"><label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">تاريخ التوريد</label><input type="date" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={newInvoice.date} onChange={e => setNewInvoice({...newInvoice, date: e.target.value})} /></div>
-               <div className="flex flex-col gap-1"><label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المدفوع نقداً</label><input type="number" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-black text-rose-500 outline-none" value={newInvoice.paidAmount} onChange={e => setNewInvoice({...newInvoice, paidAmount: Number(e.target.value)})} /></div>
+               <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">تاريخ التوريد</label>
+                  <input type="date" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none" value={newInvoice.date} onChange={e => setNewInvoice({...newInvoice, date: e.target.value})} />
+               </div>
+               <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المدفوع نقداً</label>
+                  <input type="number" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-black text-rose-500 outline-none text-xl" value={newInvoice.paidAmount} onChange={e => setNewInvoice({...newInvoice, paidAmount: Number(e.target.value)})} />
+               </div>
             </div>
 
-            <div className="bg-zinc-50 dark:bg-zinc-800/50 p-6 rounded-3xl border space-y-4 shadow-inner">
-               <h4 className="text-sm font-black text-amber-600 flex items-center gap-2 border-b pb-2 uppercase tracking-widest"><ShoppingBag className="w-4 h-4" /> بنود التوريد</h4>
-               <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-                  <input type="text" placeholder="المادة..." className="md:col-span-2 bg-white dark:bg-zinc-900 p-3 rounded-xl border font-bold outline-none" value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
-                  <input type="number" placeholder="كمية" className="bg-white dark:bg-zinc-900 p-3 rounded-xl border text-center font-bold" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: Number(e.target.value)})} />
-                  <select className="bg-white dark:bg-zinc-900 p-3 rounded-xl border font-bold outline-none" value={newItem.unit} onChange={e => setNewItem({...newItem, unit: e.target.value})}><option value="قطعة">قطعة</option><option value="كيلو">كيلو</option><option value="طرد">طرد</option></select>
-                  <input type="number" placeholder="سعر" className="bg-white dark:bg-zinc-900 p-3 rounded-xl border text-center font-bold" value={newItem.price} onChange={e => setNewItem({...newItem, price: Number(e.target.value)})} />
-                  <button onClick={handleAddItem} className="bg-amber-600 text-white rounded-xl shadow-lg font-black">إضافة</button>
+            <div className="bg-zinc-50 dark:bg-zinc-800/50 p-6 rounded-[2rem] border dark:border-zinc-700 space-y-6 shadow-inner">
+               <h4 className="text-sm font-black text-amber-600 flex items-center gap-2 border-b pb-2 uppercase tracking-widest"><ShoppingBag className="w-4 h-4" /> إضافة بنود الفاتورة</h4>
+               
+               <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                  {/* Item Selection/Name */}
+                  <div className="md:col-span-3 relative">
+                     <label className="text-[9px] font-black text-zinc-400 mb-1 block">اسم المادة (جديدة أو من المخزن)</label>
+                     <div className="relative">
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                        <input 
+                           type="text" 
+                           placeholder="ابحث أو اكتب مادة جديدة..." 
+                           className="bg-white dark:bg-zinc-950 p-3 pr-10 rounded-xl border-2 dark:border-zinc-700 font-bold outline-none w-full focus:border-amber-500 transition-all text-sm" 
+                           value={itemSearch} 
+                           onFocus={() => setShowItemResults(true)}
+                           onChange={e => {
+                              setItemSearch(e.target.value);
+                              setNewItem({...newItem, name: e.target.value});
+                              setShowItemResults(true);
+                           }} 
+                        />
+                        {showItemResults && itemSearch.length > 0 && (
+                           <div className="absolute top-full right-0 left-0 mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl z-[100] max-h-48 overflow-y-auto">
+                              {filteredInventory.length === 0 ? (
+                                 <div className="p-3 text-center text-[10px] text-zinc-400 italic">مادة جديدة غير مسجلة</div>
+                              ) : (
+                                 filteredInventory.map(item => (
+                                    <div 
+                                       key={item.id} 
+                                       onClick={() => handleSelectItem(item)}
+                                       className="p-3 border-b dark:border-zinc-800 hover:bg-amber-50 dark:hover:bg-amber-900/10 cursor-pointer flex justify-between items-center group transition-colors"
+                                    >
+                                       <span className="font-bold text-xs group-hover:text-amber-600">{item.name}</span>
+                                       <span className="text-[10px] text-zinc-400 font-mono">#{item.code}</span>
+                                    </div>
+                                 ))
+                              )}
+                           </div>
+                        )}
+                     </div>
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="md:col-span-1">
+                     <label className="text-[9px] font-black text-zinc-400 mb-1 block">الكمية</label>
+                     <input type="number" placeholder="كمية" className="bg-white dark:bg-zinc-950 p-3 rounded-xl border-2 dark:border-zinc-700 text-center font-black text-emerald-500 w-full" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: Number(e.target.value)})} />
+                  </div>
+
+                  {/* Unit */}
+                  <div className="md:col-span-2">
+                     <label className="text-[9px] font-black text-zinc-400 mb-1 block">نوع الوحدة</label>
+                     <div className="flex gap-1">
+                        <select className="bg-white dark:bg-zinc-950 p-3 rounded-xl border-2 dark:border-zinc-700 font-bold outline-none flex-1 text-xs" value={newItem.unit} onChange={e => setNewItem({...newItem, unit: e.target.value, isCustomUnit: e.target.value === 'CUSTOM'})}>
+                           <option value="قطعة">قطعة</option>
+                           <option value="كيلو">كيلو</option>
+                           <option value="متر">متر</option>
+                           <option value="طرد">طرد</option>
+                           <option value="كرتونة">كرتونة</option>
+                           <option value="CUSTOM">-- وحدة مخصصة --</option>
+                        </select>
+                        {newItem.isCustomUnit && (
+                           <input 
+                              type="text" 
+                              placeholder="الوحدة..." 
+                              className="w-20 bg-white dark:bg-zinc-950 p-3 rounded-xl border-2 border-amber-300 dark:border-amber-900 font-bold text-xs outline-none"
+                              value={newItem.customUnit}
+                              onChange={e => setNewItem({...newItem, customUnit: e.target.value})}
+                           />
+                        )}
+                     </div>
+                  </div>
+
+                  {/* Price */}
+                  <div className="md:col-span-2">
+                     <label className="text-[9px] font-black text-zinc-400 mb-1 block">سعر الوحدة</label>
+                     <input type="number" placeholder="سعر" className="bg-white dark:bg-zinc-950 p-3 rounded-xl border-2 dark:border-zinc-700 text-center font-black text-amber-500 w-full" value={newItem.price} onChange={e => setNewItem({...newItem, price: Number(e.target.value)})} />
+                  </div>
+
+                  {/* Item Notes */}
+                  <div className="md:col-span-3">
+                     <label className="text-[9px] font-black text-zinc-400 mb-1 block">ملاحظات البند</label>
+                     <div className="relative">
+                        <MessageSquare className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                        <input type="text" placeholder="مواصفات إضافية..." className="bg-white dark:bg-zinc-950 p-3 pr-10 rounded-xl border-2 dark:border-zinc-700 font-bold outline-none w-full text-xs" value={newItem.notes} onChange={e => setNewItem({...newItem, notes: e.target.value})} />
+                     </div>
+                  </div>
+
+                  {/* Add Button */}
+                  <div className="md:col-span-1">
+                     <button onClick={handleAddItem} className="bg-amber-600 text-white w-full h-[46px] rounded-xl shadow-lg font-black hover:bg-amber-500 transition-all">إضافة</button>
+                  </div>
                </div>
-               <div className="overflow-x-auto">
-                  <table className="w-full text-xs font-bold">
-                     <thead><tr className="text-zinc-500 uppercase border-b"><th className="p-3 text-right">المادة</th><th className="p-3 text-center">الكمية</th><th className="p-3 text-center">السعر</th><th className="p-3 text-center">المجموع</th><th className="p-3"></th></tr></thead>
-                     <tbody>
-                        {newInvoice.items?.map(item => (
-                           <tr key={item.id} className="border-b border-zinc-100"><td className="p-3">{item.name}</td><td className="p-3 text-center font-mono">{item.quantity} {item.unit}</td><td className="p-3 text-center font-mono">{item.price.toLocaleString()}</td><td className="p-3 text-center font-mono text-primary">{(item.quantity * item.price).toLocaleString()}</td><td className="p-3 text-center"><button onClick={() => setNewInvoice({...newInvoice, items: newInvoice.items?.filter(i => i.id !== item.id)})} className="text-rose-500"><Trash2 className="w-4 h-4"/></button></td></tr>
+
+               <div className="overflow-x-auto bg-white dark:bg-zinc-900 rounded-2xl border dark:border-zinc-700">
+                  <table className="w-full text-right border-collapse">
+                     <thead>
+                        <tr className="bg-zinc-50 dark:bg-zinc-800 text-[10px] text-zinc-500 font-black uppercase border-b h-10">
+                           <th className="p-3">المادة</th>
+                           <th className="p-3 text-center">الوحدة</th>
+                           <th className="p-3 text-center">الكمية</th>
+                           <th className="p-3 text-center">السعر</th>
+                           <th className="p-3 text-center">المجموع</th>
+                           <th className="p-3 text-right">ملاحظات البند</th>
+                           <th className="p-3 w-16"></th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y dark:divide-zinc-800">
+                        {newInvoice.items?.map((item, idx) => (
+                           <tr key={item.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                              <td className="p-3">
+                                 <div className="flex flex-col">
+                                    <span className="font-bold text-sm">{item.name}</span>
+                                    <span className="text-[9px] text-zinc-400 font-mono">#{item.code}</span>
+                                 </div>
+                              </td>
+                              <td className="p-3 text-center font-bold text-zinc-500 text-xs">{item.unit}</td>
+                              <td className="p-3 text-center font-mono font-black text-emerald-600">{item.quantity.toLocaleString()}</td>
+                              <td className="p-3 text-center font-mono text-zinc-600">{item.price.toLocaleString()}</td>
+                              <td className="p-3 text-center font-mono font-black text-amber-600">{(item.quantity * item.price).toLocaleString()}</td>
+                              <td className="p-3 text-right text-[10px] text-zinc-400 italic truncate max-w-[200px]">{item.notes || '-'}</td>
+                              <td className="p-3 text-center">
+                                 <button onClick={() => setNewInvoice({...newInvoice, items: newInvoice.items?.filter(i => i.id !== item.id)})} className="text-rose-500 hover:bg-rose-50 p-1 rounded-lg"><Trash2 className="w-4 h-4"/></button>
+                              </td>
+                           </tr>
                         ))}
+                        {(!newInvoice.items || newInvoice.items.length === 0) && (
+                           <tr><td colSpan={7} className="p-10 text-center text-zinc-300 font-bold text-xs italic">قم بإضافة مواد للفاتورة من الأعلى</td></tr>
+                        )}
                      </tbody>
                   </table>
                </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-6 border-t border-zinc-100 dark:border-zinc-800">
-               <button onClick={handleSave} className="bg-amber-600 text-white px-12 py-3 rounded-2xl font-black shadow-xl hover:brightness-110 flex items-center gap-2"><Save className="w-5 h-5" /> {editingId ? 'تعديل وحفظ' : 'حفظ الفاتورة'}</button>
-               <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="bg-zinc-100 text-zinc-500 px-10 py-3 rounded-2xl font-bold">إلغاء</button>
+               <button onClick={handleSave} className="bg-amber-600 text-white px-16 py-4 rounded-2xl font-black shadow-2xl hover:brightness-110 flex items-center gap-3 active:scale-95 transition-all text-xl">
+                  <Save className="w-6 h-6" /> {editingId ? 'حفظ التعديلات' : 'تثبيت وحفظ الفاتورة'}
+               </button>
+               <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-10 py-4 rounded-2xl font-bold">إلغاء</button>
             </div>
          </div>
        )}
@@ -213,38 +385,43 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
              <table className="w-full text-right border-collapse text-[11px]">
                 <thead>
                    <tr className="bg-zinc-900 text-white font-black h-14 border-b border-zinc-800 uppercase tracking-widest">
-                      <th className="p-4 border-l border-zinc-800 text-center w-20">رقم الفاتورة</th>
+                      <th className="p-4 border-l border-zinc-800 text-center w-24">رقم الفاتورة</th>
                       <th className="p-4 border-l border-zinc-800 text-center w-32">التاريخ</th>
                       <th className="p-4 border-l border-zinc-800">المورد</th>
-                      <th className="p-4 border-l border-zinc-800">الأصناف</th>
+                      <th className="p-4 border-l border-zinc-800">الأصناف والتفاصيل</th>
                       <th className="p-4 border-l border-zinc-800 text-center w-24">العملة</th>
-                      <th className="p-4 border-l border-zinc-800 text-center w-32">إجمالي الشراء</th>
+                      <th className="p-4 border-l border-zinc-800 text-center w-32 font-black text-base bg-amber-900/20">إجمالي الشراء</th>
                       <th className="p-4 border-l border-zinc-800 text-center w-32 text-rose-500">الواصل نقداً</th>
                       <th className="p-4 text-center w-32 no-print">إجراءات</th>
                    </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-900 font-bold text-zinc-300">
                    {purchases.map(p => (
-                      <tr key={p.id} className="hover:bg-zinc-900 transition-colors h-14">
+                      <tr key={p.id} className="hover:bg-zinc-900/50 transition-colors h-14">
                          <td className="p-4 border-l border-zinc-900 text-center text-amber-500 font-black">#{p.invoiceNumber}</td>
                          <td className="p-4 border-l border-zinc-900 text-center font-mono text-zinc-500">{p.date}</td>
-                         <td className="p-4 border-l border-zinc-900 text-white">{p.supplierName}</td>
+                         <td className="p-4 border-l border-zinc-900 text-white font-black">{p.supplierName}</td>
                          <td className="p-4 border-l border-zinc-900">
-                            <div className="flex flex-wrap gap-1">
-                               {p.items.map((it, i) => (<span key={i} className="bg-amber-900/20 text-amber-500 px-2 py-0.5 rounded-sm text-[9px] border border-amber-900/30">{it.name} ({it.quantity})</span>))}
+                            <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
+                               {p.items.map((it, i) => (
+                                 <div key={i} className="bg-amber-900/20 text-amber-500 px-2 py-0.5 rounded-sm text-[9px] border border-amber-900/30 flex items-center gap-2">
+                                    <span>{it.name} ({it.quantity} {it.unit})</span>
+                                    {it.notes && <span className="opacity-40 italic">[{it.notes.slice(0,10)}...]</span>}
+                                 </div>
+                               ))}
                             </div>
                          </td>
                          <td className="p-4 border-l border-zinc-900 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${p.currencySymbol === '$' ? 'text-amber-500 border-amber-500/20 bg-amber-500/5' : 'text-zinc-400 border-zinc-800 bg-zinc-900'}`}>
+                            <span className={`px-3 py-1 rounded-lg text-[10px] font-black border ${p.currencySymbol === '$' ? 'text-amber-500 border-amber-500/20 bg-amber-500/5' : 'text-zinc-400 border-zinc-800 bg-zinc-900'}`}>
                                {p.currencySymbol || settings?.currencySymbol}
                             </span>
                          </td>
-                         <td className="p-4 border-l border-zinc-900 text-center font-mono text-white text-lg">{p.totalAmount.toLocaleString()}</td>
+                         <td className="p-4 border-l border-zinc-900 text-center font-mono text-white text-lg bg-amber-900/5">{p.totalAmount.toLocaleString()}</td>
                          <td className="p-4 border-l border-zinc-900 text-center font-mono text-rose-500 text-lg">{p.paidAmount?.toLocaleString() || '0'}</td>
                          <td className="p-4 text-center no-print">
                             <div className="flex justify-center gap-2">
-                               <button onClick={() => handleEdit(p)} className="p-2 text-zinc-500 hover:text-amber-500"><Edit2 className="w-4 h-4" /></button>
-                               <button onClick={() => handleDelete(p.id, p.invoiceNumber)} className="p-2 text-zinc-500 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
+                               <button onClick={() => handleEdit(p)} className="p-2 text-zinc-500 hover:text-amber-500 transition-all bg-zinc-900 border border-zinc-800 rounded-xl" title="تعديل"><Edit2 className="w-4 h-4" /></button>
+                               <button onClick={() => handleDelete(p.id, p.invoiceNumber)} className="p-2 text-zinc-500 hover:text-rose-500 transition-all bg-zinc-900 border border-zinc-800 rounded-xl" title="حذف"><Trash2 className="w-4 h-4" /></button>
                             </div>
                          </td>
                       </tr>

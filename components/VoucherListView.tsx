@@ -204,12 +204,29 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
   const handleExportReportImage = async () => {
     if (!reportRef.current || isProcessing) return;
     setIsProcessing(true);
+    
+    // إظهار العناصر المخصصة للطباعة مؤقتاً للالتقاط
+    const reportElement = reportRef.current;
+    const printOnlyElements = reportElement.querySelectorAll('.xo-report-header-print, .print-only');
+    
+    printOnlyElements.forEach((el: any) => {
+      el.style.display = 'flex';
+      el.style.visibility = 'visible';
+      el.style.opacity = '1';
+    });
+
     try {
       await ImageExportService.exportAsPng(
-        reportRef.current, 
-        `كشف_حساب_${reportParty || 'عميل'}`
+        reportElement, 
+        `كشف_حساب_${reportParty || 'عميل'}_${new Date().getTime()}`
       );
     } finally {
+      // إعادة العناصر لوضعها الأصلي
+      printOnlyElements.forEach((el: any) => {
+        el.style.display = '';
+        el.style.visibility = '';
+        el.style.opacity = '';
+      });
       setIsProcessing(false);
     }
   };
