@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, LogOut, FileOutput, Heart } from 'lucide-react';
 import { AppView, AppSettings, SalesInvoice } from './types';
@@ -29,12 +28,18 @@ import ProfessionalInvoiceView from './components/ProfessionalInvoiceView';
 import CustomerInvoiceCostsView from './components/CustomerInvoiceCostsView';
 import InvestmentReportsView from './components/InvestmentReportsView';
 import AccountingCategoriesView from './components/AccountingCategoriesView';
-import AccountingCenterView from './components/AccountingCenterView';
 import GeneralLedgerView from './components/GeneralLedgerView';
 import ChartOfAccountsView from './components/ChartOfAccountsView';
 import LoginView from './components/LoginView';
 import DollarBalancesView from './components/DollarBalancesView';
 import InvoiceGalleryView from './components/InvoiceGalleryView';
+
+// استيراد الصفحات المفككة الجديدة للمركز المحاسبي
+import BalanceSheetView from './components/BalanceSheetView';
+import TradingAccountView from './components/TradingAccountView';
+import IncomeStatementView from './components/IncomeStatementView';
+import OpeningEntriesView from './components/OpeningEntriesView';
+import PeriodicInventoryView from './components/PeriodicInventoryView';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
@@ -209,13 +214,13 @@ const App: React.FC = () => {
             case AppView.DOLLAR_BALANCES: return <DollarBalancesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.INVOICE_GALLERY: return <InvoiceGalleryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             
-            // الروابط المباشرة للمركز المحاسبي بوضع isSingleView
-            case AppView.CHART_OF_ACCOUNTS: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="CHART_OF_ACCOUNTS" isSingleView={true} />;
-            case AppView.BALANCE_SHEET: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="REPORTS" initialReportType="BALANCE_SHEET" isSingleView={true} />;
-            case AppView.TRADING_ACCOUNT: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="REPORTS" initialReportType="TRADING" isSingleView={true} />;
-            case AppView.INCOME_STATEMENT: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="REPORTS" initialReportType="INCOME_STATEMENT" isSingleView={true} />;
-            case AppView.OPENING_ENTRIES: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="OPENING_ENTRY" isSingleView={true} />;
-            case AppView.PERIODIC_INVENTORY: return <AccountingCenterView onBack={() => setCurrentView(AppView.DASHBOARD)} initialTab="INVENTORY_TOOLS" isSingleView={true} />;
+            // صفحات المركز المحاسبي المستقلة
+            case AppView.CHART_OF_ACCOUNTS: return <ChartOfAccountsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.BALANCE_SHEET: return <BalanceSheetView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.TRADING_ACCOUNT: return <TradingAccountView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.INCOME_STATEMENT: return <IncomeStatementView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.OPENING_ENTRIES: return <OpeningEntriesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.PERIODIC_INVENTORY: return <PeriodicInventoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             
             default: return <Dashboard setView={setCurrentView} />;
           }

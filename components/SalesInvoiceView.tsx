@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, Box, Clock, FileDown, User, Hash, HardDrive, ScrollText, Image as ImageIcon, CreditCard, Coins, Upload, Search, Filter, Calendar, Package, ChevronDown, Check } from 'lucide-react';
+import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, Box, Clock, FileDown, User, Hash, HardDrive, ScrollText, Image as ImageIcon, CreditCard, Coins, Upload, Search, Filter, Calendar, Package, ChevronDown, Check, Landmark, Percent } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, StockEntry, Party, PartyType, InventoryItem, CashEntry, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 import { tafqeet } from '../utils/tafqeet';
@@ -20,14 +20,12 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
   const [selectedCurrencyType, setSelectedCurrencyType] = useState<'primary' | 'secondary'>('primary');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  // Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [showItemDropdown, setShowItemDropdown] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  // Used Material States
   const [materialSearch, setMaterialSearch] = useState('');
   const [showMaterialResults, setShowMaterialResults] = useState(false);
 
@@ -39,13 +37,14 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     usedMaterials: [],
     notes: '',
     paidAmount: 0,
-    paymentType: 'نقداً'
+    discountAmount: 0,
+    paymentType: 'نقداً',
+    cashAccount: 'الصندوق'
   });
 
   const [manualItem, setManualItem] = useState({ name: '', quantity: 1, price: 0, serialNumber: '', image: '' });
   const [usedMaterial, setUsedMaterial] = useState({ code: '', name: '', quantity: 1 });
 
-  // Load Initial Data Function
   const loadData = () => {
     const savedInv = localStorage.getItem('sheno_sales_invoices');
     const savedParties = localStorage.getItem('sheno_parties');
@@ -119,7 +118,11 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
       alert('يرجى اختيار العميل وإضافة بند واحد على الأقل');
       return;
     }
-    const total = (newInvoice.items || []).reduce((sum, item) => sum + item.total, 0);
+
+    const itemsTotal = (newInvoice.items || []).reduce((sum, item) => sum + item.total, 0);
+    const discount = Number(newInvoice.discountAmount) || 0;
+    const finalTotal = itemsTotal - discount;
+    
     const time = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
     const invNum = newInvoice.invoiceNumber || (invoices.length + 3000).toString();
     const currencyName = selectedCurrencyType === 'primary' ? (settings?.currency || 'ليرة سورية') : (settings?.secondaryCurrency || 'دولار');
@@ -130,14 +133,14 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
       id: editingId || crypto.randomUUID(),
       invoiceNumber: invNum,
       time: editingId ? (newInvoice.time || time) : time,
-      totalAmount: total,
+      totalAmount: finalTotal,
       currencySymbol: currencySymbol,
-      totalAmountLiteral: tafqeet(total, currencyName)
+      totalAmountLiteral: tafqeet(finalTotal, currencyName)
     };
 
+    // معالجة السجلات المخزنية
     const savedStock = localStorage.getItem('sheno_stock_entries');
     let stockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
-    
     if (editingId) {
       stockEntries = stockEntries.filter(e => e.invoiceNumber !== invoice.invoiceNumber);
     }
@@ -162,6 +165,50 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
 
     localStorage.setItem('sheno_stock_entries', JSON.stringify([...usedStockMoves, ...stockEntries]));
 
+    // معالجة السجلات المالية (اليومية)
+    const savedCash = localStorage.getItem('sheno_cash_journal');
+    let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
+    if (editingId) {
+      cashEntries = cashEntries.filter(e => !e.statement.includes(`فاتورة مبيعات رقم ${invoice.invoiceNumber}`));
+    }
+
+    const isPrimary = selectedCurrencyType === 'primary';
+    
+    // 1. تسجيل دفعة نقدية إذا وجدت
+    if (invoice.paidAmount && invoice.paidAmount > 0) {
+      const destination = invoice.paymentType === 'نقداً' ? (invoice.cashAccount || 'الصندوق') : 'آجل';
+      cashEntries.unshift({
+        id: crypto.randomUUID(),
+        date: invoice.date,
+        statement: `دفعة من فاتورة مبيعات رقم ${invoice.invoiceNumber} - وجهة: ${destination}`,
+        receivedSYP: isPrimary ? invoice.paidAmount : 0,
+        paidSYP: 0,
+        receivedUSD: !isPrimary ? invoice.paidAmount : 0,
+        paidUSD: 0,
+        notes: `الزبون: ${invoice.customerName}`,
+        partyName: invoice.customerName,
+        type: 'بيع'
+      });
+    }
+
+    // 2. تسجيل الحسم الممنوح في اليومية كخسارة/مصروف (اختياري محاسبياً)
+    if (discount > 0) {
+      cashEntries.unshift({
+        id: crypto.randomUUID(),
+        date: invoice.date,
+        statement: `حسم ممنوح للفاتورة رقم ${invoice.invoiceNumber}`,
+        receivedSYP: 0,
+        paidSYP: isPrimary ? discount : 0,
+        receivedUSD: 0,
+        paidUSD: !isPrimary ? discount : 0,
+        notes: `حسم للزبون: ${invoice.customerName}`,
+        partyName: invoice.customerName,
+        type: 'حسم'
+      });
+    }
+
+    localStorage.setItem('sheno_cash_journal', JSON.stringify(cashEntries));
+
     const updated = editingId ? invoices.map(i => i.id === editingId ? invoice : i) : [invoice, ...invoices];
     setInvoices(updated);
     localStorage.setItem('sheno_sales_invoices', JSON.stringify(updated));
@@ -170,10 +217,10 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     setEditingId(null);
     setNewInvoice({
       invoiceNumber: '', customerName: '', date: new Date().toISOString().split('T')[0],
-      items: [], usedMaterials: [], notes: '', paidAmount: 0, paymentType: 'نقداً'
+      items: [], usedMaterials: [], notes: '', paidAmount: 0, discountAmount: 0, paymentType: 'نقداً', cashAccount: 'الصندوق'
     });
     
-    loadData(); // Re-load to update inventory balances
+    loadData();
     if (initialInvoice) onBack(); 
   };
 
@@ -189,6 +236,11 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
         if (savedStock) {
            const stock = JSON.parse(savedStock).filter((e: StockEntry) => e.invoiceNumber !== invToDelete.invoiceNumber);
            localStorage.setItem('sheno_stock_entries', JSON.stringify(stock));
+        }
+        const savedCash = localStorage.getItem('sheno_cash_journal');
+        if (savedCash) {
+           const cash = JSON.parse(savedCash).filter((e: CashEntry) => !e.statement.includes(`رقم ${invToDelete.invoiceNumber}`));
+           localStorage.setItem('sheno_cash_journal', JSON.stringify(cash));
         }
       }
       loadData();
@@ -217,12 +269,11 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     setEditingId(null);
     setNewInvoice({
       invoiceNumber: '', customerName: '', date: new Date().toISOString().split('T')[0],
-      items: [], usedMaterials: [], notes: '', paidAmount: 0, paymentType: 'نقداً'
+      items: [], usedMaterials: [], notes: '', paidAmount: 0, discountAmount: 0, paymentType: 'نقداً', cashAccount: 'الصندوق'
     });
     if (initialInvoice) onBack();
   };
 
-  // Dynamic balance calculation that accounts for pending deductions in current invoice
   const getDynamicBalance = (item: InventoryItem) => {
     const pendingQty = (newInvoice.usedMaterials || [])
       .filter(m => m.code === item.code)
@@ -240,6 +291,8 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     setMaterialSearch(item.name);
     setShowMaterialResults(false);
   };
+
+  const currentItemsTotal = (newInvoice.items || []).reduce((sum, item) => sum + item.total, 0);
 
   return (
     <div className="space-y-6">
@@ -313,7 +366,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
             <button onClick={handleCancelEdit} className="text-zinc-400 hover:text-rose-500 transition-colors"><X className="w-6 h-6" /></button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6">
             <div className="flex flex-col gap-1">
               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">العميل</label>
               <select className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none text-readable" value={newInvoice.customerName} onChange={e => setNewInvoice({...newInvoice, customerName: e.target.value})}>
@@ -326,23 +379,55 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-readable" value={newInvoice.invoiceNumber} onChange={e => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})} placeholder="تلقائي" />
             </div>
             <div className="flex flex-col gap-1">
+               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">تاريخ العملية</label>
+               <input type="date" className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-readable" value={newInvoice.date} onChange={e => setNewInvoice({...newInvoice, date: e.target.value})} />
+            </div>
+            <div className="flex flex-col gap-1">
                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">العملة</label>
                <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-950 p-1 rounded-2xl border border-zinc-200 dark:border-zinc-700 h-[52px]">
                   <button onClick={() => setSelectedCurrencyType('primary')} className={`flex-1 h-full rounded-xl text-[10px] font-black transition-all ${selectedCurrencyType === 'primary' ? 'bg-primary text-white shadow-lg' : 'text-zinc-500'}`}>{settings?.currencySymbol || '1'}</button>
                   <button onClick={() => setSelectedCurrencyType('secondary')} className={`flex-1 h-full rounded-xl text-[10px] font-black transition-all ${selectedCurrencyType === 'secondary' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500'}`}>{settings?.secondaryCurrencySymbol || '2'}</button>
                </div>
             </div>
+            
             <div className="flex flex-col gap-1">
-               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">تاريخ العملية</label>
-               <input type="date" className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-readable" value={newInvoice.date} onChange={e => setNewInvoice({...newInvoice, date: e.target.value})} />
-            </div>
-            <div className="flex flex-col gap-1">
-               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">المبلغ المدفوع</label>
-               <input type="number" className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-black text-emerald-500 text-xl" value={newInvoice.paidAmount} onChange={e => setNewInvoice({...newInvoice, paidAmount: Number(e.target.value)})} />
+               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">طريقة الدفع</label>
+               <select 
+                 className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 font-bold outline-none text-readable" 
+                 value={newInvoice.paymentType} 
+                 onChange={e => setNewInvoice({...newInvoice, paymentType: e.target.value as 'نقداً' | 'آجل'})}
+               >
+                 <option value="نقداً">نقداً (كاش)</option>
+                 <option value="آجل">آجل (على الحساب)</option>
+               </select>
             </div>
 
-            <div className="flex flex-col gap-1 md:col-span-5">
-               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">ملاحظات الفاتورة العامة</label>
+            {newInvoice.paymentType === 'نقداً' && (
+              <div className="flex flex-col gap-1 animate-in fade-in slide-in-from-right-2">
+                 <label className="text-[10px] text-primary font-black uppercase tracking-widest mr-1 flex items-center gap-1"><Landmark className="w-3 h-3" /> استلام إلى</label>
+                 <select 
+                   className="bg-primary/5 border-2 border-primary/20 p-3 rounded-2xl font-black outline-none text-primary" 
+                   value={newInvoice.cashAccount} 
+                   onChange={e => setNewInvoice({...newInvoice, cashAccount: e.target.value as 'الصندوق' | 'المصرف'})}
+                 >
+                   <option value="الصندوق">الصندوق الرئيسي</option>
+                   <option value="المصرف">حساب المصرف</option>
+                 </select>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="flex flex-col gap-1">
+               <label className="text-[10px] text-rose-500 font-black uppercase tracking-widest mr-1 flex items-center gap-1"><Percent className="w-3 h-3" /> الحسم الممنوح</label>
+               <input type="number" className="bg-rose-50 dark:bg-rose-900/10 p-3 rounded-2xl border border-rose-200 dark:border-rose-900 outline-none font-black text-rose-600 text-xl" value={newInvoice.discountAmount} onChange={e => setNewInvoice({...newInvoice, discountAmount: Number(e.target.value)})} />
+            </div>
+            <div className="flex flex-col gap-1">
+               <label className="text-[10px] text-emerald-500 font-black uppercase tracking-widest mr-1">المبلغ المدفوع (الواصل)</label>
+               <input type="number" className="bg-emerald-50 dark:bg-emerald-900/10 p-3 rounded-2xl border border-emerald-200 dark:border-emerald-900 outline-none font-black text-emerald-600 text-xl" value={newInvoice.paidAmount} onChange={e => setNewInvoice({...newInvoice, paidAmount: Number(e.target.value)})} />
+            </div>
+            <div className="flex flex-col gap-1 md:col-span-2">
+               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">ملاحظات الفاتورة</label>
                <input 
                  type="text" 
                  className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 outline-none font-bold text-readable focus:border-primary transition-all"
@@ -354,7 +439,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-             {/* الأصناف المباعة */}
              <div className="bg-zinc-50 dark:bg-zinc-950/40 p-5 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 space-y-4 shadow-inner">
                 <h4 className="text-sm font-black text-primary flex items-center justify-end gap-2 pb-2 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800">الأصناف المباعة <ScrollText className="w-5 h-5" /></h4>
                 <div className="flex items-center gap-2">
@@ -391,7 +475,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                 </div>
              </div>
 
-             {/* المواد المستخدمة (خصم مخزني) */}
              <div className="bg-rose-500/5 dark:bg-rose-950/20 p-5 rounded-[2rem] border border-rose-500/20 space-y-4 shadow-inner relative">
                 <h4 className="text-sm font-black text-rose-500 flex items-center justify-end gap-2 pb-2 uppercase tracking-widest border-b border-rose-500/10">المواد المستخدمة (خصم مخزني) <HardDrive className="w-5 h-5" /></h4>
                 
@@ -469,9 +552,26 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
              </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-6 border-t border-zinc-100 dark:border-zinc-800">
-             <button onClick={handleSaveInvoice} className="bg-primary text-white px-16 py-4 rounded-2xl font-black shadow-2xl hover:scale-105 transition-all text-lg">{editingId ? 'تحديث الفاتورة' : 'تثبيت وحفظ الفاتورة'}</button>
-             <button onClick={handleCancelEdit} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-10 py-4 rounded-2xl font-bold">إلغاء</button>
+          {/* ملخص الحسابات قبل الحفظ */}
+          <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
+             <div className="flex gap-12">
+                <div className="flex flex-col">
+                   <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">إجمالي المواد</span>
+                   <span className="text-2xl font-mono font-black text-white">{currentItemsTotal.toLocaleString()}</span>
+                </div>
+                <div className="flex flex-col">
+                   <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">الحسم</span>
+                   <span className="text-2xl font-mono font-black text-rose-500">-{ (newInvoice.discountAmount || 0).toLocaleString() }</span>
+                </div>
+                <div className="flex flex-col">
+                   <span className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">الصافي النهائي</span>
+                   <span className="text-4xl font-mono font-black text-primary">{ (currentItemsTotal - (newInvoice.discountAmount || 0)).toLocaleString() }</span>
+                </div>
+             </div>
+             <div className="flex gap-3">
+                <button onClick={handleSaveInvoice} className="bg-primary text-white px-16 py-4 rounded-2xl font-black shadow-2xl hover:scale-105 transition-all text-lg flex items-center gap-3"><Save className="w-6 h-6" /> {editingId ? 'تحديث الفاتورة' : 'تثبيت وحفظ الفاتورة'}</button>
+                <button onClick={handleCancelEdit} className="bg-zinc-800 text-zinc-400 px-10 py-4 rounded-2xl font-bold hover:text-white transition-all">إلغاء</button>
+             </div>
           </div>
         </div>
       )}
@@ -551,14 +651,15 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                 <th className="p-3 border-l border-zinc-800 text-center w-20 print:border-zinc-300">تاريخ</th>
                 <th className="p-3 border-l border-zinc-800 text-center print:border-zinc-300">العميل</th>
                 <th className="p-3 border-l border-zinc-800 text-right w-48 print:border-zinc-300">الأصناف</th>
-                <th className="p-3 border-l border-zinc-800 text-center w-20 text-amber-500 print:border-zinc-300">سعر الوحدة</th>
+                <th className="p-3 border-l border-zinc-800 text-center w-24 text-amber-500 print:border-zinc-300">السعر الإفرادي</th>
+                <th className="p-3 border-l border-zinc-800 text-center w-20 text-amber-500 print:border-zinc-300">الدفع</th>
                 <th className="p-3 border-l border-zinc-800 text-right w-40 print:border-zinc-300">المواد المستخدمة</th>
                 <th className="p-3 border-l border-zinc-800 text-center w-12 print:border-zinc-300">العدد</th>
-                <th className="p-3 border-l border-zinc-800 text-center w-24 print:border-zinc-300">الإجمالي</th>
+                <th className="p-3 border-l border-zinc-800 text-center w-24 print:border-zinc-300">إجمالي الصافي</th>
                 <th className="p-3 border-l border-zinc-800 text-right w-48 print:border-zinc-300">التفقيط (كتابة)</th>
                 <th className="p-3 border-l border-zinc-800 text-right print:border-zinc-300">ملاحظات</th>
                 <th className="p-3 border-l border-zinc-800 text-center w-20 no-print">إجراءات</th>
-                <th className="p-3 text-center w-20 text-emerald-500 print:text-emerald-700">المدفوع</th>
+                <th className="p-3 text-center w-20 text-emerald-500 print:text-emerald-700">الواصل</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-900 font-bold bg-zinc-950 text-zinc-300 print:bg-white print:text-zinc-900 print:divide-zinc-200">
@@ -584,8 +685,20 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                       ))}
                     </div>
                   </td>
-                  <td className="p-2 border-l border-zinc-900 text-center font-mono text-amber-500 print:border-zinc-200">
-                    {inv.items.length === 1 ? inv.items[0].price.toLocaleString() : <span className="text-[8px] text-zinc-500 uppercase">متعدد</span>}
+                  <td className="p-2 border-l border-zinc-900 text-center print:border-zinc-200">
+                    <div className="flex flex-col gap-0.5 max-h-16 overflow-y-auto">
+                      {inv.items.map((it, i) => (
+                        <div key={i} className="text-[10px] font-mono text-amber-500">
+                          {it.price.toLocaleString()}
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="p-2 border-l border-zinc-900 text-center print:border-zinc-200">
+                    <div className="flex flex-col gap-1 items-center">
+                       <span className={`px-2 py-0.5 rounded text-[8px] font-black ${inv.paymentType === 'نقداً' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-amber-500/20 text-amber-500'}`}>{inv.paymentType}</span>
+                       {inv.cashAccount && <span className="text-[7px] text-zinc-500 uppercase">{inv.cashAccount}</span>}
+                    </div>
                   </td>
                   <td className="p-2 border-l border-zinc-900 print:border-zinc-200">
                     <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
@@ -594,7 +707,10 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                   </td>
                   <td className="p-2 border-l border-zinc-900 text-center font-mono text-zinc-100 print:text-zinc-900 print:border-zinc-200">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
                   <td className="p-2 border-l border-zinc-900 text-center font-black text-rose-500 font-mono text-sm bg-rose-900/10 print:bg-transparent print:border-zinc-200">
-                    {inv.totalAmount.toLocaleString()}
+                    <div className="flex flex-col">
+                       <span>{inv.totalAmount.toLocaleString()}</span>
+                       {inv.discountAmount && inv.discountAmount > 0 && <span className="text-[8px] text-zinc-500 line-through">{(inv.totalAmount + inv.discountAmount).toLocaleString()}</span>}
+                    </div>
                   </td>
                   <td className="p-2 border-l border-zinc-900 text-[10px] font-black text-zinc-400 leading-tight print:text-zinc-900 print:border-zinc-200">
                     {inv.totalAmountLiteral}

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Warehouse, MapPin, Save, X, Printer, ArrowLeftRight, Package, Calendar, FileSpreadsheet, List, Box } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Edit2, Warehouse, MapPin, Save, X, Printer, ArrowLeftRight, Package, Calendar, FileSpreadsheet, List, Box, CheckCircle2, Circle } from 'lucide-react';
 import { WarehouseEntity, InventoryItem, StockEntry, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -16,6 +16,10 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
   const [isAdding, setIsAdding] = useState(false);
   const [isTransferring, setIsTransferring] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // States for Selective Printing
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [selectedWarehousesForPrint, setSelectedWarehousesForPrint] = useState<string[]>([]);
 
   const [formData, setFormData] = useState<Partial<WarehouseEntity>>({
     name: '',
@@ -46,23 +50,25 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
     if (savedStock) setStockEntries(JSON.parse(savedStock));
 
     if (savedW) {
-      setWarehouses(JSON.parse(savedW));
+      const parsedW = JSON.parse(savedW);
+      setWarehouses(parsedW);
+      // Initialize print selection with all warehouses
+      setSelectedWarehousesForPrint(parsedW.map((w: WarehouseEntity) => w.id));
     } else {
       const defaultW = [{ id: '1', name: 'المستودع الرئيسي', location: 'دمشق', isMain: true }];
       setWarehouses(defaultW);
+      setSelectedWarehousesForPrint(['1']);
       localStorage.setItem('sheno_warehouses', JSON.stringify(defaultW));
     }
   };
 
   const getWarehouseItems = (warehouseName: string) => {
-    // جلب كافة المواد التي لها رصيد أو حركات في هذا المستودع
     return inventory.map(item => {
       const itemEntries = stockEntries.filter(e => e.itemCode === item.code && e.warehouse === warehouseName);
       const added = itemEntries.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
       const issued = itemEntries.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
       const returned = itemEntries.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
       
-      // الرصيد الافتتاحي يحسب فقط إذا كان المستودع هو المستودع الرئيسي للمادة عند تعريفها
       const initial = item.warehouse === warehouseName ? (item.openingStock || 0) : 0;
       const balance = initial + added - issued + returned;
       
@@ -177,8 +183,83 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
     loadAllData();
   };
 
+  const togglePrintSelection = (id: string) => {
+    setSelectedWarehousesForPrint(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllForPrint = () => {
+    if (selectedWarehousesForPrint.length === warehouses.length) {
+      setSelectedWarehousesForPrint([]);
+    } else {
+      setSelectedWarehousesForPrint(warehouses.map(w => w.id));
+    }
+  };
+
+  const executePrint = () => {
+    if (selectedWarehousesForPrint.length === 0) {
+      alert('يرجى اختيار مستودع واحد على الأقل للطباعة');
+      return;
+    }
+    setIsPrintModalOpen(false);
+    // ننتظر قليلاً ليغلق المودال قبل الطباعة لضمان عدم ظهور خلفيته في بعض المتصفحات
+    setTimeout(() => {
+      window.print();
+    }, 300);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Print Selection Modal */}
+      {isPrintModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+            <div className="p-8 border-b dark:border-zinc-800 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-xl text-primary"><Printer className="w-6 h-6" /></div>
+                <h3 className="text-xl font-black text-readable">تخصيص طباعة المستودعات</h3>
+              </div>
+              <button onClick={() => setIsPrintModalOpen(false)} className="text-zinc-400 hover:text-rose-500 transition-all"><X className="w-6 h-6"/></button>
+            </div>
+            <div className="p-8 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-4">
+              <button 
+                onClick={handleSelectAllForPrint}
+                className="w-full flex items-center justify-between p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:brightness-95 transition-all mb-4"
+              >
+                <span className="font-black text-sm text-readable">تحديد / إلغاء تحديد الكل</span>
+                {selectedWarehousesForPrint.length === warehouses.length ? <CheckCircle2 className="w-5 h-5 text-primary" /> : <Circle className="w-5 h-5 text-zinc-300" />}
+              </button>
+              
+              <div className="grid gap-2">
+                {warehouses.map(w => (
+                  <div 
+                    key={w.id} 
+                    onClick={() => togglePrintSelection(w.id)}
+                    className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all ${selectedWarehousesForPrint.includes(w.id) ? 'bg-primary/5 border-primary/30' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Warehouse className={`w-5 h-5 ${selectedWarehousesForPrint.includes(w.id) ? 'text-primary' : 'text-zinc-400'}`} />
+                      <span className={`font-bold text-sm ${selectedWarehousesForPrint.includes(w.id) ? 'text-primary' : 'text-readable'}`}>{w.name}</span>
+                    </div>
+                    {selectedWarehousesForPrint.includes(w.id) ? <CheckCircle2 className="w-5 h-5 text-primary" /> : <Circle className="w-5 h-5 text-zinc-300" />}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-8 bg-zinc-50 dark:bg-zinc-800/50 flex justify-end gap-3 border-t dark:border-zinc-800">
+               <button 
+                 onClick={executePrint}
+                 className="bg-primary text-white px-10 py-3.5 rounded-2xl font-black shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+               >
+                 <Printer className="w-5 h-5" /> تأكيد الطباعة المخصصة
+               </button>
+               <button onClick={() => setIsPrintModalOpen(false)} className="bg-zinc-200 dark:bg-zinc-800 text-zinc-500 px-8 py-3.5 rounded-2xl font-bold">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Print Header - FIXED TO WHITE */}
       <div className="print-only print-header flex justify-between items-center bg-white p-6 rounded-t-xl text-black mb-0 border-b-2 border-zinc-200">
         <div className="flex items-center gap-4">
@@ -212,8 +293,8 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
            <button onClick={handleExportExcel} className="bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:bg-emerald-700 transition-all">
               <FileSpreadsheet className="w-5 h-5" /> تصدير الجرد الكامل
            </button>
-           <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-zinc-200 dark:border-zinc-700">
-              <Printer className="w-5 h-5" /> طباعة
+           <button onClick={() => setIsPrintModalOpen(true)} className="bg-zinc-100 dark:bg-zinc-800 text-readable px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:bg-zinc-200 transition-all">
+              <Printer className="w-5 h-5" /> طباعة مخصصة
            </button>
            <button onClick={() => setIsAdding(true)} className="bg-primary text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110 transition-all">
               <Plus className="w-5 h-5" /> إضافة مستودع جديد
@@ -228,7 +309,7 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
               <h3 className="text-lg font-black flex items-center gap-2">
                  <Warehouse className="w-5 h-5 text-primary" /> {editingId ? 'تعديل بيانات مستودع' : 'تسجيل مستودع جديد'}
               </h3>
-              <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="text-zinc-400 hover:text-rose-500"><X className="w-6 h-6"/></button>
+              <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="text-zinc-400 hover:text-rose-500 transition-all"><X className="w-6 h-6"/></button>
            </div>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col gap-1">
@@ -309,7 +390,7 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
                       <Warehouse className="w-8 h-8" />
                    </div>
                    <div className="flex gap-1">
-                      <button onClick={() => { setEditingId(w.id); setFormData(w); }} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl text-zinc-500 transition-colors"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => { setEditingId(w.id); setFormData(w); setIsAdding(true); }} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl text-zinc-500 transition-colors"><Edit2 className="w-4 h-4" /></button>
                       {!w.isMain && (
                         <button onClick={() => {
                           if(window.confirm('حذف المستودع؟')) {
@@ -365,9 +446,9 @@ const WarehouseManagementView: React.FC<WarehouseManagementViewProps> = ({ onBac
          })}
       </div>
 
-      {/* Print Table View (Corrected Header) */}
+      {/* Print Table View - Filters by selectedWarehousesForPrint */}
       <div className="print-only">
-         {warehouses.map(w => {
+         {warehouses.filter(w => selectedWarehousesForPrint.includes(w.id)).map(w => {
            const items = getWarehouseItems(w.name);
            return (
              <div key={w.id} className="mb-8 border-b-2 border-zinc-100 pb-6">

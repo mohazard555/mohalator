@@ -26,6 +26,7 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
   const [endDate, setEndDate] = useState('');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [showItemDropdown, setShowItemDropdown] = useState(false);
+  const [itemDropdownSearch, setItemDropdownSearch] = useState('');
 
   const [formData, setFormData] = useState<Partial<StockEntry>>({
     date: new Date().toISOString().split('T')[0],
@@ -142,6 +143,11 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
 
     return matchText && matchType && matchDate && matchItems;
   });
+
+  const filteredInventoryForFilter = inventory.filter(item => 
+    item.name.toLowerCase().includes(itemDropdownSearch.toLowerCase()) || 
+    item.code.toLowerCase().includes(itemDropdownSearch.toLowerCase())
+  );
 
   const totalQty = filteredEntries.reduce((s, c) => s + c.quantity, 0);
 
@@ -271,14 +277,35 @@ const StockEntriesView: React.FC<StockEntriesViewProps> = ({ onBack }) => {
              </button>
              
              {showItemDropdown && (
-               <div className="absolute top-full right-0 left-0 mt-3 bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl z-50 p-2 animate-in zoom-in-95 max-h-64 overflow-y-auto">
-                  <button onClick={() => setSelectedItems([])} className="w-full text-center py-2 text-[10px] font-black text-rose-500 uppercase border-b border-zinc-800 mb-2">إعادة تعيين</button>
-                  {inventory.map(item => (
-                    <div key={item.id} onClick={() => toggleItemSelection(item.code)} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${selectedItems.includes(item.code) ? 'bg-primary text-white shadow-lg' : 'hover:bg-zinc-800 text-zinc-400'}`}>
-                       <span className="font-bold text-sm">{item.name}</span>
-                       {selectedItems.includes(item.code) && <Check className="w-4 h-4" />}
-                    </div>
-                  ))}
+               <div className="absolute top-full right-0 left-0 mt-3 bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl z-50 p-3 animate-in zoom-in-95 max-h-[400px] overflow-hidden flex flex-col">
+                  <div className="relative mb-3 no-print">
+                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                     <input 
+                        type="text" 
+                        placeholder="ابحث ضمن الأصناف..." 
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2.5 pr-10 pl-3 text-xs font-bold outline-none text-white focus:border-primary transition-all shadow-inner"
+                        value={itemDropdownSearch}
+                        onChange={e => setItemDropdownSearch(e.target.value)}
+                        autoFocus
+                     />
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1">
+                    <button onClick={() => { setSelectedItems([]); setItemDropdownSearch(''); }} className="w-full text-center py-2 text-[10px] font-black text-rose-500 uppercase border-b border-zinc-800 mb-2 hover:bg-rose-500/5 rounded-lg transition-colors">إعادة تعيين (عرض الكل)</button>
+                    {filteredInventoryForFilter.length === 0 ? (
+                      <div className="p-10 text-center text-xs text-zinc-500 italic font-bold">لا توجد مواد تطابق بحثك</div>
+                    ) : (
+                      filteredInventoryForFilter.map(item => (
+                        <div key={item.id} onClick={() => toggleItemSelection(item.code)} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${selectedItems.includes(item.code) ? 'bg-primary text-white shadow-lg' : 'hover:bg-zinc-800 text-zinc-400'}`}>
+                           <div className="flex flex-col text-right">
+                             <span className="font-bold text-sm">{item.name}</span>
+                             <span className="text-[9px] font-mono opacity-50">#{item.code}</span>
+                           </div>
+                           {selectedItems.includes(item.code) && <Check className="w-4 h-4" />}
+                        </div>
+                      ))
+                    )}
+                  </div>
                </div>
              )}
           </div>

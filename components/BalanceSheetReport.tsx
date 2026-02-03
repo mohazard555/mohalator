@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { MinusSquare, PlusSquare } from 'lucide-react';
+import { MinusSquare, PlusSquare, Box, Wallet } from 'lucide-react';
 
 interface BalanceSheetReportProps {
   fin: any;
@@ -16,22 +16,26 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
            <h4 className="bg-zinc-900 text-white p-3 rounded-xl font-black text-center text-xs uppercase tracking-widest">الأصـــــول (الموجودات)</h4>
            <div className="divide-y border rounded-2xl overflow-hidden bg-zinc-50 dark:bg-zinc-900">
               <div className="p-4">
-                 <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleSection('bs_closing')}>
+                 <div className="flex justify-between items-center cursor-pointer group" onClick={() => toggleSection('bs_closing')}>
                     <span className="font-bold text-sm flex items-center gap-2">
                        {expandedSections.has('bs_closing') ? <MinusSquare className="w-4 h-4 text-primary"/> : <PlusSquare className="w-4 h-4 text-zinc-300"/>}
+                       <Box className="w-4 h-4 text-amber-500 opacity-40 group-hover:opacity-100"/>
                        بضاعة آخر المدة (مخزون)
                     </span>
                     <span className="font-mono font-black">{fin.closingStockValue.toLocaleString()}</span>
                  </div>
+                 {expandedSections.has('bs_closing') && renderDetailTable(fin.closingStockItems.map((it:any) => ({ name: `${it.name} (${it.quantity} ${it.unit})`, balance: it.total })))}
               </div>
               <div className="p-4">
-                 <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleSection('bs_cash')}>
+                 <div className="flex justify-between items-center cursor-pointer group" onClick={() => toggleSection('bs_cash')}>
                     <span className="font-bold text-sm flex items-center gap-2">
                        {expandedSections.has('bs_cash') ? <MinusSquare className="w-4 h-4 text-primary"/> : <PlusSquare className="w-4 h-4 text-zinc-300"/>}
+                       <Wallet className="w-4 h-4 text-emerald-500 opacity-40 group-hover:opacity-100"/>
                        النقدية (الصندوق)
                     </span>
                     <span className="font-mono font-black">{fin.cashInHand.toLocaleString()}</span>
                  </div>
+                 {expandedSections.has('bs_cash') && renderDetailTable(fin.receivablesList.length > 0 ? fin.receivablesList : [{name: 'رصيد الصندوق العام', balance: fin.cashInHand}])}
               </div>
               <div className="p-4">
                  <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleSection('bs_receivables')}>

@@ -139,7 +139,9 @@ export interface SalesInvoice {
   notes: string;
   usedMaterials?: any[];
   paidAmount?: number;
+  discountAmount?: number;
   paymentType: 'نقداً' | 'آجل';
+  cashAccount?: 'الصندوق' | 'المصرف';
   currencySymbol?: string;
 }
 
@@ -211,7 +213,7 @@ export interface CashEntry {
   receivedUSD: number;
   paidUSD: number;
   notes: string;
-  type?: 'قبض' | 'دفع' | 'بيع' | 'شراء' | 'مرتجع' | 'افتتاحي';
+  type?: 'قبض' | 'دفع' | 'بيع' | 'شراء' | 'مرتجع' | 'افتتاحي' | 'حسم';
   voucherNumber?: string;
   partyName?: string;
   amount?: number;
@@ -219,7 +221,6 @@ export interface CashEntry {
   categoryId?: string; 
 }
 
-// Added missing WarehouseEntity interface
 export interface WarehouseEntity {
   id: string;
   name: string;
@@ -227,7 +228,6 @@ export interface WarehouseEntity {
   isMain: boolean;
 }
 
-// Added missing ArchiveEntry interface
 export interface ArchiveEntry {
   id: string;
   archiveDate: string;

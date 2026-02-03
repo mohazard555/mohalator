@@ -290,14 +290,12 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
         </div>
       </div>
 
-      {/* ملخصات الواجهة - مبيع ومواد مستخدمة */}
       <div className="space-y-4 no-print">
         <div className="flex items-center gap-2 mb-2">
            <Calculator className="w-5 h-5 text-rose-700" />
            <h3 className="text-sm font-black text-readable uppercase tracking-wider">ملخص الكميات المفلترة</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           {/* إجماليات مبيع الأصناف */}
            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
               <span className="text-[10px] font-black text-rose-700 uppercase tracking-[0.2em] flex items-center gap-2">
                  <Package className="w-4 h-4" /> الأصناف المباعة (الفواتير)
@@ -313,7 +311,6 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
               </div>
            </div>
 
-           {/* إجماليات المواد المستخدمة */}
            <div className="bg-emerald-500/5 dark:bg-emerald-950/20 p-6 rounded-3xl border border-emerald-500/20 shadow-sm space-y-4">
               <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2">
                  <Layers className="w-4 h-4" /> المواد المستخدمة (خامات الإنتاج)
@@ -332,7 +329,6 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
       </div>
 
       <div ref={reportRef} className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-2xl print:border-rose-700 print:rounded-none p-4 md:p-8 export-fix">
-        {/* Professional Print Header */}
         <div className="mb-6 border-b-4 border-rose-700 pb-6 flex justify-between items-center bg-white text-black p-4 rounded-xl">
           <div className="flex items-center gap-4">
             {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain" alt="Logo" />}
@@ -351,7 +347,6 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
           </div>
         </div>
 
-        {/* ملخصات الطباعة المطورة */}
         <div className="mb-6 grid grid-cols-2 gap-4">
             <div className="p-4 bg-zinc-50 border-2 border-dashed border-zinc-200 rounded-2xl space-y-3">
                <div className="flex items-center gap-2 border-b border-zinc-200 pb-1">
@@ -428,7 +423,13 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
                     </div>
                   </td>
                   <td className="p-2 border-l border-zinc-100 text-center font-mono text-amber-600">
-                    {inv.items.length === 1 ? inv.items[0].price.toLocaleString() : <span className="text-[8px] text-zinc-500 uppercase">متعدد</span>}
+                    <div className="flex flex-col gap-0.5 max-h-12 overflow-y-auto">
+                      {inv.items.map((it, i) => (
+                        <div key={i} className="text-[9px] font-mono text-amber-600">
+                          {it.price.toLocaleString()}
+                        </div>
+                      ))}
+                    </div>
                   </td>
                   <td className="p-2 border-l border-zinc-100">
                     <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
@@ -460,7 +461,6 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
           </table>
         </div>
         
-        {/* Print Only Footer */}
         <div className="print-only mt-10 pt-6 border-t border-zinc-200 flex justify-between items-end text-[9px] font-black text-zinc-400">
            <div className="flex flex-col">
               <span>SAMLATOR SYSTEM | SECURED FINANCIAL LOG</span>

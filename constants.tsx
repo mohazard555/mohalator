@@ -4,7 +4,7 @@ import {
   ShoppingCart, Warehouse, Wallet, Settings, TrendingUp, 
   Landmark, BookOpen, Scale, Box, PieChart, Activity, 
   BarChart3, ListTree, History, FileOutput, Users, 
-  ClipboardList, Receipt, Layers, Coins, ImageIcon
+  ClipboardList, Receipt, Layers, Coins, ImageIcon, ArrowUpRight, ArrowDownLeft
 } from 'lucide-react';
 import { AppView } from './types';
 
@@ -29,7 +29,8 @@ export const MENU_GROUPS = [
       { label: 'أرصدة وحركات الدولار', view: AppView.DOLLAR_BALANCES },
       { label: 'ملف الصندوق اليومي', view: AppView.CASH_FILE },
       { label: 'دفتر اليومية الشامل', view: AppView.CASH_JOURNAL },
-      { label: 'سندات القبض والدفع', view: AppView.RECEIPT_VOUCHER },
+      { label: 'إدارة سندات القبض (+)', view: AppView.RECEIPT_VOUCHER },
+      { label: 'إدارة سندات الدفع (-)', view: AppView.PAYMENT_VOUCHER },
       { label: 'إدارة البنود والأقسام', view: AppView.ACCOUNTING_CATEGORIES },
     ]
   },

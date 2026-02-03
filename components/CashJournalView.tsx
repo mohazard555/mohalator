@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Save, X, TrendingUp, TrendingDown, Search, Calendar, Filter, Coins, CreditCard, Printer, Tags, ImageIcon, FileSpreadsheet, User } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Edit2, Save, X, TrendingUp, TrendingDown, Search, Calendar, Filter, Coins, CreditCard, Printer, Tags, ImageIcon, FileSpreadsheet, User, FileDown } from 'lucide-react';
 import { CashEntry, AppSettings, AccountingCategory, Party } from '../types';
 import { ImageExportService } from '../utils/ImageExportService';
 import { exportToCSV } from '../utils/export';
@@ -97,10 +96,27 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
     });
   };
 
+  const handleExportExcel = () => {
+    const data = filteredEntries.map(e => {
+      const category = categories.find(c => c.id === e.categoryId);
+      return {
+        'التاريخ': e.date,
+        'الحساب / القسم': e.partyName || category?.name || '-',
+        'البيان': e.statement,
+        [`مقبوض (${settings?.currencySymbol || 'ل.س'})`]: e.receivedSYP,
+        [`مدفوع (${settings?.currencySymbol || 'ل.س'})`]: e.paidSYP,
+        'مقبوض ($)': e.receivedUSD,
+        'مدفوع ($)': e.paidUSD,
+        'ملاحظات': e.notes
+      };
+    });
+    exportToCSV(data, 'daily_journal_report');
+  };
+
   const handleExportImage = async () => {
     if (!exportRef.current) return;
     setIsExporting(true);
-    await ImageExportService.exportAsPng(exportRef.current, `دفتر_اليومية_${new Date().toISOString()}`);
+    await ImageExportService.exportAsPng(exportRef.current, `دفتر_اليومية_${new Date().toISOString().split('T')[0]}`);
     setIsExporting(false);
   };
 
@@ -117,21 +133,29 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between no-print">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors shadow-sm">
             <ArrowRight className="w-6 h-6 text-primary" />
           </button>
-          <h2 className="text-2xl font-black text-readable">دفتر اليومية الشامل (صندوق)</h2>
+          <div className="flex flex-col">
+            <h2 className="text-2xl font-black text-readable leading-tight">دفتر اليومية الشامل (صندوق)</h2>
+            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">تتبع العمليات المالية والتدفقات النقدية</p>
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-center">
           <button onClick={() => setIsAdding(true)} className="bg-primary text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110 transition-all">
             <Plus className="w-5 h-5" /> إضافة حركة مالية
+          </button>
+          <button onClick={handleExportExcel} className="bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:bg-emerald-500 transition-all">
+            <FileSpreadsheet className="w-5 h-5" /> تصدير Excel
           </button>
           <button onClick={handleExportImage} disabled={isExporting} className="bg-amber-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg disabled:opacity-50">
             {isExporting ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : <ImageIcon className="w-5 h-5" />} حفظ كصورة
           </button>
-          <button onClick={() => window.print()} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2"><Printer className="w-5 h-5" /> طباعة</button>
+          <button onClick={() => window.print()} className="bg-zinc-900 text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:bg-zinc-800 transition-all">
+            <Printer className="w-5 h-5" /> طباعة
+          </button>
         </div>
       </div>
 
@@ -140,9 +164,9 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
           <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
           <input type="text" placeholder="البحث في البيان أو اسم الحساب..." className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-2.5 pr-12 outline-none font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
         </div>
-        <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 px-4 py-2 rounded-2xl border">
+        <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 px-4 py-2 rounded-2xl border border-zinc-200 dark:border-zinc-700">
            <Calendar className="w-4 h-4 text-zinc-400" />
-           <div className="flex items-center gap-2"><span className="text-[10px] font-black">من</span><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none" /><span className="text-[10px] font-black">إلى</span><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none" /></div>
+           <div className="flex items-center gap-2"><span className="text-[10px] font-black uppercase text-zinc-500">من</span><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-readable" /><span className="text-[10px] font-black uppercase text-zinc-500">إلى</span><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-readable" /></div>
         </div>
       </div>
 
@@ -216,13 +240,52 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
           </div>
 
           <div className="flex gap-3 pt-6 border-t">
-            <button onClick={editingId ? handleSaveEdit : handleAdd} className="bg-primary text-white px-12 py-4 rounded-2xl font-black shadow-xl flex items-center gap-3 hover:brightness-110 active:scale-95 transition-all text-xl"><Save className="w-6 h-6" /> {editingId ? 'تعديل البيانات' : 'حفظ الحركة المالية'}</button>
+            <button onClick={editingId ? handleSaveEdit : handleAdd} className="bg-primary text-white px-12 py-4 rounded-2xl font-black shadow-xl flex items-center gap-3 hover:brightness-110 active:scale-[0.98] transition-all text-xl"><Save className="w-6 h-6" /> {editingId ? 'تعديل البيانات' : 'حفظ الحركة المالية'}</button>
             <button onClick={() => { setIsAdding(false); setEditingId(null); resetForm(); }} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-10 py-4 rounded-2xl font-bold">إلغاء</button>
           </div>
         </div>
       )}
 
       <div ref={exportRef} className="space-y-6 bg-white dark:bg-zinc-950 p-6 rounded-[2.5rem] shadow-sm export-fix print:p-0">
+        
+        {/* Professional Print Header (Visible only in print/export) */}
+        <div className="hidden print:flex flex-row justify-between items-start mb-6 border-b-4 border-primary pb-6 bg-white text-zinc-900 mx-4">
+          <div className="flex items-center gap-4">
+            {settings?.logoUrl ? (
+              <img src={settings.logoUrl} className="w-20 h-20 object-contain bg-white rounded-xl p-1 shadow-sm border" alt="Logo" />
+            ) : (
+               <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg">SH</div>
+            )}
+            <div>
+              <h1 className="text-3xl font-black text-primary leading-none">{settings?.companyName || 'SAMLATOR SYSTEM'}</h1>
+              <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">{settings?.companyType}</p>
+            </div>
+          </div>
+          <div className="text-center pt-2">
+            <h2 className="text-4xl font-black text-zinc-900 underline decoration-primary/20 underline-offset-8">دفتر اليومية الشامل</h2>
+            <div className="flex flex-col items-center gap-1 mt-4">
+               <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">فترة التقرير المحددة</span>
+               <div className="bg-zinc-50 border border-zinc-200 px-6 py-1 rounded-full flex items-center gap-3">
+                  <span className="font-mono font-black text-xs">{startDate || 'بداية السجلات'}</span>
+                  <span className="text-zinc-300 font-bold">←</span>
+                  <span className="font-mono font-black text-xs">{endDate || 'اليوم الحاضر'}</span>
+               </div>
+            </div>
+          </div>
+          <div className="text-left space-y-1 pt-2">
+             <div className="flex items-center justify-end gap-2 text-zinc-500 text-xs font-bold">
+                <span>{settings?.address}</span>
+             </div>
+             <div className="flex items-center justify-end gap-2 text-zinc-500 text-xs font-bold" dir="ltr">
+                <span>{settings?.phone}</span>
+             </div>
+             <div className="text-[10px] font-black text-zinc-400 uppercase pt-2 flex items-center justify-end gap-2">
+                <span>تاريخ الطباعة:</span>
+                <span>{new Date().toLocaleDateString('ar-SA')}</span>
+             </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:gap-4 no-print-visible">
           <div className="bg-emerald-500/5 p-8 rounded-3xl border-2 border-emerald-500/10 flex flex-col items-center text-center">
             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">الرصيد الصافي ({settings?.currencySymbol})</span>

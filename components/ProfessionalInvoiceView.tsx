@@ -227,7 +227,7 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
       </div>
 
       {/* Document View */}
-      <div className="flex justify-center p-0 md:p-10 bg-zinc-200 dark:bg-zinc-800/50 rounded-[4rem] overflow-hidden border-4 border-white dark:border-zinc-800 shadow-inner">
+      <div className="flex justify-center p-0 md:p-10 bg-zinc-200 dark:bg-zinc-800/50 rounded-[4rem] overflow-hidden border-4 border-white dark:border-zinc-800 shadow-inner mb-20">
          <div ref={invoiceRef} className="professional-invoice-box bg-white text-zinc-900 w-[210mm] h-[148.5mm] shadow-2xl flex flex-col relative overflow-hidden p-8 export-fix" id="professional-document">
             
             {/* Header */}
@@ -358,23 +358,6 @@ const ProfessionalInvoiceView: React.FC<ProfessionalInvoiceViewProps> = ({ onBac
                </div>
             </div>
          </div>
-      </div>
-
-      <div className="flex justify-center gap-6 no-print pb-20 pt-4">
-         <button 
-           onClick={handleExportImage} 
-           disabled={isExportingImage}
-           className="bg-amber-600 text-white px-12 py-5 rounded-[2rem] font-black shadow-2xl flex items-center gap-4 hover:scale-105 transition-all text-xl disabled:opacity-50"
-         >
-            {isExportingImage ? <div className="w-7 h-7 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <ImageIcon className="w-7 h-7" />}
-            حفظ كصورة PNG
-         </button>
-         <button onClick={handleExportPDF} className="bg-rose-800 text-white px-12 py-5 rounded-[2rem] font-black shadow-2xl flex items-center gap-4 hover:scale-105 transition-all text-xl">
-            <FileDown className="w-7 h-7" /> تصدير نسخة PDF
-         </button>
-         <button onClick={() => window.print()} className="bg-zinc-900 text-white px-12 py-5 rounded-[2rem] font-black shadow-2xl flex items-center gap-4 hover:scale-105 transition-all text-xl">
-            <Printer className="w-7 h-7" /> طباعة المستند الاحترافي
-         </button>
       </div>
     </div>
   );

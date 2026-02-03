@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Search, Save, Trash2, Edit2, RotateCcw, Printer, FileDown, X } from 'lucide-react';
-import { SalesInvoice, InvoiceItem, StockEntry, CashEntry } from '../types';
+import { ArrowRight, Search, Save, Trash2, Edit2, RotateCcw, Printer, FileDown, X, Calendar, Filter, RefreshCcw } from 'lucide-react';
+import { SalesInvoice, InvoiceItem, StockEntry, CashEntry, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 import { tafqeet } from '../utils/tafqeet';
 
@@ -16,12 +16,19 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
   const [returnItems, setReturnItems] = useState<InvoiceItem[]>([]);
   const [returnHistory, setReturnHistory] = useState<any[]>([]);
   const [editingReturnId, setEditingReturnId] = useState<string | null>(null);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+
+  // States for History Filtering
+  const [historySearchTerm, setHistorySearchTerm] = useState('');
+  const [historyStartDate, setHistoryStartDate] = useState('');
+  const [historyEndDate, setHistoryEndDate] = useState('');
 
   useEffect(() => {
     const savedReturns = localStorage.getItem('sheno_sales_returns');
+    const savedSettings = localStorage.getItem('sheno_settings');
     if (savedReturns) setReturnHistory(JSON.parse(savedReturns));
+    if (savedSettings) setSettings(JSON.parse(savedSettings));
 
-    // إذا كان هناك مرتجع قادم للتعديل من سجل المرتجعات
     if (initialReturn && !editingReturnId) {
       handleEditReturn(initialReturn);
     }
@@ -89,7 +96,7 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
       date: returnDate,
       items: returnItems.filter(i => i.quantity > 0),
       totalReturnAmount: totalReturnAmount,
-      totalAmountLiteral: tafqeet(totalReturnAmount, "ليرة سورية"),
+      totalAmountLiteral: tafqeet(totalReturnAmount, settings?.currency || "ليرة سورية"),
       notes: editingReturnId ? 'تعديل مرتجع مبيعات' : 'مرتجع مبيعات'
     };
 
@@ -137,7 +144,7 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
     setFoundInvoice(null);
     setEditingReturnId(null);
     setInvoiceSearch('');
-    if (initialReturn) onBack(); // الرجوع للسجل إذا كان تعديلاً
+    if (initialReturn) onBack(); 
   };
 
   const handleDeleteReturn = (id: string) => {
@@ -156,6 +163,20 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
     if (initialReturn) onBack();
   };
 
+  const handleResetHistoryFilters = () => {
+    setHistorySearchTerm('');
+    setHistoryStartDate('');
+    setHistoryEndDate('');
+  };
+
+  const filteredHistory = returnHistory.filter(ret => {
+    const matchSearch = ret.customerName.toLowerCase().includes(historySearchTerm.toLowerCase()) || 
+                       ret.invoiceNumber.includes(historySearchTerm);
+    const matchDate = (!historyStartDate || ret.date >= historyStartDate) && 
+                     (!historyEndDate || ret.date <= historyEndDate);
+    return matchSearch && matchDate;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between no-print">
@@ -163,21 +184,23 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
           <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 rounded-xl transition-all"><ArrowRight className="w-6 h-6" /></button>
           <h2 className="text-2xl font-black text-readable">إدارة مرتجعات المبيعات</h2>
         </div>
-        <button onClick={() => exportToCSV(returnHistory, 'returns_report')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">
-           <FileDown className="w-5 h-5" /> تصدير XLSX
-        </button>
+        <div className="flex gap-2">
+           <button onClick={() => exportToCSV(filteredHistory, 'returns_report')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2">
+              <FileDown className="w-5 h-5" /> تصدير XLSX
+           </button>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border shadow-xl flex items-center gap-4 no-print">
         <div className="flex flex-col gap-1 flex-1 max-w-sm">
-          <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">البحث برقم الفاتورة الأصلية</label>
+          <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">البحث برقم الفاتورة الأصلية (للمرتجع الجديد)</label>
           <div className="flex gap-2">
-            <input type="text" value={invoiceSearch} onChange={e => setInvoiceSearch(e.target.value)} className="bg-zinc-50 dark:bg-zinc-800 border p-3 rounded-2xl flex-1 font-bold outline-none" placeholder="0000" />
-            <button onClick={handleSearch} className="bg-primary text-white px-8 rounded-2xl font-black">بحث</button>
+            <input type="text" value={invoiceSearch} onChange={e => setInvoiceSearch(e.target.value)} className="bg-zinc-50 dark:bg-zinc-800 border p-3 rounded-2xl flex-1 font-bold outline-none text-readable" placeholder="رقم الفاتورة..." />
+            <button onClick={handleSearch} className="bg-primary text-white px-8 rounded-2xl font-black shadow-lg hover:brightness-110">بحث</button>
           </div>
         </div>
         {foundInvoice && (
-          <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border flex-1 flex justify-between">
+          <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border flex-1 flex justify-between animate-in slide-in-from-left-2">
             <div><p className="text-[10px] text-zinc-400 font-black uppercase">العميل</p><p className="font-black text-lg">{foundInvoice.customerName}</p></div>
             <div><p className="text-[10px] text-zinc-400 font-black uppercase">تاريخ الفاتورة</p><p className="font-mono font-bold">{foundInvoice.date}</p></div>
           </div>
@@ -194,13 +217,13 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
             <thead className="bg-zinc-50 dark:bg-zinc-800 text-[10px] text-zinc-500 font-black uppercase">
               <tr><th className="p-3">المادة</th><th className="p-3 text-center">المباع</th><th className="p-3 text-center text-rose-500">المرتجع</th><th className="p-3 text-center">المجموع</th></tr>
             </thead>
-            <tbody className="divide-y font-bold">
+            <tbody className="divide-y font-bold text-readable">
               {returnItems.map(item => (
                 <tr key={item.id}>
                   <td className="p-3">{item.name}</td>
                   <td className="p-3 text-center font-mono text-zinc-400">{foundInvoice.items.find(i=>i.id===item.id || i.name === item.name)?.quantity}</td>
                   <td className="p-3 text-center">
-                    <input type="number" min={0} value={item.quantity} onChange={e => setReturnItems(returnItems.map(i => i.id === item.id ? { ...i, quantity: Number(e.target.value) } : i))} className="bg-zinc-50 border-2 w-24 p-2 rounded-xl text-rose-600 font-black text-center" />
+                    <input type="number" min={0} value={item.quantity} onChange={e => setReturnItems(returnItems.map(i => i.id === item.id ? { ...i, quantity: Number(e.target.value) } : i))} className="bg-zinc-50 dark:bg-zinc-800 border-2 w-24 p-2 rounded-xl text-rose-600 font-black text-center outline-none focus:border-rose-500" />
                   </td>
                   <td className="p-3 text-center font-mono text-emerald-600">{(item.quantity * item.price).toLocaleString()}</td>
                 </tr>
@@ -208,13 +231,48 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
             </tbody>
           </table>
           <div className="p-6 bg-zinc-50 dark:bg-zinc-800/50 flex justify-end gap-3">
-            <button onClick={handleSaveReturn} className="bg-primary text-white px-12 py-3 rounded-2xl font-black shadow-xl"><Save className="w-5 h-5"/> {editingReturnId ? 'تحديث المرتجع' : 'حفظ المرتجع'}</button>
+            <button onClick={handleSaveReturn} className="bg-primary text-white px-12 py-3 rounded-2xl font-black shadow-xl flex items-center gap-2"><Save className="w-5 h-5"/> {editingReturnId ? 'تحديث المرتجع' : 'حفظ المرتجع'}</button>
             <button onClick={handleCancel} className="bg-zinc-200 dark:bg-zinc-800 px-10 py-3 rounded-2xl font-bold">إلغاء</button>
           </div>
         </div>
       )}
 
-      <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl">
+      {/* History Filter Bar */}
+      <div className="bg-zinc-900/95 p-6 rounded-[2rem] border border-zinc-800 shadow-2xl space-y-4 no-print">
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex-1 min-w-[200px] flex flex-col gap-1">
+            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-1">بحث في السجل (عميل أو فاتورة)</label>
+            <div className="relative">
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
+              <input 
+                type="text" 
+                placeholder="ابحث في سجل المرتجعات..." 
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl py-3 pr-12 outline-none font-bold text-white focus:border-rose-900 transition-all shadow-inner" 
+                value={historySearchTerm} 
+                onChange={e => setHistorySearchTerm(e.target.value)} 
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 bg-zinc-950 px-6 py-2.5 rounded-2xl border border-zinc-800 h-[54px] shadow-inner">
+            <Calendar className="w-4 h-4 text-zinc-500" />
+            <div className="flex items-center gap-3">
+              <input type="date" value={historyStartDate} onChange={e => setHistoryStartDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-white focus:text-primary transition-colors" />
+              <span className="text-zinc-700 font-black">←</span>
+              <input type="date" value={historyEndDate} onChange={e => setHistoryEndDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-white focus:text-primary transition-colors" />
+            </div>
+          </div>
+
+          <button 
+            onClick={handleResetHistoryFilters}
+            className="bg-primary text-white h-[54px] px-8 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110 active:scale-95 transition-all"
+          >
+             <RefreshCcw className="w-5 h-5" /> إظهار الكل
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-zinc-950 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl">
          <table className="w-full text-right border-collapse text-[11px]">
             <thead>
                <tr className="bg-zinc-900 text-white font-black uppercase border-b border-zinc-700 h-14">
@@ -226,28 +284,34 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
                   <th className="p-4 text-center w-32 no-print">إجراءات</th>
                </tr>
             </thead>
-            <tbody className="divide-y font-bold">
-               {returnHistory.map(ret => (
-                  <tr key={ret.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group h-14">
-                     <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-center text-rose-600 font-black">#{ret.invoiceNumber}</td>
-                     <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono text-zinc-500">{ret.date}</td>
-                     <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-readable">{ret.customerName}</td>
-                     <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">
-                        <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
-                           {ret.items.map((it:any, i:number) => (
-                              <span key={i} className="bg-rose-900/10 text-rose-700 px-2 py-0.5 rounded text-[9px] border border-rose-200">{it.name} ({it.quantity})</span>
-                           ))}
-                        </div>
-                     </td>
-                     <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-center font-black text-rose-600 font-mono text-sm">{ret.totalReturnAmount.toLocaleString()}</td>
-                     <td className="p-4 text-center no-print">
-                        <div className="flex justify-center gap-1 opacity-40 group-hover:opacity-100 transition-all">
-                           <button onClick={() => handleEditReturn(ret)} className="p-2 text-zinc-400 hover:text-amber-500"><Edit2 className="w-4 h-4"/></button>
-                           <button onClick={() => handleDeleteReturn(ret.id)} className="p-2 text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4"/></button>
-                        </div>
-                     </td>
+            <tbody className="divide-y font-bold text-readable">
+               {filteredHistory.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-20 text-center italic text-zinc-400 font-black text-lg">لا يوجد سجلات مرتجعات مطابقة للفلاتر</td>
                   </tr>
-               ))}
+               ) : (
+                  filteredHistory.map(ret => (
+                    <tr key={ret.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group h-14">
+                       <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-center text-rose-600 font-black">#{ret.invoiceNumber}</td>
+                       <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono text-zinc-500">{ret.date}</td>
+                       <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-readable">{ret.customerName}</td>
+                       <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">
+                          <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
+                             {ret.items.map((it:any, i:number) => (
+                                <span key={i} className="bg-rose-900/10 text-rose-700 px-2 py-0.5 rounded text-[9px] border border-rose-200">{it.name} ({it.quantity})</span>
+                             ))}
+                          </div>
+                       </td>
+                       <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-center font-black text-rose-600 font-mono text-sm">{ret.totalReturnAmount.toLocaleString()}</td>
+                       <td className="p-4 text-center no-print">
+                          <div className="flex justify-center gap-1 opacity-40 group-hover:opacity-100 transition-all">
+                             <button onClick={() => handleEditReturn(ret)} className="p-2 text-zinc-400 hover:text-amber-500 transition-colors"><Edit2 className="w-4 h-4"/></button>
+                             <button onClick={() => handleDeleteReturn(ret.id)} className="p-2 text-zinc-400 hover:text-rose-500 transition-colors"><Trash2 className="w-4 h-4"/></button>
+                          </div>
+                       </td>
+                    </tr>
+                  ))
+               )}
             </tbody>
          </table>
       </div>

@@ -62,7 +62,7 @@ const CustomerInvoiceCostsView: React.FC<CustomerInvoiceCostsViewProps> = ({ onB
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500" dir="rtl">
-      {/* Top Header Section - Replaced grey with Deep Navy for comfort */}
+      {/* Top Header Section - Deep Navy for comfort UI */}
       <div className="bg-[#0f172a] p-1.5 border-2 border-slate-800 shadow-2xl no-print rounded-2xl overflow-hidden relative">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full"></div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5 relative z-10">
@@ -100,27 +100,27 @@ const CustomerInvoiceCostsView: React.FC<CustomerInvoiceCostsViewProps> = ({ onB
 
       {/* Main Container for Capture and Print */}
       <div ref={reportRef} className="bg-white rounded-3xl border-2 border-zinc-200 overflow-hidden shadow-2xl export-fix">
-        {/* Print Header */}
-        <div className="flex justify-between items-center bg-zinc-900 p-8 text-white border-b-4 border-primary">
+        {/* Print Header - Changed to White Background */}
+        <div className="flex justify-between items-center bg-white p-8 text-zinc-900 border-b-4 border-primary">
           <div className="flex items-center gap-4">
             {settings?.logoUrl ? (
-              <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg" alt="Logo" />
+              <img src={settings.logoUrl} className="w-16 h-16 object-contain bg-white p-1 rounded-lg border border-zinc-100 shadow-sm" alt="Logo" />
             ) : (
               <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-white font-black text-2xl shadow-lg">SH</div>
             )}
             <div>
-              <h1 className="text-2xl font-black">{settings?.companyName || 'SAMLATOR SYSTEM'}</h1>
-              <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest">{settings?.companyType}</p>
+              <h1 className="text-2xl font-black text-zinc-900">{settings?.companyName || 'SAMLATOR SYSTEM'}</h1>
+              <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{settings?.companyType}</p>
             </div>
           </div>
           <div className="text-center">
-            <h2 className="text-3xl font-black underline decoration-white/20 underline-offset-8">تقرير تكاليف فاتورة زبون</h2>
+            <h2 className="text-3xl font-black underline decoration-zinc-100 underline-offset-8">تقرير تكاليف فاتورة زبون</h2>
             <p className="text-lg mt-3 font-bold text-primary">فاتورة رقم: #{invoiceNumber || '---'}</p>
-            <div className="flex items-center justify-center gap-2 mt-2 opacity-60 text-[9px] font-bold">
+            <div className="flex items-center justify-center gap-2 mt-2 text-zinc-400 text-[9px] font-bold">
                <Calendar className="w-3 h-3"/> تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}
             </div>
           </div>
-          <div className="text-left text-[10px] font-bold space-y-1 opacity-80">
+          <div className="text-left text-[10px] font-bold space-y-1 text-zinc-500">
             <p>{settings?.address || 'دمشق، سوريا'}</p>
             <p dir="ltr">{settings?.phone || '093XXXXXXX'}</p>
           </div>
@@ -203,7 +203,7 @@ const CustomerInvoiceCostsView: React.FC<CustomerInvoiceCostsViewProps> = ({ onB
          </div>
          <div className="flex gap-3">
             <button 
-              onClick={handleExportImage}
+              onClick={handleExportImage} 
               disabled={isExportingImage}
               className="bg-amber-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-xl flex items-center gap-2 hover:bg-amber-500 active:scale-95 transition-all disabled:opacity-50"
             >
