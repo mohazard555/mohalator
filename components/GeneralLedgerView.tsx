@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowRight, Search, Printer, FileDown, Calendar, 
@@ -77,7 +78,6 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
     journal.forEach(j => {
       let accountName = j.partyName || 'الصندوق العام';
       
-      // إذا كانت الحركة مرتبطة بقسم محاسبي، نستخدم اسم القسم كحساب في الأستاذ
       if (j.categoryId) {
         const catMatch = cats.find(c => c.id === j.categoryId);
         if (catMatch) accountName = catMatch.name;
@@ -94,7 +94,6 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
     setTransactions(ledger.sort((a, b) => a.date.localeCompare(b.date)));
   };
 
-  // تصفية العمليات بناءً على الحساب المختار والنطاق الزمني والبحث النصي
   const filteredTransactions = transactions.filter(t => {
     const matchSearch = t.statement.toLowerCase().includes(searchTerm.toLowerCase()) || 
                        t.account.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -104,7 +103,6 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
     return matchSearch && matchAccount && matchDate;
   });
 
-  // حساب الرصيد الجاري (Running Balance)
   let currentBalance = 0;
   const ledgerWithBalance = filteredTransactions.map(t => {
     currentBalance += (t.debit - t.credit);
@@ -135,17 +133,12 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
     setIsExportingImage(false);
   };
 
-  // قائمة الحسابات القابلة للبحث (دليل الحسابات + أي حساب ظهر في القيود)
   const uniqueAccountNamesFromTransactions = Array.from(new Set(transactions.map(t => t.account)));
   
-  // Fix: Explicitly typed account info to solve 'unknown' inference (Lines 142-155, 242-252)
   type SearchableAcc = { name: string; code: string; type: "FOLDER" | "ACCOUNT" };
 
-  // Fix: Added explicit generic type and tuple casting to Map to prevent 'unknown' results in filtering and mapping (Line 142)
   const searchableAccounts = Array.from(new Map<string, SearchableAcc>([
-    // إضافة حسابات الدليل أولاً
     ...chartAccounts.map(acc => [acc.name, { name: acc.name, code: acc.code, type: acc.type }] as [string, SearchableAcc]),
-    // إضافة أي حسابات ظهرت في الحركات ولم تكن في الدليل
     ...uniqueAccountNamesFromTransactions.map(name => {
       const match = chartAccounts.find(ca => ca.name === name);
       return [name, { 
@@ -156,7 +149,6 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
     })
   ]).values());
 
-  // Fix: Property access error fixed by typing searchableAccounts (Lines 154, 155)
   const filteredAccountSearch = searchableAccounts.filter(acc => 
     acc.name.toLowerCase().includes(accountSearchTerm.toLowerCase()) || 
     acc.code.toLowerCase().includes(accountSearchTerm.toLowerCase())
@@ -190,32 +182,33 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
         </div>
       </div>
 
-      <div className="bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-800 shadow-2xl flex flex-wrap items-end gap-6 no-print relative overflow-hidden">
+      {/* إطار البحث - تم استبدال اللون الأسود بلون مريح وإزالة overflow-hidden */}
+      <div className="bg-zinc-100 dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl flex flex-wrap items-end gap-6 no-print relative">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full"></div>
         
         {/* البحث النصي العام */}
         <div className="flex-1 min-w-[250px] space-y-1 relative z-10">
-           <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest mr-1">بحث في العمليات (البيان أو المرجع)</label>
+           <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">بحث في العمليات (البيان أو المرجع)</label>
            <div className="relative">
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
               <input 
                 type="text" 
                 placeholder="ابحث بالبيان أو رقم السند..." 
-                className="w-full bg-slate-900/60 border border-slate-700 rounded-2xl py-3.5 pr-12 pl-4 outline-none font-bold text-white focus:border-primary transition-all shadow-inner"
+                className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-3.5 pr-12 pl-4 outline-none font-bold text-readable focus:border-primary transition-all shadow-inner"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
            </div>
         </div>
 
-        {/* البحث الذكي عن الحساب */}
+        {/* البحث الذكي عن الحساب - تم تصحيح ظهور القائمة */}
         <div className="flex-1 min-w-[250px] space-y-1 relative z-10">
-           <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest mr-1">تحديد الحساب المفلتر (بالاسم أو الكود)</label>
+           <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">تحديد الحساب المفلتر (بالاسم أو الكود)</label>
            <div className="relative">
               <input 
                 type="text" 
                 placeholder={accountFilter === 'الكل' ? "عرض كافة الحسابات..." : `الحساب: ${accountFilter}`}
-                className="w-full bg-slate-900/80 border-2 border-slate-700 rounded-2xl py-3.5 px-6 outline-none font-black text-white focus:border-primary transition-all shadow-lg text-sm"
+                className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-3.5 px-6 outline-none font-black text-readable focus:border-primary transition-all shadow-lg text-sm"
                 value={accountSearchTerm}
                 onChange={(e) => {
                   setAccountSearchTerm(e.target.value);
@@ -223,43 +216,40 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
                 }}
                 onFocus={() => setShowAccountResults(true)}
               />
-              <ChevronDown className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4 pointer-events-none" />
+              <ChevronDown className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 w-4 h-4 pointer-events-none" />
               
               {showAccountResults && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] z-[200] max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 custom-scrollbar">
                    <div 
                       onClick={() => {
                         setAccountFilter('الكل');
                         setAccountSearchTerm('');
                         setShowAccountResults(false);
                       }}
-                      className="p-4 border-b border-slate-800 hover:bg-slate-800 cursor-pointer flex items-center justify-between transition-colors group"
+                      className="p-4 border-b border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer flex items-center justify-between transition-colors group"
                    >
-                      <span className="font-black text-primary group-hover:text-white">عرض كافة الحسابات (الكل)</span>
-                      < RefreshCcw className="w-4 h-4 text-slate-600" />
+                      <span className="font-black text-primary">عرض كافة الحسابات (الكل)</span>
+                      < RefreshCcw className="w-4 h-4 text-zinc-400" />
                    </div>
                    
                    {filteredAccountSearch.length === 0 ? (
-                     <div className="p-6 text-center text-slate-500 italic text-xs">لا يوجد حساب يطابق هذا البحث</div>
+                     <div className="p-6 text-center text-zinc-400 italic text-xs">لا يوجد حساب يطابق هذا البحث</div>
                    ) : (
                      filteredAccountSearch.map((acc, idx) => (
                        <div 
                          key={idx}
                          onClick={() => {
-                           // Fix: Property access error fixed by typing searchableAccounts (Lines 242, 243)
                            setAccountFilter(acc.name);
                            setAccountSearchTerm(acc.name);
                            setShowAccountResults(false);
                          }}
-                         className="p-4 border-b border-slate-800/50 hover:bg-slate-800 cursor-pointer flex items-center justify-between transition-colors group"
+                         className="p-4 border-b border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer flex items-center justify-between transition-colors group"
                        >
                          <div className="flex flex-col">
-                            {/* Fix: Property access error fixed by typing searchableAccounts (Line 249, 250) */}
-                            <span className="font-black text-slate-200 group-hover:text-white text-sm">{acc.name}</span>
-                            <span className="text-[10px] text-slate-500 font-bold uppercase">{acc.type === 'FOLDER' ? 'مجموعة' : 'حساب'}</span>
+                            <span className="font-black text-zinc-900 dark:text-zinc-100 text-sm">{acc.name}</span>
+                            <span className="text-[10px] text-zinc-400 font-bold uppercase">{acc.type === 'FOLDER' ? 'مجموعة' : 'حساب'}</span>
                          </div>
-                         {/* Fix: Property access error fixed by typing searchableAccounts (Line 252) */}
-                         <span className="font-mono text-xs font-black text-primary bg-primary/10 px-2 py-1 rounded">#{acc.code}</span>
+                         <span className="font-mono text-xs font-black text-primary bg-primary/5 px-2 py-1 rounded">#{acc.code}</span>
                        </div>
                      ))
                    )}
@@ -269,18 +259,17 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
         </div>
 
         {/* فلترة التاريخ */}
-        <div className="flex items-center gap-3 bg-slate-900 border border-slate-700 px-6 py-2.5 rounded-2xl h-[58px] z-10 shadow-lg">
-           <Calendar className="w-4 h-4 text-slate-500" />
+        <div className="flex items-center gap-3 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 px-6 py-2.5 rounded-2xl h-[58px] z-10 shadow-sm">
+           <Calendar className="w-4 h-4 text-zinc-400" />
            <div className="flex items-center gap-3">
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono text-white outline-none" />
-              <span className="text-slate-700 font-bold">←</span>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono text-white outline-none" />
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono text-readable outline-none" />
+              <span className="text-zinc-300 font-bold">←</span>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono text-readable outline-none" />
            </div>
         </div>
       </div>
 
       <div ref={reportRef} className="bg-white rounded-[2.5rem] border border-zinc-200 overflow-hidden shadow-2xl export-fix p-4 md:p-10">
-         {/* ترويسة التقرير الاحترافية */}
          <div className="flex justify-between items-start mb-8 border-b-4 border-zinc-900 pb-8 bg-white text-zinc-900">
             <div className="flex items-center gap-4">
                {settings?.logoUrl ? <img src={settings.logoUrl} className="w-20 h-20 object-contain" alt="Logo" /> : <div className="w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-lg">SH</div>}
@@ -305,7 +294,6 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
             </div>
          </div>
 
-         {/* بطاقات الإجماليات */}
          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 no-print-visible">
             <div className="bg-emerald-50 border-2 border-emerald-100 p-8 rounded-[2rem] flex flex-col items-center shadow-sm">
                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">إجمالي الحركات المدينة (+)</span>
@@ -322,7 +310,6 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
             </div>
          </div>
 
-         {/* جدول دفتر الأستاذ */}
          <div className="overflow-x-auto rounded-[2rem] border border-zinc-200 shadow-sm bg-white">
             <table className="w-full text-right border-collapse text-sm">
                <thead>
@@ -369,7 +356,6 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
             </table>
          </div>
 
-         {/* تذييل الطباعة */}
          <div className="hidden print:flex justify-between items-end mt-12 pt-8 border-t border-zinc-200 text-[10px] font-black text-zinc-400">
            <div className="flex flex-col gap-1">
               <span>SAMLATOR SYSTEM | SECURED FINANCIAL LOG TERMINAL</span>

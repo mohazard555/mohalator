@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Save, X, Tags, TrendingDown, TrendingUp, Search, Calendar, FileText, Printer, FileDown, FileSpreadsheet, ImageIcon, Landmark, ChevronDown, Calculator, Building2, MapPin, Phone } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Edit2, Save, X, Tags, TrendingDown, TrendingUp, Search, Calendar, FileText, Printer, FileDown, FileSpreadsheet, ImageIcon, Landmark, ChevronDown, Calculator, Building2, MapPin, Phone, Check } from 'lucide-react';
 import { AccountingCategory, CashEntry, AppSettings, AccountNode } from '../types';
 import { exportToCSV } from '../utils/export';
 import { ImageExportService } from '../utils/ImageExportService';
@@ -21,8 +21,13 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
   
   const [selectedCategory, setSelectedCategory] = useState<AccountingCategory | null>(null);
 
+  // حالات البحث عن حساب من الدليل
+  const [chartSearch, setChartSearch] = useState('');
+  const [showChartResults, setShowChartResults] = useState(false);
+
   const [formData, setFormData] = useState<Partial<AccountingCategory>>({
     name: '',
+    accountCode: '',
     type: 'مصروفات',
     notes: '',
     linkedAccountId: ''
@@ -44,6 +49,19 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
     if (savedChart) setChartAccounts(JSON.parse(savedChart));
   };
 
+  const handleSelectChartAccount = (acc: AccountNode) => {
+    setFormData({
+      ...formData,
+      name: acc.name,
+      accountCode: acc.code,
+      linkedAccountId: acc.id,
+      // محاولة استنتاج النوع بناءً على مكان الحساب في الشجرة
+      type: acc.parentId === '5' ? 'مصروفات' : acc.parentId === '4' ? 'إيرادات' : (formData.type as any)
+    });
+    setChartSearch(acc.name);
+    setShowChartResults(false);
+  };
+
   const syncToChart = (category: AccountingCategory, isDelete: boolean = false) => {
     const savedChart = localStorage.getItem('sheno_chart_accounts');
     if (!savedChart) return;
@@ -54,10 +72,10 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
     if (isDelete) {
       chart = chart.filter(acc => acc.name !== category.name);
     } else {
-      const existingIdx = chart.findIndex(acc => acc.name === category.name);
+      const existingIdx = chart.findIndex(acc => acc.id === category.linkedAccountId || acc.name === category.name);
       const node: AccountNode = {
-        id: editingId ? (chart[existingIdx]?.id || crypto.randomUUID()) : crypto.randomUUID(),
-        code: `CAT-${Math.floor(Math.random() * 1000)}`,
+        id: editingId ? (chart[existingIdx]?.id || crypto.randomUUID()) : (category.linkedAccountId || crypto.randomUUID()),
+        code: category.accountCode || `CAT-${Math.floor(Math.random() * 1000)}`,
         name: category.name,
         parentId: parentId,
         type: 'ACCOUNT',
@@ -87,7 +105,8 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
     
     setIsAdding(false);
     setEditingId(null);
-    setFormData({ name: '', type: 'مصروفات', notes: '', linkedAccountId: '' });
+    setFormData({ name: '', accountCode: '', type: 'مصروفات', notes: '', linkedAccountId: '' });
+    setChartSearch('');
     loadData();
   };
 
@@ -101,6 +120,13 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
     }
   };
 
+  const filteredChartAccounts = chartAccounts.filter(acc => 
+    acc.type === 'ACCOUNT' && (
+      acc.name.toLowerCase().includes(chartSearch.toLowerCase()) || 
+      acc.code.toLowerCase().includes(chartSearch.toLowerCase())
+    )
+  );
+
   const categoryMovements = selectedCategory 
     ? journal.filter(j => j.categoryId === selectedCategory.id)
     : [];
@@ -108,6 +134,7 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
   const handleExportMainExcel = () => {
     const data = categories.map(c => ({
       'اسم البند': c.name,
+      'كود الحساب': c.accountCode || '-',
       'النوع': c.type,
       'عدد الحركات': journal.filter(j => j.categoryId === c.id).length,
       'ملاحظات': c.notes || '-'
@@ -225,26 +252,71 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
                  <h3 className="text-lg font-black text-readable flex items-center gap-2">
                     <Tags className="w-5 h-5 text-primary" /> {editingId ? 'تعديل بيانات القسم' : 'تعريف بند جديد ومزامنته مع الدليل'}
                  </h3>
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 
+                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="flex flex-col gap-1 relative">
+                       <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">ابحث في الدليل (اختياري)</label>
+                       <div className="relative">
+                          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                          <input 
+                             type="text" 
+                             placeholder="بحث باسم حساب..." 
+                             className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 text-readable p-3 pr-10 rounded-2xl font-bold outline-none w-full focus:border-primary transition-all text-xs"
+                             value={chartSearch}
+                             onFocus={() => setShowChartResults(true)}
+                             onChange={(e) => { setChartSearch(e.target.value); setShowChartResults(true); }}
+                          />
+                          {showChartResults && chartSearch.length > 0 && (
+                             <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl z-[100] max-h-48 overflow-y-auto">
+                                {filteredChartAccounts.length === 0 ? (
+                                   <div className="p-3 text-center text-[10px] text-zinc-400 italic">لا يوجد حساب مطابق</div>
+                                ) : (
+                                   filteredChartAccounts.map(acc => (
+                                      <div 
+                                         key={acc.id} 
+                                         onClick={() => handleSelectChartAccount(acc)}
+                                         className="p-3 border-b dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer flex justify-between items-center group transition-colors"
+                                      >
+                                         <div className="flex flex-col text-right">
+                                            <span className="font-bold text-xs group-hover:text-primary">{acc.name}</span>
+                                            <span className="text-[8px] text-zinc-400 font-mono">#{acc.code}</span>
+                                         </div>
+                                         <Check className="w-3 h-3 text-emerald-500 opacity-0 group-hover:opacity-100" />
+                                      </div>
+                                   ))
+                                )}
+                             </div>
+                          )}
+                       </div>
+                    </div>
+
                     <div className="flex flex-col gap-1">
                        <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">اسم البند</label>
-                       <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border dark:border-zinc-700 font-bold outline-none focus:border-primary" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                       <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border dark:border-zinc-700 font-bold outline-none focus:border-primary text-sm" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                     </div>
+
+                    <div className="flex flex-col gap-1">
+                       <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">كود الحساب</label>
+                       <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border dark:border-zinc-700 font-mono font-black outline-none focus:border-primary text-sm" value={formData.accountCode} onChange={e => setFormData({...formData, accountCode: e.target.value})} placeholder="CODE-001" />
+                    </div>
+
                     <div className="flex flex-col gap-1">
                        <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">نوع البند</label>
-                       <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border dark:border-zinc-700 font-bold outline-none" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as any})}>
+                       <select className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border dark:border-zinc-700 font-bold outline-none text-sm" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as any})}>
                           <option value="مصروفات">بند مصروفات</option>
                           <option value="إيرادات">بند إيرادات</option>
                        </select>
                     </div>
-                    <div className="flex flex-col gap-1">
-                       <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">ملاحظات</label>
-                       <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border dark:border-zinc-700 font-bold outline-none focus:border-primary" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
-                    </div>
                  </div>
+
+                 <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-zinc-500 font-black uppercase mr-1">ملاحظات إضافية</label>
+                    <input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border dark:border-zinc-700 font-bold outline-none focus:border-primary text-sm" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
+                 </div>
+
                  <div className="flex justify-end gap-3 pt-4 border-t dark:border-zinc-800">
-                    <button onClick={handleSave} className="bg-primary text-white px-10 py-3 rounded-2xl font-black shadow-lg hover:scale-105 transition-all">حفظ ومزامنة</button>
-                    <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-8 py-3 rounded-2xl font-bold">إلغاء</button>
+                    <button onClick={handleSave} className="bg-primary text-white px-10 py-3 rounded-2xl font-black shadow-lg hover:scale-105 transition-all">حفظ ومزامنة مع الدليل</button>
+                    <button onClick={() => { setIsAdding(false); setEditingId(null); setChartSearch(''); }} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-8 py-3 rounded-2xl font-bold">إلغاء</button>
                  </div>
               </div>
             )}
@@ -257,15 +329,18 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
                         {cat.type === 'مصروفات' ? <TrendingDown className="w-6 h-6" /> : <TrendingUp className="w-6 h-6" />}
                      </div>
                      <div className="flex gap-1 no-print">
-                        <button onClick={() => { setEditingId(cat.id); setFormData(cat); setIsAdding(true); window.scrollTo({top: 0, behavior: 'smooth'}); }} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-primary transition-all"><Edit2 className="w-4 h-4" /></button>
+                        <button onClick={() => { setEditingId(cat.id); setFormData(cat); setIsAdding(true); setChartSearch(cat.name); window.scrollTo({top: 0, behavior: 'smooth'}); }} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-primary transition-all"><Edit2 className="w-4 h-4" /></button>
                         <button onClick={() => handleDelete(cat.id)} className="p-2 hover:bg-rose-500/10 rounded-xl text-zinc-400 hover:text-rose-500 transition-all"><Trash2 className="w-4 h-4" /></button>
                      </div>
                   </div>
                   <div className="flex-1">
                      <h3 className="text-xl font-black text-readable mb-1 leading-tight">{cat.name}</h3>
-                     <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full border ${cat.type === 'مصروفات' ? 'bg-rose-500/10 text-rose-600 border-rose-500/20' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}`}>
-                        {cat.type}
-                     </span>
+                     <div className="flex items-center gap-2 mb-3">
+                        <span className="text-[10px] font-mono font-black text-zinc-400">#{cat.accountCode || 'N/A'}</span>
+                        <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full border ${cat.type === 'مصروفات' ? 'bg-rose-500/10 text-rose-600 border-rose-500/20' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}`}>
+                           {cat.type}
+                        </span>
+                     </div>
                   </div>
                   <div className="mt-6 pt-4 border-t dark:border-zinc-800 flex justify-between items-center">
                      <button onClick={() => setSelectedCategory(cat)} className="text-xs font-black text-primary hover:underline flex items-center gap-1 no-print">
@@ -288,7 +363,11 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
                    <div>
                       <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em] mb-1 block">كشف حركات القسم</span>
                       <h3 className="text-4xl font-black text-readable italic">{selectedCategory.name}</h3>
-                      <p className="text-xs font-bold text-zinc-500 mt-1 uppercase tracking-widest">{selectedCategory.type}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                         <span className="text-xs font-mono font-black text-zinc-400">كود: {selectedCategory.accountCode || '---'}</span>
+                         <span className="text-zinc-300">|</span>
+                         <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{selectedCategory.type}</p>
+                      </div>
                    </div>
                 </div>
                 <div className="flex flex-col items-center md:items-end bg-zinc-50 dark:bg-zinc-800/50 p-6 rounded-3xl border dark:border-zinc-700 min-w-[240px]">

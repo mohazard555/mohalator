@@ -85,6 +85,7 @@ export interface PeriodicInventory {
 export interface AccountingCategory {
   id: string;
   name: string;
+  accountCode?: string;
   type: 'مصروفات' | 'إيرادات';
   notes?: string;
   linkedAccountId?: string;
