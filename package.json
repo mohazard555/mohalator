@@ -1,5 +1,5 @@
 {
-  "name": "sheno-accounting-system",
+  "name": "finexa-accounting-system",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,7 +13,8 @@
     "react-dom": "^19.2.3",
     "lucide-react": "^0.562.0",
     "@vitejs/plugin-react": "^5.1.2",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "@google/genai": "^0.2.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
