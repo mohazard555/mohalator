@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Folder, FolderPlus, ChevronRight, ChevronDown, 
   Search, Plus, Trash2, Edit2, X, Landmark, 
-  ArrowLeftRight, Calculator, ImageIcon, FileSpreadsheet, Printer, Save, History
+  ArrowLeftRight, Calculator, ImageIcon, FileSpreadsheet, Printer, Save, History, Banknote
 } from 'lucide-react';
-import { AccountNode, CashEntry, OpeningEntry, AppSettings, SalesInvoice, PurchaseInvoice, AccountingCategory, Party, PartyType, InventoryItem, StockEntry } from '../types';
+import { AccountNode, CashEntry, OpeningEntry, AppSettings, SalesInvoice, PurchaseInvoice, AccountingCategory, Party, PartyType, InventoryItem, StockEntry, PeriodicInventory } from '../types';
 import { ImageExportService } from '../utils/ImageExportService';
 import { exportToCSV } from '../utils/export';
 
@@ -22,15 +21,17 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'ADD' | 'EDIT'>('ADD');
   
-  // مجموعات البيانات للمزامنة الحسابية
   const [journal, setJournal] = useState<CashEntry[]>([]);
   const [openingEntries, setOpeningEntries] = useState<OpeningEntry[]>([]);
   const [sales, setSales] = useState<SalesInvoice[]>([]);
+  const [salesReturns, setSalesReturns] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<PurchaseInvoice[]>([]);
+  const [purchaseReturns, setPurchaseReturns] = useState<any[]>([]);
   const [categories, setCategories] = useState<AccountingCategory[]>([]);
   const [parties, setParties] = useState<Party[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [stockEntries, setStockEntries] = useState<StockEntry[]>([]);
+  const [periodicInventories, setPeriodicInventories] = useState<PeriodicInventory[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
 
   const [formData, setFormData] = useState<Partial<AccountNode>>({
@@ -46,100 +47,94 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const sJou = localStorage.getItem('sheno_cash_journal');
     const sOp = localStorage.getItem('sheno_opening_entries');
     const sSal = localStorage.getItem('sheno_sales_invoices');
+    const sSalRet = localStorage.getItem('sheno_sales_returns');
     const sPur = localStorage.getItem('sheno_purchases');
+    const sPurRet = localStorage.getItem('sheno_purchase_returns');
     const sCat = localStorage.getItem('sheno_accounting_categories');
     const sPar = localStorage.getItem('sheno_parties');
     const sInv = localStorage.getItem('sheno_inventory_list');
     const sSto = localStorage.getItem('sheno_stock_entries');
+    const sPerInv = localStorage.getItem('sheno_periodic_inventories');
     const sSett = localStorage.getItem('sheno_settings');
 
     const defaultRoots: AccountNode[] = [
       // 1. الموجودات
-      { id: '1', code: '1', name: 'الموجودات-الميزانية', parentId: null, type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '11', code: '11', name: 'الموجودات الثابتة-الميزانية', parentId: '1', type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '111', code: '111', name: 'مباني-الميزانية', parentId: '11', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '112', code: '112', name: 'عقارات-الميزانية', parentId: '11', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '113', code: '113', name: 'أثاث ومفروشات-الميزانية', parentId: '11', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '114', code: '114', name: 'سيارات-الميزانية', parentId: '11', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '12', code: '12', name: 'الموجودات المتداولة-الميزانية', parentId: '1', type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '121', code: '121', name: 'الزبائن-الميزانية', parentId: '12', type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '121001', code: '121001', name: 'زبون رقم 1-الميزانية', parentId: '121', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '122', code: '122', name: 'مدينون مختلفون-الميزانية', parentId: '12', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '123', code: '123', name: 'مسحوبات الشركاء-الميزانية', parentId: '12', type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '12301', code: '12301', name: 'مسحوبات الشريك 1-الميزانية', parentId: '123', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '124', code: '124', name: 'المخزون-الميزانية', parentId: '12', type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '1241', code: '1241', name: 'مخزون بضاعة جاهزة أخر المدة-الميزانية', parentId: '124', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '13', code: '13', name: 'الأموال الجاهزة-الميزانية', parentId: '1', type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '131', code: '131', name: 'الصندوق-الميزانية', parentId: '13', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '132', code: '132', name: 'مصرف النجمة-الميزانية', parentId: '13', type: 'ACCOUNT', reportType: 'الميزانية' },
+      { id: '1', code: '1', name: 'الموجودات', parentId: null, type: 'FOLDER', reportType: 'الميزانية' },
+      { id: '11', code: '11', name: 'الموجودات الثابتة', parentId: '1', type: 'FOLDER', reportType: 'الميزانية' },
+      { id: '111', code: '111', name: 'مباني وإنشاءات', parentId: '11', type: 'ACCOUNT', reportType: 'الميزانية' },
+      { id: '112', code: '112', name: 'آلات ومعدات', parentId: '11', type: 'ACCOUNT', reportType: 'الميزانية' },
+      { id: '113', code: '113', name: 'أثاث ومفروشات مكتبية', parentId: '11', type: 'ACCOUNT', reportType: 'الميزانية' },
+      { id: '114', code: '114', name: 'وسائل نقل وانتقال (سيارات)', parentId: '11', type: 'ACCOUNT', reportType: 'الميزانية' },
+      { id: '12', code: '12', name: 'الموجودات المتداولة', parentId: '1', type: 'FOLDER', reportType: 'الميزانية' },
+      { id: '121', code: '121', name: 'الزبائن المدينون', parentId: '12', type: 'FOLDER', reportType: 'الميزانية' },
+      { id: '124', code: '124', name: 'المخزون السلعي', parentId: '12', type: 'FOLDER', reportType: 'الميزانية' },
+      { id: '1241', code: '1241', name: 'بضاعة آخر المدة (مخزن)', parentId: '124', type: 'ACCOUNT', reportType: 'الميزانية' },
+      { id: '13', code: '13', name: 'الأموال الجاهزة ونقدية', parentId: '1', type: 'FOLDER', reportType: 'الميزانية' },
+      { id: '131', code: '131', name: 'الصندوق الرئيسي', parentId: '13', type: 'ACCOUNT', reportType: 'الميزانية' },
+      { id: '132', code: '132', name: 'حساب المصرف البنكي', parentId: '13', type: 'ACCOUNT', reportType: 'الميزانية' },
       
-      // 2. المطاليب
-      { id: '2', code: '2', name: 'المطاليب-الميزانية', parentId: null, type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '21', code: '21', name: 'المطاليب الثابتة-الميزانية', parentId: '2', type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '211', code: '211', name: 'رأس المال-الميزانية', parentId: '21', type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '21101', code: '21101', name: 'رأسمال حسام-الميزانية', parentId: '211', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '21102', code: '21102', name: 'رأسمال أحمد-الميزانية', parentId: '211', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '212', code: '212', name: 'القروض-الميزانية', parentId: '21', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '22', code: '22', name: 'المطاليب المتداولة-الميزانية', parentId: '2', type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '221', code: '221', name: 'الموردون-الميزانية', parentId: '22', type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '221001', code: '221001', name: 'شركة الألبان المحدودة-الميزانية', parentId: '221', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '221002', code: '221002', name: 'شركة الأغذية الحديثة-الميزانية', parentId: '221', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '221003', code: '221003', name: 'شركة التضامن-الميزانية', parentId: '221', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '222', code: '222', name: 'دائنون مختلفون-الميزانية', parentId: '22', type: 'ACCOUNT', reportType: 'الميزانية' },
+      // 2. المطاليب والخصوم
+      { id: '2', code: '2', name: 'المطاليب والخصوم', parentId: null, type: 'FOLDER', reportType: 'الميزانية' },
+      { id: '21', code: '21', name: 'المطاليب الثابتة وحقوق الملكية', parentId: '2', type: 'FOLDER', reportType: 'الميزانية' },
+      { id: '211', code: '211', name: 'رأس المال المخصص', parentId: '21', type: 'FOLDER', reportType: 'الميزانية' },
+      { id: '22', code: '22', name: 'المطاليب المتداولة', parentId: '2', type: 'FOLDER', reportType: 'الميزانية' },
+      { id: '221', code: '221', name: 'الموردون والدائنون', parentId: '22', type: 'FOLDER', reportType: 'الميزانية' },
 
       // 3. صافي المشتريات
-      { id: '3', code: '3', name: 'صافي المشتريات-المتاجرة', parentId: null, type: 'FOLDER', reportType: 'المتاجرة' },
-      { id: '31', code: '31', name: 'المشتريات-المتاجرة', parentId: '3', type: 'ACCOUNT', reportType: 'المتاجرة' },
-      { id: '32', code: '32', name: 'مرتجع المشتريات-المتاجرة', parentId: '3', type: 'ACCOUNT', reportType: 'المتاجرة' },
-      { id: '33', code: '33', name: 'مصاريف نقل المشتريات-المتاجرة', parentId: '3', type: 'ACCOUNT', reportType: 'المتاجرة' },
-      { id: '34', code: '34', name: 'الحسم المكتسب-المتاجرة', parentId: '3', type: 'ACCOUNT', reportType: 'المتاجرة' },
+      { id: '3', code: '3', name: 'صافي المشتريات', parentId: null, type: 'FOLDER', reportType: 'المتاجرة' },
+      { id: '31', code: '31', name: 'إجمالي المشتريات', parentId: '3', type: 'ACCOUNT', reportType: 'المتاجرة' },
+      { id: '32', code: '32', name: 'مرتجع المشتريات', parentId: '3', type: 'ACCOUNT', reportType: 'المتاجرة' },
+      { id: '33', code: '33', name: 'مصاريف نقل المشتريات', parentId: '3', type: 'ACCOUNT', reportType: 'المتاجرة' },
+      { id: '34', code: '34', name: 'الحسم المكتسب', parentId: '3', type: 'ACCOUNT', reportType: 'المتاجرة' },
 
       // 4. صافي المبيعات
-      { id: '4', code: '4', name: 'صافي المبيعات-المتاجرة', parentId: null, type: 'FOLDER', reportType: 'المتاجرة' },
-      { id: '41', code: '41', name: 'المبيعات-المتاجرة', parentId: '4', type: 'ACCOUNT', reportType: 'المتاجرة' },
-      { id: '42', code: '42', name: 'مرتجع المبيعات-المتاجرة', parentId: '4', type: 'ACCOUNT', reportType: 'المتاجرة' },
-      { id: '43', code: '43', name: 'الحسم الممنوح-المتاجرة', parentId: '4', type: 'ACCOUNT', reportType: 'المتاجرة' },
+      { id: '4', code: '4', name: 'صافي المبيعات', parentId: null, type: 'FOLDER', reportType: 'المتاجرة' },
+      { id: '41', code: '41', name: 'إجمالي المبيعات', parentId: '4', type: 'ACCOUNT', reportType: 'المتاجرة' },
+      { id: '42', code: '42', name: 'مرتجع المبيعات', parentId: '4', type: 'ACCOUNT', reportType: 'المتاجرة' },
+      { id: '43', code: '43', name: 'الحسم الممنوح', parentId: '4', type: 'ACCOUNT', reportType: 'المتاجرة' },
 
-      // 5. المصاريف
-      { id: '5', code: '5', name: 'المصاريف-الأرباح والخسائر', parentId: null, type: 'FOLDER', reportType: 'الأرباح والخسائر' },
-      { id: '501', code: '501', name: 'رواتب واجور-الأرباح والخسائر', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '502', code: '502', name: 'كهرباء وماء-الأرباح والخسائر', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '503', code: '503', name: 'هاتف وفاكس وانترنيت-الأرباح والخسائر', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '504', code: '504', name: 'إكراميات وهدايا-الأرباح والخسائر', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '505', code: '505', name: 'نقل وانتقال-الأرباح والخسائر', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '506', code: '506', name: 'وقود ومحروقات-الأرباح والخسائر', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '507', code: '507', name: 'صيانة وقطع غيار-الأرباح والخسائر', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '508', code: '508', name: 'قرطاسية ومطبوعات-الأرباح والخسائر', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '509', code: '509', name: 'زيوت وشحوم-الأرباح والخسائر', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '510', code: '510', name: 'مصاريف متفرقة-الأرباح والخسائر', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '511', code: '511', name: 'معدات والات-الأرباح والخسائر', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
+      // 5. المصاريف والأعباء
+      { id: '5', code: '5', name: 'المصاريف التشغيلية والعمومية', parentId: null, type: 'FOLDER', reportType: 'الأرباح والخسائر' },
+      { id: '51', code: '51', name: 'مصاريف إيجار', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
+      { id: '52', code: '52', name: 'رواتب وأجور الموظفين', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
+      { id: '53', code: '53', name: 'كهرباء ومياه وانترنت', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
+      { id: '54', code: '54', name: 'قرطاسية ومطبوعات', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
+      { id: '55', code: '55', name: 'مصاريف صيانة وإصلاح', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
+      { id: '56', code: '56', name: 'مصاريف دعاية وإعلان', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
 
-      // 6. الإيرادات
-      { id: '6', code: '6', name: 'الايرادات-الأرباح والخسائر', parentId: null, type: 'FOLDER', reportType: 'الأرباح والخسائر' },
-      { id: '601', code: '601', name: 'ايرادات مختلفة-الأرباح والخسائر', parentId: '6', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
+      // 6. الايرادات الأخرى
+      { id: '6', code: '6', name: 'الايرادات الأخرى والتحويلات', parentId: null, type: 'FOLDER', reportType: 'الأرباح والخسائر' },
+      { id: '61', code: '61', name: 'إيرادات خدمات متنوعة', parentId: '6', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
 
       // 7. البضاعة
-      { id: '7', code: '7', name: 'البضاعة-المتاجرة', parentId: null, type: 'FOLDER', reportType: 'المتاجرة' },
-      { id: '71', code: '71', name: 'بضاعة اول المدة-المتاجرة', parentId: '7', type: 'ACCOUNT', reportType: 'المتاجرة' },
-      { id: '72', code: '72', name: 'بضاعة أخر المدة-المتاجرة', parentId: '7', type: 'ACCOUNT', reportType: 'المتاجرة' }
+      { id: '7', code: '7', name: 'بضاعة المتاجرة السنوية', parentId: null, type: 'FOLDER', reportType: 'المتاجرة' },
+      { id: '71', code: '71', name: 'بضاعة اول المدة', parentId: '7', type: 'ACCOUNT', reportType: 'المتاجرة' },
+      { id: '72', code: '72', name: 'بضاعة أخر المدة', parentId: '7', type: 'ACCOUNT', reportType: 'المتاجرة' }
     ];
 
     let currentAccounts: AccountNode[] = savedAccountsRaw ? JSON.parse(savedAccountsRaw) : defaultRoots;
     
-    // حقن الأقسام الافتراضية إذا فقدت
+    // ضمان وجود الحسابات الأساسية والبنود الافتراضية المطلوبة
     defaultRoots.forEach(def => {
-      if (!currentAccounts.some(acc => acc.id === def.id)) currentAccounts.push(def);
+      if (!currentAccounts.some(acc => acc.code === def.code)) {
+         currentAccounts.push(def);
+      }
     });
 
     setAccounts(currentAccounts);
     if (sJou) setJournal(JSON.parse(sJou));
     if (sOp) setOpeningEntries(JSON.parse(sOp));
+    // Fix: Replaced 'setAllSales' with 'setSales' to correct "Cannot find name 'setAllSales'" error
     if (sSal) setSales(JSON.parse(sSal));
+    if (sSalRet) setSalesReturns(JSON.parse(sSalRet));
+    // Fix: Replaced 'setAllPurchases' with 'setPurchases' to correct "Cannot find name 'setAllPurchases'" error
     if (sPur) setPurchases(JSON.parse(sPur));
+    if (sPurRet) setPurchaseReturns(JSON.parse(sPurRet));
     if (sCat) setCategories(JSON.parse(sCat));
     if (sPar) setParties(JSON.parse(sPar));
     if (sInv) setInventory(JSON.parse(sInv));
     if (sSto) setStockEntries(JSON.parse(sSto));
+    if (sPerInv) setPeriodicInventories(JSON.parse(sPerInv));
     if (sSett) setSettings(JSON.parse(sSett));
   };
 
@@ -153,47 +148,58 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const name = account.name;
     const code = account.code;
 
-    // 1. الرصيد الافتتاحي من الميزانية العمومية
+    // 1. القيود الافتتاحية للميزانية
     const ops = openingEntries.filter(e => e.accountName === name || name.includes(e.accountName));
     balance += ops.reduce((s, c) => s + (Number(c.debit) - Number(c.credit)), 0);
 
-    // 2. النقدية (الصناديق)
+    // 2. النقدية (الصندوق والمصرف)
     if (code === '131' || name.includes('الصندوق')) {
-       balance += journal.reduce((s, c) => s + (Number(c.receivedSYP) - Number(c.paidSYP)), 0);
+       const boxMoves = journal.filter(j => !j.statement.includes('وجهة: المصرف'));
+       balance += boxMoves.reduce((s, c) => s + (Number(c.receivedSYP) - Number(c.paidSYP)), 0);
+    }
+    
+    if (code === '132' || name.includes('المصرف')) {
+       const bankMoves = journal.filter(j => j.statement.includes('وجهة: المصرف') || (j.partyName === 'المصرف'));
+       balance += bankMoves.reduce((s, c) => s + (Number(c.receivedSYP) - Number(c.paidSYP)), 0);
     }
 
-    // 3. الزبائن والموردين
-    const party = parties.find(p => name.includes(p.name));
-    if (party) {
-       if (party.type === PartyType.CUSTOMER || party.type === PartyType.BOTH) {
-          const pSales = sales.filter(s => s.customerName === party.name).reduce((s, c) => s + c.totalAmount, 0);
-          const pRec = journal.filter(j => j.partyName === party.name).reduce((s, c) => s + c.receivedSYP, 0);
-          balance += (pSales - pRec);
-       }
-       if (party.type === PartyType.SUPPLIER || party.type === PartyType.BOTH) {
-          const pPurch = purchases.filter(p => p.supplierName === party.name).reduce((s, c) => s + c.totalAmount, 0);
-          const pPaid = journal.filter(j => j.partyName === party.name).reduce((s, c) => s + c.paidSYP, 0);
-          balance -= (pPurch - pPaid);
-       }
-    }
-
-    // 4. بنود المصاريف والايرادات
-    const cat = categories.find(c => name.includes(c.name));
-    if (cat) {
-       const moves = journal.filter(j => j.categoryId === cat.id);
-       if (cat.type === 'مصروفات') balance += moves.reduce((s, c) => s + c.paidSYP, 0);
-       else balance += moves.reduce((s, c) => s + c.receivedSYP, 0);
-    }
-
-    // 5. المبيعات والمشتريات
+    // 3. صافي المبيعات (Folder 4)
     if (code === '41' || name.includes('المبيعات')) {
-       if (account.parentId === '4') balance += sales.reduce((s, c) => s + c.totalAmount, 0);
+       balance += sales.reduce((s, c) => s + c.totalAmount, 0);
     }
-    if (code === '31' || name.includes('المشتريات')) {
-       if (account.parentId === '3') balance -= purchases.reduce((s, c) => s + c.totalAmount, 0);
+    if (code === '42' || name.includes('مرتجع المبيعات')) {
+       const retVal = salesReturns.reduce((s, c) => s + (c.totalReturnAmount || 0), 0);
+       balance -= retVal; 
+    }
+    if (code === '43' || name.includes('الحسم الممنوح')) {
+       const discVal = sales.reduce((s, c) => s + (c.discountAmount || 0), 0);
+       balance -= discVal;
     }
 
-    // 6. المخزون (بضاعة آخر المدة)
+    // 4. صافي المشتريات (Folder 3)
+    if (code === '31' || name.includes('إجمالي المشتريات')) {
+       balance += purchases.reduce((s, c) => s + c.totalAmount, 0);
+    }
+    if (code === '32' || name.includes('مرتجع المشتريات')) {
+       const retVal = purchaseReturns.reduce((s, c) => s + (c.totalReturnAmount || 0), 0);
+       balance -= retVal;
+    }
+    if (code === '33' || name.includes('مصاريف نقل المشتريات')) {
+       const transVal = purchases.reduce((s, c) => s + (c.transportExpenses || 0), 0);
+       balance += transVal;
+    }
+    if (code === '34' || name.includes('الحسم المكتسب')) {
+       const discVal = purchases.reduce((s, c) => s + (c.discountAmount || 0), 0);
+       balance -= discVal;
+    }
+
+    // 5. بضاعة أول المدة
+    if (code === '71' || name === 'بضاعة اول المدة') {
+       const opInv = periodicInventories.find(i => i.type === 'OPENING');
+       balance = opInv ? opInv.totalValue : 0;
+    }
+
+    // 6. بضاعة آخر المدة (تقديري)
     if (code === '72' || code === '1241' || (name.includes('بضاعة') && name.includes('أخر'))) {
        const stockVal = inventory.reduce((s, item) => {
           const moves = stockEntries.filter(e => e.itemCode === item.code);
@@ -206,34 +212,55 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        balance = stockVal;
     }
 
+    // 7. الزبائن والموردين (كأرصدة حسابات)
+    const party = parties.find(p => name === p.name);
+    if (party) {
+       if (party.type === PartyType.CUSTOMER || (account.parentId === '121')) {
+          const pSales = sales.filter(s => s.customerName === party.name).reduce((s, c) => s + c.totalAmount, 0);
+          // Fix: Renamed reduce parameter 'j' to 'curr' to avoid scope shadowing confusion and fix "Cannot find name 'j'" error
+          const pRec = journal.filter(j => j.partyName === party.name).reduce((sum, curr) => sum + (curr.receivedSYP + curr.receivedUSD), 0);
+          balance += (party.openingBalance + pSales - pRec);
+       }
+       if (party.type === PartyType.SUPPLIER || (account.parentId === '221')) {
+          const pPurch = purchases.filter(p => p.supplierName === party.name).reduce((sum, inv) => sum + inv.totalAmount, 0);
+          // Fix: Renamed reduce parameter 'j' to 'curr' to avoid scope shadowing confusion and fix "Cannot find name 'j'" error
+          const pPaid = journal.filter(j => j.partyName === party.name).reduce((sum, curr) => sum + (curr.paidSYP + curr.paidUSD), 0);
+          balance -= (party.openingBalance + pPurch - pPaid);
+       }
+    }
+
+    // 8. الأقسام والمصاريف الافتراضية
+    // الربط يتم عبر "اسم الحساب" مع "اسم الفئة" في سجل البنود
+    const cat = categories.find(c => name === c.name);
+    if (cat || account.parentId === '5' || account.parentId === '6') {
+       const moves = journal.filter(j => j.partyName === name || categories.find(c => c.id === j.categoryId)?.name === name);
+       const isExpense = account.parentId === '5' || (cat && cat.type === 'مصروفات');
+       if (isExpense) balance += moves.reduce((s, c) => s + (c.paidSYP + c.paidUSD), 0);
+       else balance += moves.reduce((s, c) => s + (c.receivedSYP + c.receivedUSD), 0);
+    }
+
     return balance;
   };
 
   const getAccountMovements = (account: AccountNode) => {
     const moves: any[] = [];
     const name = account.name;
+    const code = account.code;
 
-    // البحث في الصندوق
-    journal.filter(j => j.partyName === name || j.statement.includes(name) || categories.find(c => name.includes(c.name))?.id === j.categoryId || (account.code === '131' && (j.receivedSYP > 0 || j.paidSYP > 0)))
-      .forEach(j => {
-        moves.push({ date: j.date, statement: j.statement, debit: j.receivedSYP || 0, credit: j.paidSYP || 0, source: 'الصندوق' });
-      });
+    journal.filter(j => {
+       if (code === '131') return !j.statement.includes('وجهة: المصرف');
+       if (code === '132') return j.statement.includes('وجهة: المصرف');
+       return j.partyName === name || j.statement.includes(name) || categories.find(c => name === c.name)?.id === j.categoryId;
+    }).forEach(j => {
+        moves.push({ date: j.date, statement: j.statement, debit: (j.receivedSYP + j.receivedUSD), credit: (j.paidSYP + j.paidUSD), source: 'اليومية' });
+    });
 
-    // البحث في المبيعات
-    sales.filter(s => s.customerName === name || (account.parentId === '4'))
-      .forEach(s => {
+    sales.filter(s => s.customerName === name || (code === '41')).forEach(s => {
         moves.push({ date: s.date, statement: `فاتورة مبيع #${s.invoiceNumber}`, debit: s.totalAmount, credit: 0, source: 'المبيعات' });
-      });
+    });
 
-    // البحث في المشتريات
-    purchases.filter(p => p.supplierName === name || (account.parentId === '3'))
-      .forEach(p => {
+    purchases.filter(p => p.supplierName === name || (code === '31')).forEach(p => {
         moves.push({ date: p.date, statement: `فاتورة شراء #${p.invoiceNumber}`, debit: 0, credit: p.totalAmount, source: 'المشتريات' });
-      });
-
-    // القيود الافتتاحية
-    openingEntries.filter(e => name.includes(e.accountName)).forEach(e => {
-       moves.push({ date: e.date, statement: 'قيد ميزانية افتتاحي', debit: e.debit, credit: e.credit, source: 'المركز المالي' });
     });
 
     return moves.sort((a, b) => b.date.localeCompare(a.date));

@@ -156,6 +156,8 @@ export interface PurchaseInvoice {
   items: InvoiceItem[];
   totalAmount: number;
   paidAmount: number;
+  transportExpenses: number;
+  discountAmount: number;
   notes: string;
   currencySymbol?: string;
 }

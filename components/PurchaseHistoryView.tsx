@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Printer, Search, FileDown, Calendar, Truck, Package } from 'lucide-react';
+import { ArrowRight, Printer, Search, FileDown, Calendar, Truck, Package, Percent } from 'lucide-react';
 import { PurchaseInvoice, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -96,13 +96,15 @@ const PurchaseHistoryView: React.FC<PurchaseHistoryViewProps> = ({ onBack }) => 
                 <th className="p-4 border-l border-zinc-200 text-center w-32">التاريخ</th>
                 <th className="p-4 border-l border-zinc-200">المورد</th>
                 <th className="p-4 border-l border-zinc-200">تفاصيل المواد (كمية / وحدة)</th>
+                <th className="p-4 border-l border-zinc-200 text-center w-24">نقل</th>
+                <th className="p-4 border-l border-zinc-200 text-center w-24">حسم</th>
                 <th className="p-4 border-l border-zinc-200 text-center w-40">إجمالي المبلغ</th>
                 <th className="p-4 text-center w-40">المدفوع نقداً</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 font-bold print:divide-zinc-300">
               {filtered.length === 0 ? (
-                <tr><td colSpan={6} className="p-20 text-center italic text-zinc-400">لا يوجد سجلات مشتريات تطابق البحث</td></tr>
+                <tr><td colSpan={8} className="p-20 text-center italic text-zinc-400">لا يوجد سجلات مشتريات تطابق البحث</td></tr>
               ) : filtered.map(p => (
                 <tr key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors h-14">
                   <td className="p-4 text-amber-700 font-black text-center font-mono border-l border-zinc-100">#{p.invoiceNumber}</td>
@@ -119,6 +121,8 @@ const PurchaseHistoryView: React.FC<PurchaseHistoryViewProps> = ({ onBack }) => 
                         ))}
                      </div>
                   </td>
+                  <td className="p-4 text-center text-primary font-mono border-l border-zinc-100">{p.transportExpenses?.toLocaleString() || '0'}</td>
+                  <td className="p-4 text-center text-rose-500 font-mono border-l border-zinc-100">{p.discountAmount?.toLocaleString() || '0'}</td>
                   <td className="p-4 text-center font-black text-rose-700 font-mono text-lg border-l border-zinc-100 bg-rose-50/10">{p.totalAmount.toLocaleString()}</td>
                   <td className="p-4 text-center font-black text-emerald-700 font-mono text-lg bg-emerald-50/10">{p.paidAmount?.toLocaleString() || '0'}</td>
                 </tr>

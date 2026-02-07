@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Search, ImageIcon, FileText, Calendar, User, Hash, FileDown, Eye, X, ZoomIn, Download, ExternalLink, Share2, DollarSign } from 'lucide-react';
 import { SalesInvoice, PurchaseInvoice, AppSettings } from '../types';
@@ -34,7 +35,6 @@ const InvoiceGalleryView: React.FC<InvoiceGalleryViewProps> = ({ onBack }) => {
     if (sSett) setSettings(JSON.parse(sSett));
   }, []);
 
-  // Pre-calculate partyName during mapping to avoid type errors on mixed invoice types
   const allImages: GalleryItem[] = [
     ...sales.flatMap(inv => inv.items.filter(it => it.image).map(it => ({ 
       url: it.image!, 
@@ -52,7 +52,6 @@ const InvoiceGalleryView: React.FC<InvoiceGalleryViewProps> = ({ onBack }) => {
     })))
   ].filter(img => 
     img.inv.invoiceNumber.includes(searchTerm) || 
-    // Fix: Use pre-calculated partyName instead of direct property access on union type
     img.partyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     img.item.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -61,6 +60,34 @@ const InvoiceGalleryView: React.FC<InvoiceGalleryViewProps> = ({ onBack }) => {
     const el = itemRefs.current[id];
     if (el) {
       await ImageExportService.exportAsPng(el, `بطاقة_فاتورة_${name}`);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!selectedImage) return;
+
+    try {
+      const response = await fetch(selectedImage.url);
+      const blob = await response.blob();
+      const file = new File([blob], `invoice_${selectedImage.inv.invoiceNumber}.png`, { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `فاتورة ${selectedImage.type} رقم ${selectedImage.inv.invoiceNumber}`,
+          text: `فاتورة ${selectedImage.type} رقم ${selectedImage.inv.invoiceNumber}\nالطرف الثاني: ${selectedImage.partyName}\nالمادة: ${selectedImage.item}\nالقيمة: ${selectedImage.inv.totalAmount.toLocaleString()} ${settings?.currencySymbol}`,
+        });
+      } else {
+        // Fallback for text-only sharing if files not supported
+        await navigator.share({
+          title: `فاتورة ${selectedImage.type} رقم ${selectedImage.inv.invoiceNumber}`,
+          text: `تفاصيل الفاتورة رقم ${selectedImage.inv.invoiceNumber} للطرف ${selectedImage.partyName}`,
+          url: window.location.href
+        });
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      // If it fails (e.g. user cancelled or browser restriction), we do nothing
     }
   };
 
@@ -82,7 +109,6 @@ const InvoiceGalleryView: React.FC<InvoiceGalleryViewProps> = ({ onBack }) => {
                  <div className="space-y-4 flex-1">
                     <div className="flex items-center gap-3">
                        <User className="w-5 h-5 text-zinc-400" />
-                       {/* Fix: Using pre-calculated partyName */}
                        <div><p className="text-[9px] font-bold text-zinc-400 uppercase">الطرف الثاني</p><p className="font-black text-zinc-800">{selectedImage.partyName}</p></div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -94,12 +120,24 @@ const InvoiceGalleryView: React.FC<InvoiceGalleryViewProps> = ({ onBack }) => {
                        <div><p className="text-[9px] font-bold text-zinc-400 uppercase">إجمالي الفاتورة</p><p className="font-mono font-black text-rose-700 text-xl">{selectedImage.inv.totalAmount.toLocaleString()} <span className="text-xs">{settings?.currencySymbol}</span></p></div>
                     </div>
                  </div>
-                 <button onClick={() => {
-                   const link = document.createElement('a');
-                   link.href = selectedImage.url;
-                   link.download = `فاتورة_${selectedImage.inv.invoiceNumber}.png`;
-                   link.click();
-                 }} className="w-full bg-rose-900 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl hover:bg-rose-800 transition-all"><Download className="w-5 h-5" /> حفظ الصورة الأصلية</button>
+                 
+                 <div className="flex flex-col gap-2 mt-auto">
+                    <button 
+                       onClick={handleShare}
+                       className="w-full bg-primary text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl hover:brightness-110 transition-all"
+                    >
+                       <Share2 className="w-5 h-5" /> مشاركة المستند
+                    </button>
+                    
+                    <button onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = selectedImage.url;
+                      link.download = `فاتورة_${selectedImage.inv.invoiceNumber}.png`;
+                      link.click();
+                    }} className="w-full bg-zinc-100 text-zinc-600 py-4 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-zinc-200 transition-all">
+                       <Download className="w-5 h-5" /> حفظ الصورة الأصلية
+                    </button>
+                 </div>
               </div>
            </div>
         </div>
@@ -126,7 +164,6 @@ const InvoiceGalleryView: React.FC<InvoiceGalleryViewProps> = ({ onBack }) => {
          {allImages.map((img, i) => {
            const cardId = `card-${i}`;
            return (
-             // Fix: Ref assignment must return void to satisfy type constraints
              <div key={i} ref={el => { itemRefs.current[cardId] = el; }} className="bg-white dark:bg-zinc-950 p-4 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl group hover:shadow-2xl transition-all export-fix">
                 <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden mb-6 shadow-inner bg-zinc-50 dark:bg-zinc-900">
                    <img src={img.url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="Invoice Attachment" />
@@ -152,7 +189,6 @@ const InvoiceGalleryView: React.FC<InvoiceGalleryViewProps> = ({ onBack }) => {
                    </div>
                    
                    <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border dark:border-zinc-800 space-y-2">
-                      {/* Fix: Using pre-calculated partyName instead of direct property access on union type */}
                       <div className="flex items-center gap-2 text-xs font-bold text-zinc-600 dark:text-zinc-400"><User className="w-3.5 h-3.5" /> {img.partyName}</div>
                       <div className="flex items-center gap-2 text-xs font-bold text-zinc-600 dark:text-zinc-400"><Hash className="w-3.5 h-3.5" /> {img.item}</div>
                    </div>

@@ -29,6 +29,10 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
   const [materialSearch, setMaterialSearch] = useState('');
   const [showMaterialResults, setShowMaterialResults] = useState(false);
 
+  // حالات تتبع تعديل البنود
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [editingMaterialIndex, setEditingMaterialIndex] = useState<number | null>(null);
+
   const [newInvoice, setNewInvoice] = useState<Partial<SalesInvoice>>({
     invoiceNumber: '',
     customerName: '',
@@ -113,6 +117,87 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleAddOrUpdateItem = () => {
+    if(!manualItem.name) return;
+    
+    const item: InvoiceItem = { 
+      id: editingItemIndex !== null ? (newInvoice.items![editingItemIndex].id) : crypto.randomUUID(), 
+      code: 'ITEM', 
+      name: manualItem.name, 
+      quantity: manualItem.quantity, 
+      price: manualItem.price, 
+      unit: 'قطعة', 
+      total: manualItem.quantity * manualItem.price, 
+      date: newInvoice.date!, 
+      notes: '', 
+      image: manualItem.image 
+    };
+
+    if (editingItemIndex !== null) {
+      const updatedItems = [...(newInvoice.items || [])];
+      updatedItems[editingItemIndex] = item;
+      setNewInvoice({ ...newInvoice, items: updatedItems });
+      setEditingItemIndex(null);
+    } else {
+      setNewInvoice({ ...newInvoice, items: [...(newInvoice.items || []), item] });
+    }
+    
+    setManualItem({ name: '', quantity: 1, price: 0, serialNumber: '', image: '' });
+  };
+
+  const startEditItem = (idx: number) => {
+    const item = newInvoice.items![idx];
+    setManualItem({
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      serialNumber: item.serialNumber || '',
+      image: item.image || ''
+    });
+    setEditingItemIndex(idx);
+    window.scrollTo({ top: 400, behavior: 'smooth' }); // التمرير لمنطقة الإضافة
+  };
+
+  const handleAddOrUpdateUsedMaterial = () => {
+    if (!usedMaterial.code) {
+      alert("يرجى اختيار مادة من القائمة");
+      return;
+    }
+    const mat = inventory.find(i => i.code === usedMaterial.code);
+    if (!mat) return;
+    
+    const item = { 
+      id: editingMaterialIndex !== null ? (newInvoice.usedMaterials![editingMaterialIndex].id) : crypto.randomUUID(), 
+      code: mat.code, 
+      name: mat.name, 
+      quantity: usedMaterial.quantity, 
+      unit: mat.unit 
+    };
+
+    if (editingMaterialIndex !== null) {
+      const updatedMats = [...(newInvoice.usedMaterials || [])];
+      updatedMats[editingMaterialIndex] = item as any;
+      setNewInvoice({ ...newInvoice, usedMaterials: updatedMats });
+      setEditingMaterialIndex(null);
+    } else {
+      setNewInvoice({ ...newInvoice, usedMaterials: [...(newInvoice.usedMaterials || []), item] });
+    }
+
+    setUsedMaterial({ code: '', name: '', quantity: 1 });
+    setMaterialSearch('');
+  };
+
+  const startEditMaterial = (idx: number) => {
+    const mat = newInvoice.usedMaterials![idx];
+    setUsedMaterial({
+      code: mat.code,
+      name: mat.name,
+      quantity: mat.quantity
+    });
+    setMaterialSearch(mat.name);
+    setEditingMaterialIndex(idx);
+  };
+
   const handleSaveInvoice = () => {
     if (!newInvoice.customerName || (newInvoice.items || []).length === 0) {
       alert('يرجى اختيار العميل وإضافة بند واحد على الأقل');
@@ -138,7 +223,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
       totalAmountLiteral: tafqeet(finalTotal, currencyName)
     };
 
-    // معالجة السجلات المخزنية
     const savedStock = localStorage.getItem('sheno_stock_entries');
     let stockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
     if (editingId) {
@@ -165,7 +249,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
 
     localStorage.setItem('sheno_stock_entries', JSON.stringify([...usedStockMoves, ...stockEntries]));
 
-    // معالجة السجلات المالية (اليومية)
     const savedCash = localStorage.getItem('sheno_cash_journal');
     let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
     if (editingId) {
@@ -174,7 +257,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
 
     const isPrimary = selectedCurrencyType === 'primary';
     
-    // 1. تسجيل دفعة نقدية إذا وجدت
     if (invoice.paidAmount && invoice.paidAmount > 0) {
       const destination = invoice.paymentType === 'نقداً' ? (invoice.cashAccount || 'الصندوق') : 'آجل';
       cashEntries.unshift({
@@ -191,7 +273,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
       });
     }
 
-    // 2. تسجيل الحسم الممنوح في اليومية كخسارة/مصروف (اختياري محاسبياً)
     if (discount > 0) {
       cashEntries.unshift({
         id: crypto.randomUUID(),
@@ -215,6 +296,8 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     
     setIsAdding(false);
     setEditingId(null);
+    setEditingItemIndex(null);
+    setEditingMaterialIndex(null);
     setNewInvoice({
       invoiceNumber: '', customerName: '', date: new Date().toISOString().split('T')[0],
       items: [], usedMaterials: [], notes: '', paidAmount: 0, discountAmount: 0, paymentType: 'نقداً', cashAccount: 'الصندوق'
@@ -267,6 +350,8 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
   const handleCancelEdit = () => {
     setIsAdding(false);
     setEditingId(null);
+    setEditingItemIndex(null);
+    setEditingMaterialIndex(null);
     setNewInvoice({
       invoiceNumber: '', customerName: '', date: new Date().toISOString().split('T')[0],
       items: [], usedMaterials: [], notes: '', paidAmount: 0, discountAmount: 0, paymentType: 'نقداً', cashAccount: 'الصندوق'
@@ -439,15 +524,17 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-             <div className="bg-zinc-50 dark:bg-zinc-950/40 p-5 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 space-y-4 shadow-inner">
-                <h4 className="text-sm font-black text-primary flex items-center justify-end gap-2 pb-2 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800">الأصناف المباعة <ScrollText className="w-5 h-5" /></h4>
+             <div className={`bg-zinc-50 dark:bg-zinc-950/40 p-5 rounded-[2rem] border-2 space-y-4 shadow-inner transition-all ${editingItemIndex !== null ? 'border-amber-500 ring-2 ring-amber-500/10' : 'border-zinc-200 dark:border-zinc-800'}`}>
+                <h4 className="text-sm font-black text-primary flex items-center justify-end gap-2 pb-2 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800">
+                   {editingItemIndex !== null ? 'تعديل الصنف المختار' : 'الأصناف المباعة'} <ScrollText className="w-5 h-5" />
+                </h4>
                 <div className="flex items-center gap-2">
-                   <button onClick={() => {
-                      if(!manualItem.name) return;
-                      const item: InvoiceItem = { id: crypto.randomUUID(), code: 'ITEM', name: manualItem.name, quantity: manualItem.quantity, price: manualItem.price, unit: 'قطعة', total: manualItem.quantity * manualItem.price, date: newInvoice.date!, notes: '', image: manualItem.image };
-                      setNewInvoice({ ...newInvoice, items: [...(newInvoice.items || []), item] });
-                      setManualItem({ name: '', quantity: 1, price: 0, serialNumber: '', image: '' });
-                   }} className="bg-zinc-800 dark:bg-zinc-900 text-zinc-400 p-3 rounded-xl border border-zinc-700 hover:text-white transition-all"><Plus className="w-6 h-6"/></button>
+                   <button 
+                      onClick={handleAddOrUpdateItem} 
+                      className={`p-3 rounded-xl border transition-all ${editingItemIndex !== null ? 'bg-amber-600 border-amber-400 text-white animate-pulse' : 'bg-zinc-800 dark:bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'}`}
+                   >
+                      {editingItemIndex !== null ? <Check className="w-6 h-6"/> : <Plus className="w-6 h-6"/>}
+                   </button>
                    <input type="number" placeholder="0" className="w-20 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center font-black text-emerald-500 outline-none" value={manualItem.quantity} onChange={e => setManualItem({...manualItem, quantity: Number(e.target.value)})} />
                    <input type="number" placeholder="السعر" className="w-28 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center font-black text-amber-500 outline-none" value={manualItem.price} onChange={e => setManualItem({...manualItem, price: Number(e.target.value)})} />
                    <div className="relative w-12 h-12 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center justify-center cursor-pointer hover:border-zinc-600 transition-all overflow-hidden shrink-0" onClick={() => manualItem.image && setPreviewImage(manualItem.image)}>
@@ -457,7 +544,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                 </div>
                 <div className="space-y-2 mt-4 max-h-40 overflow-y-auto custom-scrollbar">
                    {newInvoice.items?.map((it, idx) => (
-                      <div key={it.id} className="flex items-center justify-between bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                      <div key={it.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${editingItemIndex === idx ? 'bg-amber-50 border-amber-200' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'}`}>
                          <div className="flex items-center gap-3">
                            <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-[10px] font-black">#{idx + 1}</span>
                            {it.image && (
@@ -467,32 +554,32 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                                onClick={() => setPreviewImage(it.image!)} 
                              />
                            )}
-                           <span className="font-bold text-sm">{it.name}</span>
+                           <span className={`font-bold text-sm ${editingItemIndex === idx ? 'text-amber-700' : ''}`}>{it.name}</span>
                          </div>
-                         <div className="flex items-center gap-4"><span className="font-mono text-zinc-500">{it.quantity} x {it.price.toLocaleString()}</span><button onClick={() => setNewInvoice({...newInvoice, items: newInvoice.items?.filter(i => i.id !== it.id)})} className="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button></div>
+                         <div className="flex items-center gap-2">
+                            <span className="font-mono text-zinc-500 ml-2">{it.quantity} x {it.price.toLocaleString()}</span>
+                            <button onClick={() => startEditItem(idx)} className="text-amber-500 hover:bg-amber-100 p-1.5 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => setNewInvoice({...newInvoice, items: newInvoice.items?.filter(i => i.id !== it.id)})} className="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                         </div>
                       </div>
                    ))}
                 </div>
              </div>
 
-             <div className="bg-rose-500/5 dark:bg-rose-950/20 p-5 rounded-[2rem] border border-rose-500/20 space-y-4 shadow-inner relative">
-                <h4 className="text-sm font-black text-rose-500 flex items-center justify-end gap-2 pb-2 uppercase tracking-widest border-b border-rose-500/10">المواد المستخدمة (خصم مخزني) <HardDrive className="w-5 h-5" /></h4>
+             <div className={`p-5 rounded-[2rem] border-2 space-y-4 shadow-inner relative transition-all ${editingMaterialIndex !== null ? 'bg-amber-500/5 border-amber-500' : 'bg-rose-500/5 dark:bg-rose-950/20 border-rose-500/20'}`}>
+                <h4 className="text-sm font-black text-rose-500 flex items-center justify-end gap-2 pb-2 uppercase tracking-widest border-b border-rose-500/10">
+                   {editingMaterialIndex !== null ? 'تعديل المادة المستخدمة' : 'المواد المستخدمة (خصم مخزني)'} <HardDrive className="w-5 h-5" />
+                </h4>
                 
                 <div className="space-y-2">
                    <div className="relative">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => {
-                           if (!usedMaterial.code) {
-                              alert("يرجى اختيار مادة من القائمة");
-                              return;
-                           }
-                           const mat = inventory.find(i => i.code === usedMaterial.code);
-                           if (!mat) return;
-                           const item = { id: crypto.randomUUID(), code: mat.code, name: mat.name, quantity: usedMaterial.quantity, unit: mat.unit };
-                           setNewInvoice({ ...newInvoice, usedMaterials: [...(newInvoice.usedMaterials || []), item] });
-                           setUsedMaterial({ code: '', name: '', quantity: 1 });
-                           setMaterialSearch('');
-                        }} className="bg-primary text-white px-6 py-3 rounded-xl font-black shadow-lg hover:brightness-110 active:scale-95 transition-all">خصم</button>
+                        <button 
+                           onClick={handleAddOrUpdateUsedMaterial} 
+                           className={`px-6 py-3 rounded-xl font-black shadow-lg transition-all ${editingMaterialIndex !== null ? 'bg-amber-600 text-white' : 'bg-primary text-white hover:brightness-110 active:scale-95'}`}
+                        >
+                           {editingMaterialIndex !== null ? 'تحديث' : 'خصم'}
+                        </button>
                         
                         <input type="number" placeholder="الكمية" className="w-24 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center font-black text-rose-500 outline-none" value={usedMaterial.quantity} onChange={e => setUsedMaterial({...usedMaterial, quantity: Number(e.target.value)})} />
                         
@@ -541,10 +628,11 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                    </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 mt-4">
-                   {newInvoice.usedMaterials?.map(m => (
-                      <div key={m.id} className="bg-white dark:bg-zinc-900 border border-rose-200 dark:border-rose-900/50 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm">
-                         <span className="text-xs font-bold text-rose-700">{m.name} ({m.quantity} {m.unit})</span>
+                <div className="flex flex-wrap gap-2 mt-4 max-h-40 overflow-y-auto">
+                   {newInvoice.usedMaterials?.map((m, idx) => (
+                      <div key={m.id} className={`border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm transition-all ${editingMaterialIndex === idx ? 'bg-amber-100 border-amber-400' : 'bg-white dark:bg-zinc-900 border-rose-200 dark:border-rose-900/50'}`}>
+                         <span className={`text-xs font-bold ${editingMaterialIndex === idx ? 'text-amber-700' : 'text-rose-700'}`}>{m.name} ({m.quantity} {m.unit})</span>
+                         <button onClick={() => startEditMaterial(idx)} className="text-amber-500 hover:text-amber-700 transition-colors"><Edit2 className="w-3 h-3"/></button>
                          <button onClick={() => setNewInvoice({...newInvoice, usedMaterials: newInvoice.usedMaterials?.filter(x => x.id !== m.id)})} className="text-rose-300 hover:text-rose-600 transition-colors"><X className="w-3 h-3"/></button>
                       </div>
                    ))}
