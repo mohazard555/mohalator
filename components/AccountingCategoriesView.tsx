@@ -55,26 +55,26 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
       name: acc.name,
       accountCode: acc.code,
       linkedAccountId: acc.id,
-      // محاولة استنتاج النوع بناءً على مكان الحساب في الشجرة
       type: acc.parentId === '5' ? 'مصروفات' : acc.parentId === '4' ? 'إيرادات' : (formData.type as any)
     });
     setChartSearch(acc.name);
     setShowChartResults(false);
   };
 
-  const syncToChart = (category: AccountingCategory, isDelete: boolean = false) => {
+  const syncToChart = (category: AccountingCategory, isDelete: boolean = false, oldName?: string) => {
     const savedChart = localStorage.getItem('sheno_chart_accounts');
     if (!savedChart) return;
     
     let chart: AccountNode[] = JSON.parse(savedChart);
-    const parentId = category.type === 'مصروفات' ? '5' : '4';
+    const parentId = category.type === 'مصروفات' ? '5' : '6'; // استخدام مجلد الإيرادات الأخرى
 
     if (isDelete) {
       chart = chart.filter(acc => acc.name !== category.name);
     } else {
-      const existingIdx = chart.findIndex(acc => acc.id === category.linkedAccountId || acc.name === category.name);
+      const searchName = oldName || category.name;
+      const existingIdx = chart.findIndex(acc => acc.id === category.linkedAccountId || acc.name === searchName);
       const node: AccountNode = {
-        id: editingId ? (chart[existingIdx]?.id || crypto.randomUUID()) : (category.linkedAccountId || crypto.randomUUID()),
+        id: (existingIdx > -1) ? chart[existingIdx].id : (category.linkedAccountId || crypto.randomUUID()),
         code: category.accountCode || `CAT-${Math.floor(Math.random() * 1000)}`,
         name: category.name,
         parentId: parentId,
@@ -92,8 +92,11 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
     
     let updated: AccountingCategory[];
     const categoryToSave = { ...formData, id: editingId || crypto.randomUUID() } as AccountingCategory;
+    let oldName = undefined;
 
     if (editingId) {
+      const oldCat = categories.find(c => c.id === editingId);
+      oldName = oldCat?.name;
       updated = categories.map(c => c.id === editingId ? categoryToSave : c);
     } else {
       updated = [categoryToSave, ...categories];
@@ -101,7 +104,7 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
 
     setCategories(updated);
     localStorage.setItem('sheno_accounting_categories', JSON.stringify(updated));
-    syncToChart(categoryToSave);
+    syncToChart(categoryToSave, false, oldName);
     
     setIsAdding(false);
     setEditingId(null);
@@ -205,7 +208,7 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
                <button onClick={() => window.print()} className="bg-zinc-900 text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
                   <Printer className="w-5 h-5" /> طباعة الكل
                </button>
-               <button onClick={() => setIsAdding(true)} className="bg-primary text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110 active:scale-95 transition-all">
+               <button onClick={() => { setIsAdding(true); setEditingId(null); setFormData({ name: '', accountCode: '', type: 'مصروفات', notes: '', linkedAccountId: '' }); setChartSearch(''); }} className="bg-primary text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110 active:scale-95 transition-all">
                   <Plus className="w-5 h-5" /> إضافة قسم جديد
                </button>
              </>
@@ -214,7 +217,6 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
       </div>
 
       <div ref={reportRef} className="space-y-6 export-fix">
-        {/* ترويسة التقارير عند الطباعة */}
         <div className="hidden print:flex flex-row justify-between items-start mb-6 border-b-4 border-primary pb-6 bg-white text-zinc-900 mx-4">
           <div className="flex items-center gap-4">
             {settings?.logoUrl ? (
@@ -322,7 +324,7 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
             )}
 
             {categories.map(cat => (
-               <div key={cat.id} className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border dark:border-zinc-800 shadow-lg hover:shadow-2xl transition-all group relative overflow-hidden flex flex-col">
+               <div key={cat.id} className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-lg hover:shadow-2xl transition-all group relative overflow-hidden flex flex-col">
                   <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${cat.type === 'مصروفات' ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
                   <div className="flex justify-between items-start mb-4">
                      <div className={`p-3 rounded-2xl ${cat.type === 'مصروفات' ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
@@ -414,7 +416,6 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
                 </div>
              </div>
              
-             {/* تذييل الطباعة للكشف التفصيلي */}
              <div className="hidden print:flex justify-between items-end mt-12 pt-8 border-t-2 border-zinc-100 text-[10px] font-black text-zinc-400 mx-4">
                 <div className="flex flex-col gap-1">
                    <span>SAMLATOR SYSTEM | FINANCIAL LOGS TERMINAL</span>

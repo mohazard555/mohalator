@@ -106,6 +106,21 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
     }
   };
 
+  const handleExportExcel = () => {
+    const data = filteredInvoices.map(inv => ({
+      'رقم الفاتورة': inv.invoiceNumber,
+      'تاريخ العملية': inv.date,
+      'اسم الزبون': inv.customerName,
+      'الأصناف المباعة': inv.items.map(it => `${it.name} (${it.quantity})`).join(' | '),
+      'المواد المستخدمة': (inv.usedMaterials || []).map((m: any) => `${m.name} (${m.quantity})`).join(' | '),
+      'إجمالي المبلغ': inv.totalAmount,
+      'المبلغ المدفوع': inv.paidAmount || 0,
+      'نوع الدفع': inv.paymentType,
+      'ملاحظات': inv.notes || '-'
+    }));
+    exportToCSV(data, 'sales_history_report');
+  };
+
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -236,7 +251,7 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
           <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-zinc-200 shadow-sm">
              <Printer className="w-5 h-5" /> طباعة السجل
           </button>
-          <button onClick={() => exportToCSV(filteredInvoices, 'sales_history')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
+          <button onClick={handleExportExcel} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-lg">
              <FileDown className="w-5 h-5" /> تصدير XLSX
           </button>
         </div>

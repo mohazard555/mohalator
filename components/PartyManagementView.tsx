@@ -42,33 +42,22 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
   };
 
   const calculatePartyBalance = (party: Party) => {
-    // 1. الرصيد الافتتاحي
     let balance = party.openingBalance || 0;
-
-    // 2. المبيعات (مدين +)
     const partySales = sales.filter(s => s.customerName === party.name);
     balance += partySales.reduce((s, c) => s + c.totalAmount, 0);
-
-    // 3. المشتريات (دائن -)
     const partyPurchases = purchases.filter(p => p.supplierName === party.name);
     balance -= partyPurchases.reduce((s, c) => s + c.totalAmount, 0);
-
-    // 4. المقبوضات والمدفوعات من اليومية
     const partyCash = journal.filter(j => j.partyName === party.name || j.statement.includes(party.name));
     partyCash.forEach(j => {
-      // إذا قبضنا من زبون (رصيده ينقص -)
       balance -= (j.receivedSYP || 0);
-      balance -= (j.receivedUSD || 0); // للتبسيط هنا نجمع العملات، يفضل فصلها في كشوف تفصيلية
-
-      // إذا دفعنا لمورد (رصيده ينقص كمطلوب منه +)
+      balance -= (j.receivedUSD || 0);
       balance += (j.paidSYP || 0);
       balance += (j.paidUSD || 0);
     });
-
     return balance;
   };
 
-  const syncToChartOfAccounts = (party: Party, isDelete: boolean = false) => {
+  const syncToChartOfAccounts = (party: Party, isDelete: boolean = false, oldName?: string) => {
     const savedChart = localStorage.getItem('sheno_chart_accounts');
     if (!savedChart) return;
     
@@ -78,9 +67,12 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
     if (isDelete) {
       chart = chart.filter(acc => acc.name !== party.name);
     } else {
-      const existingIdx = chart.findIndex(acc => acc.name === party.name);
+      // البحث عن الحساب باستخدام الاسم القديم في حالة التعديل أو الاسم الحالي
+      const searchName = oldName || party.name;
+      const existingIdx = chart.findIndex(acc => acc.name === searchName);
+      
       const accountData: AccountNode = {
-        id: editingId ? (chart[existingIdx]?.id || crypto.randomUUID()) : crypto.randomUUID(),
+        id: (existingIdx > -1) ? chart[existingIdx].id : crypto.randomUUID(),
         code: party.code ? `ACC-${party.code}` : `ACC-${Math.floor(Math.random() * 1000)}`,
         name: party.name,
         parentId: parentId,
@@ -100,8 +92,11 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
     
     let updated: Party[];
     const partyToSave = { ...formData, id: editingId || crypto.randomUUID() } as Party;
+    let oldName = undefined;
 
     if (editingId) {
+      const oldParty = parties.find(p => p.id === editingId);
+      oldName = oldParty?.name;
       updated = parties.map(p => p.id === editingId ? partyToSave : p);
     } else {
       updated = [...parties, partyToSave];
@@ -109,7 +104,7 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
 
     setParties(updated);
     localStorage.setItem('sheno_parties', JSON.stringify(updated));
-    syncToChartOfAccounts(partyToSave);
+    syncToChartOfAccounts(partyToSave, false, oldName);
     
     setIsAdding(false);
     setEditingId(null);
@@ -150,7 +145,6 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
 
   return (
     <div className="space-y-6">
-      {/* Print Only Header */}
       <div className="print-only mb-6 border-b-4 border-primary pb-6 flex justify-between items-center bg-white text-black p-4 rounded-xl">
         <div className="flex items-center gap-4">
           {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain" alt="Logo" />}
@@ -183,7 +177,7 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
           <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable border border-zinc-200 dark:border-zinc-700 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-sm transition-all hover:bg-zinc-200">
              <Printer className="w-5 h-5" /> طباعة السجل
           </button>
-          <button onClick={() => { setIsAdding(true); setEditingId(null); }} className="bg-primary text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-primary/20 transition-all hover:brightness-110 active:scale-95">
+          <button onClick={() => { setIsAdding(true); setEditingId(null); setFormData({ name: '', code: '', phone: '', address: '', type: PartyType.CUSTOMER, openingBalance: 0 }); }} className="bg-primary text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-primary/20 transition-all hover:brightness-110 active:scale-95">
             <Plus className="w-5 h-5" /> إضافة حساب جديد
           </button>
         </div>
@@ -237,7 +231,7 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
                 <div className="flex justify-between items-start mb-4">
                    <div className={`p-4 rounded-2xl ${p.type === PartyType.CUSTOMER ? 'bg-blue-600/10 text-blue-600' : p.type === PartyType.SUPPLIER ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-600'}`}><Users className="w-7 h-7" /></div>
                    <div className="flex gap-1">
-                      <button onClick={() => { setEditingId(p.id); setFormData(p); setIsAdding(true); }} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl text-zinc-400 hover:text-primary transition-all shadow-sm"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => { setEditingId(p.id); setFormData(p); setIsAdding(true); }} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl text-zinc-500 transition-colors shadow-sm"><Edit2 className="w-4 h-4" /></button>
                       <button onClick={() => handleDelete(p.id)} className="p-2 hover:bg-rose-500/10 rounded-xl text-zinc-400 hover:text-rose-500 transition-all shadow-sm"><Trash2 className="w-4 h-4" /></button>
                    </div>
                 </div>
@@ -278,7 +272,6 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
          })}
       </div>
 
-      {/* Print Table View */}
       <div className="print-only bg-white">
          <table className="w-full text-right border-collapse text-xs">
             <thead>

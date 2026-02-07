@@ -59,6 +59,23 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
     setItems(updatedItems);
   };
 
+  const handleExportExcel = () => {
+    const data = filteredItems.map(item => ({
+      'كود المادة': item.code,
+      'اسم المادة': item.name,
+      'المستودع': item.warehouse || 'الرئيسي',
+      'الوحدة': item.unit,
+      'السعر الفردي': item.price,
+      'رصيد أول المدة': item.openingStock,
+      'الإضافات': item.added,
+      'المنصرف': item.issued,
+      'المرتجع': item.returned,
+      'الرصيد النهائي': item.currentBalance,
+      'إجمالي القيمة': item.currentBalance * item.price
+    }));
+    exportToCSV(data, 'inventory_stock_report');
+  };
+
   const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -296,7 +313,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
           <button onClick={handleExportPDF} className="bg-zinc-100 dark:bg-zinc-800 text-readable px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 border border-zinc-200 shadow-sm">
              <FileText className="w-5 h-5" /> تصدير PDF
           </button>
-          <button onClick={() => exportToCSV(filteredItems, 'inventory_report')} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 hover:bg-zinc-700 transition-all">
+          <button onClick={handleExportExcel} className="bg-zinc-800 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 hover:bg-zinc-700 transition-all">
              <FileSpreadsheet className="w-5 h-5" /> تصدير XLSX
           </button>
         </div>
@@ -370,7 +387,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({ onBack }) => {
       )}
 
       {/* Main Container for PDF Ref */}
-      <div ref={reportRef} className="inventory-report-container bg-black dark:bg-zinc-950 rounded-3xl border border-zinc-800 overflow-hidden shadow-2xl p-4 md:p-8 print:bg-white print:p-0 print:border-none print:shadow-none export-fix">
+      <div ref={reportRef} className="inventory-report-container bg-black dark:bg-zinc-950 rounded-3xl border border-zinc-200 overflow-hidden shadow-2xl p-4 md:p-8 print:bg-white print:p-0 print:border-none print:shadow-none export-fix">
         
         {/* Professional Print Header (XO Style) */}
         <div className="hidden print:flex flex-row justify-between items-start mb-6 border-b-2 border-emerald-600 pb-4 print-header-xo bg-white p-4 rounded-xl">
