@@ -4,7 +4,7 @@ import {
   ShoppingCart, Warehouse, Wallet, Settings, TrendingUp, 
   Landmark, BookOpen, Scale, Box, PieChart, Activity, 
   BarChart3, ListTree, History, FileOutput, Users, 
-  ClipboardList, Receipt, Layers, Coins, ImageIcon, ArrowUpRight, ArrowDownLeft
+  ClipboardList, Receipt, Layers, Coins, ImageIcon, ArrowUpRight, ArrowDownLeft, FileSignature
 } from 'lucide-react';
 import { AppView } from './types';
 
@@ -25,6 +25,7 @@ export const MENU_GROUPS = [
     title: 'الصندوق والمالية',
     icon: <Wallet className="w-5 h-5" />,
     items: [
+      { label: 'إدخال سند قيد (مانيوال)', view: AppView.JOURNAL_ENTRY },
       { label: 'دفتر الأستاذ العام', view: AppView.GENERAL_LEDGER },
       { label: 'أرصدة وحركات الدولار', view: AppView.DOLLAR_BALANCES },
       { label: 'ملف الصندوق اليومي', view: AppView.CASH_FILE },

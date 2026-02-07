@@ -34,6 +34,7 @@ import ChartOfAccountsView from './components/ChartOfAccountsView';
 import LoginView from './components/LoginView';
 import DollarBalancesView from './components/DollarBalancesView';
 import InvoiceGalleryView from './components/InvoiceGalleryView';
+import JournalEntryView from './components/JournalEntryView';
 
 import BalanceSheetView from './components/BalanceSheetView';
 import TradingAccountView from './components/TradingAccountView';
@@ -258,6 +259,7 @@ const App: React.FC = () => {
             case AppView.GENERAL_LEDGER: return <GeneralLedgerView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.DOLLAR_BALANCES: return <DollarBalancesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.INVOICE_GALLERY: return <InvoiceGalleryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.JOURNAL_ENTRY: return <JournalEntryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             
             case AppView.CHART_OF_ACCOUNTS: return <ChartOfAccountsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.BALANCE_SHEET: return <BalanceSheetView onBack={() => setCurrentView(AppView.DASHBOARD)} />;

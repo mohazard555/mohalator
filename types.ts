@@ -39,7 +39,8 @@ export enum AppView {
   OPENING_ENTRIES = 'OPENING_ENTRIES',
   PERIODIC_INVENTORY = 'PERIODIC_INVENTORY',
   DOLLAR_BALANCES = 'DOLLAR_BALANCES',
-  INVOICE_GALLERY = 'INVOICE_GALLERY'
+  INVOICE_GALLERY = 'INVOICE_GALLERY',
+  JOURNAL_ENTRY = 'JOURNAL_ENTRY'
 }
 
 export interface AccountNode {
@@ -214,7 +215,7 @@ export interface CashEntry {
   receivedUSD: number;
   paidUSD: number;
   notes: string;
-  type?: 'قبض' | 'دفع' | 'بيع' | 'شراء' | 'مرتجع' | 'افتتاحي' | 'حسم';
+  type?: 'قبض' | 'دفع' | 'بيع' | 'شراء' | 'مرتجع' | 'افتتاحي' | 'حسم' | 'قيد';
   voucherNumber?: string;
   partyName?: string;
   amount?: number;
