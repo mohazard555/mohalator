@@ -8,7 +8,6 @@ interface InvoiceGalleryViewProps {
   onBack: () => void;
 }
 
-// Added GalleryItem interface to unify access to common properties across different invoice types
 interface GalleryItem {
   url: string;
   inv: any;
@@ -22,7 +21,6 @@ const InvoiceGalleryView: React.FC<InvoiceGalleryViewProps> = ({ onBack }) => {
   const [purchases, setPurchases] = useState<PurchaseInvoice[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  // Use GalleryItem type for selectedImage state
   const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -78,7 +76,6 @@ const InvoiceGalleryView: React.FC<InvoiceGalleryViewProps> = ({ onBack }) => {
           text: `فاتورة ${selectedImage.type} رقم ${selectedImage.inv.invoiceNumber}\nالطرف الثاني: ${selectedImage.partyName}\nالمادة: ${selectedImage.item}\nالقيمة: ${selectedImage.inv.totalAmount.toLocaleString()} ${settings?.currencySymbol}`,
         });
       } else {
-        // Fallback for text-only sharing if files not supported
         await navigator.share({
           title: `فاتورة ${selectedImage.type} رقم ${selectedImage.inv.invoiceNumber}`,
           text: `تفاصيل الفاتورة رقم ${selectedImage.inv.invoiceNumber} للطرف ${selectedImage.partyName}`,
@@ -87,13 +84,11 @@ const InvoiceGalleryView: React.FC<InvoiceGalleryViewProps> = ({ onBack }) => {
       }
     } catch (error) {
       console.error('Error sharing:', error);
-      // If it fails (e.g. user cancelled or browser restriction), we do nothing
     }
   };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-      {/* Full Preview Modal */}
       {selectedImage && (
         <div className="fixed inset-0 bg-black/95 z-[500] flex items-center justify-center p-4 md:p-20 animate-in fade-in" onClick={() => setSelectedImage(null)}>
            <button className="absolute top-10 right-10 text-white hover:text-rose-500 z-[501]"><X className="w-10 h-10" /></button>

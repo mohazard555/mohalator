@@ -7,7 +7,7 @@
 export const ImageExportService = {
   /**
    * تصدير عنصر إلى صورة PNG
-   * @param elementID معرف العنصر المطلوب تصديره
+   * @param element معرف العنصر المطلوب تصديره
    * @param fileName اسم الملف الناتج
    */
   exportAsPng: async (element: HTMLElement, fileName: string) => {
@@ -20,14 +20,19 @@ export const ImageExportService = {
     }
 
     try {
-      // إعدادات خاصة لضمان جودة النصوص العربية
+      // إعدادات خاصة لضمان جودة النصوص العربية واستبعاد العناصر غير المرغوبة
       const options = {
         quality: 1,
-        pixelRatio: 2, // رفع الدقة لضمان وضوح الحروف الصغيرة
+        pixelRatio: 3, // رفع الدقة لضمان وضوح فائق
         skipFonts: false,
-        fontEmbedCSS: undefined, // سيقوم تلقائياً بجلب الخطوط المستخدمة
+        // فلتر لاستبعاد أي عنصر يحمل كلاس no-print
+        filter: (node: HTMLElement) => {
+          if (node.classList && node.classList.contains('no-print')) {
+            return false;
+          }
+          return true;
+        },
         style: {
-          // إجبار العنصر على أن يكون RTL أثناء اللقطة
           direction: 'rtl',
           textAlign: 'right'
         }

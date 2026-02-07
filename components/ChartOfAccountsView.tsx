@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Folder, FolderPlus, ChevronRight, ChevronDown, 
@@ -58,7 +59,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const sSett = localStorage.getItem('sheno_settings');
 
     const defaultRoots: AccountNode[] = [
-      // 1. الموجودات
       { id: '1', code: '1', name: 'الموجودات', parentId: null, type: 'FOLDER', reportType: 'الميزانية' },
       { id: '11', code: '11', name: 'الموجودات الثابتة', parentId: '1', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '111', code: '111', name: 'مباني وإنشاءات', parentId: '11', type: 'ACCOUNT', reportType: 'الميزانية' },
@@ -72,28 +72,20 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
       { id: '13', code: '13', name: 'الأموال الجاهزة ونقدية', parentId: '1', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '131', code: '131', name: 'الصندوق الرئيسي', parentId: '13', type: 'ACCOUNT', reportType: 'الميزانية' },
       { id: '132', code: '132', name: 'حساب المصرف البنكي', parentId: '13', type: 'ACCOUNT', reportType: 'الميزانية' },
-      
-      // 2. المطاليب والخصوم
       { id: '2', code: '2', name: 'المطاليب والخصوم', parentId: null, type: 'FOLDER', reportType: 'الميزانية' },
       { id: '21', code: '21', name: 'المطاليب الثابتة وحقوق الملكية', parentId: '2', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '211', code: '211', name: 'رأس المال المخصص', parentId: '21', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '22', code: '22', name: 'المطاليب المتداولة', parentId: '2', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '221', code: '221', name: 'الموردون والدائنون', parentId: '22', type: 'FOLDER', reportType: 'الميزانية' },
-
-      // 3. صافي المشتريات
       { id: '3', code: '3', name: 'صافي المشتريات', parentId: null, type: 'FOLDER', reportType: 'المتاجرة' },
       { id: '31', code: '31', name: 'إجمالي المشتريات', parentId: '3', type: 'ACCOUNT', reportType: 'المتاجرة' },
       { id: '32', code: '32', name: 'مرتجع المشتريات', parentId: '3', type: 'ACCOUNT', reportType: 'المتاجرة' },
       { id: '33', code: '33', name: 'مصاريف نقل المشتريات', parentId: '3', type: 'ACCOUNT', reportType: 'المتاجرة' },
       { id: '34', code: '34', name: 'الحسم المكتسب', parentId: '3', type: 'ACCOUNT', reportType: 'المتاجرة' },
-
-      // 4. صافي المبيعات
       { id: '4', code: '4', name: 'صافي المبيعات', parentId: null, type: 'FOLDER', reportType: 'المتاجرة' },
       { id: '41', code: '41', name: 'إجمالي المبيعات', parentId: '4', type: 'ACCOUNT', reportType: 'المتاجرة' },
       { id: '42', code: '42', name: 'مرتجع المبيعات', parentId: '4', type: 'ACCOUNT', reportType: 'المتاجرة' },
       { id: '43', code: '43', name: 'الحسم الممنوح', parentId: '4', type: 'ACCOUNT', reportType: 'المتاجرة' },
-
-      // 5. المصاريف والأعباء
       { id: '5', code: '5', name: 'المصاريف التشغيلية والعمومية', parentId: null, type: 'FOLDER', reportType: 'الأرباح والخسائر' },
       { id: '51', code: '51', name: 'مصاريف إيجار', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
       { id: '52', code: '52', name: 'رواتب وأجور الموظفين', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
@@ -101,20 +93,14 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
       { id: '54', code: '54', name: 'قرطاسية ومطبوعات', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
       { id: '55', code: '55', name: 'مصاريف صيانة وإصلاح', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
       { id: '56', code: '56', name: 'مصاريف دعاية وإعلان', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-
-      // 6. الايرادات الأخرى
       { id: '6', code: '6', name: 'الايرادات الأخرى والتحويلات', parentId: null, type: 'FOLDER', reportType: 'الأرباح والخسائر' },
       { id: '61', code: '61', name: 'إيرادات خدمات متنوعة', parentId: '6', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-
-      // 7. البضاعة
       { id: '7', code: '7', name: 'بضاعة المتاجرة السنوية', parentId: null, type: 'FOLDER', reportType: 'المتاجرة' },
       { id: '71', code: '71', name: 'بضاعة اول المدة', parentId: '7', type: 'ACCOUNT', reportType: 'المتاجرة' },
       { id: '72', code: '72', name: 'بضاعة أخر المدة', parentId: '7', type: 'ACCOUNT', reportType: 'المتاجرة' }
     ];
 
     let currentAccounts: AccountNode[] = savedAccountsRaw ? JSON.parse(savedAccountsRaw) : defaultRoots;
-    
-    // ضمان وجود الحسابات الأساسية والبنود الافتراضية المطلوبة
     defaultRoots.forEach(def => {
       if (!currentAccounts.some(acc => acc.code === def.code)) {
          currentAccounts.push(def);
@@ -124,10 +110,8 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     setAccounts(currentAccounts);
     if (sJou) setJournal(JSON.parse(sJou));
     if (sOp) setOpeningEntries(JSON.parse(sOp));
-    // Fix: Replaced 'setAllSales' with 'setSales' to correct "Cannot find name 'setAllSales'" error
     if (sSal) setSales(JSON.parse(sSal));
     if (sSalRet) setSalesReturns(JSON.parse(sSalRet));
-    // Fix: Replaced 'setAllPurchases' with 'setPurchases' to correct "Cannot find name 'setAllPurchases'" error
     if (sPur) setPurchases(JSON.parse(sPur));
     if (sPurRet) setPurchaseReturns(JSON.parse(sPurRet));
     if (sCat) setCategories(JSON.parse(sCat));
@@ -148,95 +132,72 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const name = account.name;
     const code = account.code;
 
-    // 1. القيود الافتتاحية للميزانية
-    const ops = openingEntries.filter(e => e.accountName === name || name.includes(e.accountName));
+    // 1. القيود الافتتاحية - مطابقة تامة للاسم
+    const ops = openingEntries.filter(e => e.accountName === name);
     balance += ops.reduce((s, c) => s + (Number(c.debit) - Number(c.credit)), 0);
 
-    // 2. النقدية (الصندوق والمصرف)
-    if (code === '131' || name.includes('الصندوق')) {
+    // 2. النقدية (الصندوق والمصرف) - الاعتماد على الكود لضمان الدقة
+    if (code === '131') {
        const boxMoves = journal.filter(j => !j.statement.includes('وجهة: المصرف'));
        balance += boxMoves.reduce((s, c) => s + (Number(c.receivedSYP) - Number(c.paidSYP)), 0);
     }
     
-    if (code === '132' || name.includes('المصرف')) {
-       const bankMoves = journal.filter(j => j.statement.includes('وجهة: المصرف') || (j.partyName === 'المصرف'));
+    if (code === '132') {
+       const bankMoves = journal.filter(j => j.statement.includes('وجهة: المصرف') || j.partyName === 'المصرف' || j.partyName === 'حساب المصرف البنكي');
        balance += bankMoves.reduce((s, c) => s + (Number(c.receivedSYP) - Number(c.paidSYP)), 0);
     }
 
-    // 3. صافي المبيعات (Folder 4)
-    if (code === '41' || name.includes('المبيعات')) {
-       balance += sales.reduce((s, c) => s + c.totalAmount, 0);
-    }
-    if (code === '42' || name.includes('مرتجع المبيعات')) {
-       const retVal = salesReturns.reduce((s, c) => s + (c.totalReturnAmount || 0), 0);
-       balance -= retVal; 
-    }
-    if (code === '43' || name.includes('الحسم الممنوح')) {
-       const discVal = sales.reduce((s, c) => s + (c.discountAmount || 0), 0);
-       balance -= discVal;
-    }
+    // 3. المبيعات (مطابقة تامة)
+    if (code === '41') balance += sales.reduce((s, c) => s + c.totalAmount, 0);
+    if (code === '42') balance -= salesReturns.reduce((s, c) => s + (c.totalReturnAmount || 0), 0);
+    if (code === '43') balance -= sales.reduce((s, c) => s + (c.discountAmount || 0), 0);
 
-    // 4. صافي المشتريات (Folder 3)
-    if (code === '31' || name.includes('إجمالي المشتريات')) {
-       balance += purchases.reduce((s, c) => s + c.totalAmount, 0);
-    }
-    if (code === '32' || name.includes('مرتجع المشتريات')) {
-       const retVal = purchaseReturns.reduce((s, c) => s + (c.totalReturnAmount || 0), 0);
-       balance -= retVal;
-    }
-    if (code === '33' || name.includes('مصاريف نقل المشتريات')) {
-       const transVal = purchases.reduce((s, c) => s + (c.transportExpenses || 0), 0);
-       balance += transVal;
-    }
-    if (code === '34' || name.includes('الحسم المكتسب')) {
-       const discVal = purchases.reduce((s, c) => s + (c.discountAmount || 0), 0);
-       balance -= discVal;
-    }
+    // 4. المشتريات (مطابقة تامة)
+    if (code === '31') balance += purchases.reduce((s, c) => s + c.totalAmount, 0);
+    if (code === '32') balance -= purchaseReturns.reduce((s, c) => s + (c.totalReturnAmount || 0), 0);
+    if (code === '33') balance += purchases.reduce((s, c) => s + (c.transportExpenses || 0), 0);
+    if (code === '34') balance -= purchases.reduce((s, c) => s + (c.discountAmount || 0), 0);
 
     // 5. بضاعة أول المدة
-    if (code === '71' || name === 'بضاعة اول المدة') {
+    if (code === '71') {
        const opInv = periodicInventories.find(i => i.type === 'OPENING');
        balance = opInv ? opInv.totalValue : 0;
     }
 
-    // 6. بضاعة آخر المدة (تقديري)
-    if (code === '72' || code === '1241' || (name.includes('بضاعة') && name.includes('أخر'))) {
+    // 6. بضاعة آخر المدة
+    if (code === '72' || code === '1241') {
        const stockVal = inventory.reduce((s, item) => {
           const moves = stockEntries.filter(e => e.itemCode === item.code);
           const bal = (item.openingStock || 0) + 
-                     moves.filter(e => e.movementType === 'إدخال').reduce((sum, c) => sum + c.quantity, 0) - 
-                     moves.filter(e => e.movementType === 'صرف').reduce((sum, c) => sum + c.quantity, 0) + 
-                     moves.filter(e => e.movementType === 'مرتجع').reduce((sum, c) => sum + c.quantity, 0);
+                     moves.filter(e => e.movementType === 'إدخال').reduce((sum, curr) => sum + curr.quantity, 0) - 
+                     moves.filter(e => e.movementType === 'صرف').reduce((sum, curr) => sum + curr.quantity, 0) + 
+                     moves.filter(e => e.movementType === 'مرتجع').reduce((sum, curr) => sum + curr.quantity, 0);
           return s + (bal * item.price);
        }, 0);
        balance = stockVal;
     }
 
-    // 7. الزبائن والموردين (كأرصدة حسابات)
+    // 7. الزبائن والموردين (مطابقة تامة للاسم)
     const party = parties.find(p => name === p.name);
     if (party) {
-       if (party.type === PartyType.CUSTOMER || (account.parentId === '121')) {
-          const pSales = sales.filter(s => s.customerName === party.name).reduce((s, c) => s + c.totalAmount, 0);
-          // Fix: Renamed reduce parameter 'j' to 'curr' to avoid scope shadowing confusion and fix "Cannot find name 'j'" error
+       if (party.type === PartyType.CUSTOMER || account.parentId === '121') {
+          const pSales = sales.filter(s => s.customerName === party.name).reduce((sum, inv) => sum + inv.totalAmount, 0);
           const pRec = journal.filter(j => j.partyName === party.name).reduce((sum, curr) => sum + (curr.receivedSYP + curr.receivedUSD), 0);
           balance += (party.openingBalance + pSales - pRec);
        }
-       if (party.type === PartyType.SUPPLIER || (account.parentId === '221')) {
+       if (party.type === PartyType.SUPPLIER || account.parentId === '221') {
           const pPurch = purchases.filter(p => p.supplierName === party.name).reduce((sum, inv) => sum + inv.totalAmount, 0);
-          // Fix: Renamed reduce parameter 'j' to 'curr' to avoid scope shadowing confusion and fix "Cannot find name 'j'" error
           const pPaid = journal.filter(j => j.partyName === party.name).reduce((sum, curr) => sum + (curr.paidSYP + curr.paidUSD), 0);
           balance -= (party.openingBalance + pPurch - pPaid);
        }
     }
 
-    // 8. الأقسام والمصاريف الافتراضية
-    // الربط يتم عبر "اسم الحساب" مع "اسم الفئة" في سجل البنود
+    // 8. الأقسام التشغيلية (مطابقة تامة للاسم)
     const cat = categories.find(c => name === c.name);
-    if (cat || account.parentId === '5' || account.parentId === '6') {
-       const moves = journal.filter(j => j.partyName === name || categories.find(c => c.id === j.categoryId)?.name === name);
-       const isExpense = account.parentId === '5' || (cat && cat.type === 'مصروفات');
-       if (isExpense) balance += moves.reduce((s, c) => s + (c.paidSYP + c.paidUSD), 0);
-       else balance += moves.reduce((s, c) => s + (c.receivedSYP + c.receivedUSD), 0);
+    if (cat) {
+       const moves = journal.filter(j => j.categoryId === cat.id || j.partyName === cat.name);
+       if (cat.type === 'مصروفات') balance += moves.reduce((sum, curr) => sum + (curr.paidSYP + curr.paidUSD), 0);
+       else balance += moves.reduce((sum, curr) => sum + (curr.receivedSYP + curr.receivedUSD), 0);
     }
 
     return balance;
@@ -247,21 +208,32 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const name = account.name;
     const code = account.code;
 
+    // قيود اليومية - مطابقة تامة للاسم أو الكود
     journal.filter(j => {
        if (code === '131') return !j.statement.includes('وجهة: المصرف');
-       if (code === '132') return j.statement.includes('وجهة: المصرف');
-       return j.partyName === name || j.statement.includes(name) || categories.find(c => name === c.name)?.id === j.categoryId;
+       if (code === '132') return j.statement.includes('وجهة: المصرف') || j.partyName === 'المصرف' || j.partyName === 'حساب المصرف البنكي';
+       
+       const catMatch = categories.find(c => c.name === name);
+       if (catMatch) return j.categoryId === catMatch.id || j.partyName === name;
+       
+       return j.partyName === name;
     }).forEach(j => {
         moves.push({ date: j.date, statement: j.statement, debit: (j.receivedSYP + j.receivedUSD), credit: (j.paidSYP + j.paidUSD), source: 'اليومية' });
     });
 
-    sales.filter(s => s.customerName === name || (code === '41')).forEach(s => {
-        moves.push({ date: s.date, statement: `فاتورة مبيع #${s.invoiceNumber}`, debit: s.totalAmount, credit: 0, source: 'المبيعات' });
-    });
+    // المبيعات (فقط عند طلب حساب المبيعات أو زبون محدد)
+    if (code === '41' || account.parentId === '121' || parties.some(p => p.name === name)) {
+       sales.filter(s => s.customerName === name || (code === '41')).forEach(s => {
+          moves.push({ date: s.date, statement: `فاتورة مبيع #${s.invoiceNumber}`, debit: s.totalAmount, credit: 0, source: 'المبيعات' });
+       });
+    }
 
-    purchases.filter(p => p.supplierName === name || (code === '31')).forEach(p => {
-        moves.push({ date: p.date, statement: `فاتورة شراء #${p.invoiceNumber}`, debit: 0, credit: p.totalAmount, source: 'المشتريات' });
-    });
+    // المشتريات (فقط عند طلب حساب المشتريات أو مورد محدد)
+    if (code === '31' || account.parentId === '221' || parties.some(p => p.name === name)) {
+       purchases.filter(p => p.supplierName === name || (code === '31')).forEach(p => {
+          moves.push({ date: p.date, statement: `فاتورة شراء #${p.invoiceNumber}`, debit: 0, credit: p.totalAmount, source: 'المشتريات' });
+       });
+    }
 
     return moves.sort((a, b) => b.date.localeCompare(a.date));
   };
@@ -327,7 +299,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
         <div className="flex items-center justify-between mb-6">
            <div className="flex items-center gap-3">
               <Landmark className="w-6 h-6 text-primary" />
-              <h3 className="text-xl font-black text-readable">شجرة الحسابات الأصلية</h3>
+              <h3 className="text-xl font-black text-readable">دليل الحسابات</h3>
            </div>
            <button onClick={() => { setModalMode('ADD'); setFormData({ name: '', code: '', type: 'FOLDER', reportType: 'الميزانية', parentId: null }); setIsModalOpen(true); }} className="p-2 bg-primary text-white rounded-xl shadow-lg"><FolderPlus className="w-5 h-5" /></button>
         </div>
@@ -360,7 +332,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
 
               <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col">
                  <div className="p-6 border-b dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/50 no-print">
-                    <h4 className="font-black text-readable flex items-center gap-2"><ArrowLeftRight className="w-5 h-5 text-primary" /> كشف حركات الحساب التفصيلي</h4>
+                    <h4 className="font-black text-readable flex items-center gap-2"><ArrowLeftRight className="w-5 h-5 text-primary" /> حركات الحساب المباشرة</h4>
                     <div className="flex gap-2">
                        <button onClick={() => exportToCSV(accountMoves, `كشف_${selectedAccount.name}`)} className="p-2.5 bg-emerald-500/10 text-emerald-600 rounded-xl hover:bg-emerald-500 hover:text-white transition-all shadow-sm"><FileSpreadsheet className="w-5 h-5" /></button>
                        <button onClick={() => ImageExportService.exportAsPng(movementsRef.current!, `حساب_${selectedAccount.name}`)} className="p-2.5 bg-amber-500/10 text-amber-600 rounded-xl hover:bg-amber-500 hover:text-white transition-all shadow-sm"><ImageIcon className="w-5 h-5" /></button>
@@ -381,7 +353,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                        </thead>
                        <tbody className="divide-y dark:divide-zinc-800 font-bold text-zinc-700 dark:text-zinc-300">
                           {accountMoves.length === 0 ? (
-                            <tr><td colSpan={5} className="p-32 text-center italic text-zinc-300 font-black text-2xl uppercase tracking-tighter">لا توجد حركات مسجلة لهذا الحساب</td></tr>
+                            <tr><td colSpan={5} className="p-32 text-center italic text-zinc-300 font-black text-2xl uppercase tracking-tighter">لا توجد حركات مسجلة مباشرة لهذا الحساب</td></tr>
                           ) : accountMoves.map((m, i) => (
                              <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 h-16 transition-colors">
                                 <td className="p-4 font-mono text-zinc-400 border-l dark:border-zinc-800">{m.date}</td>
@@ -399,8 +371,8 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
          ) : (
            <div className="bg-zinc-50 dark:bg-zinc-900/30 rounded-[4rem] h-[calc(100vh-180px)] flex flex-col items-center justify-center border-4 border-dashed border-zinc-200 dark:border-zinc-800 p-10 text-center animate-pulse duration-[3000ms]">
               <History className="w-20 h-20 text-zinc-200 dark:text-zinc-800 mb-6" />
-              <h3 className="text-2xl font-black text-zinc-300 uppercase tracking-widest">اختر حساباً للتحليل الذكي</h3>
-              <p className="text-zinc-400 max-w-sm mt-2 font-bold italic opacity-60">سيتم تجميع بياناتك المالية من كافة أقسام النظام وعرضها بشكل لحظي وبدقة متناهية.</p>
+              <h3 className="text-2xl font-black text-zinc-300 uppercase tracking-widest">اختر حساباً لعرض تفاصيله</h3>
+              <p className="text-zinc-400 max-w-sm mt-2 font-bold italic opacity-60">سيتم تجميع بيانات الحساب المختار بدقة تامة من كافة أقسام النظام.</p>
            </div>
          )}
       </div>
@@ -409,7 +381,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[300] flex items-center justify-center p-4">
            <div className="bg-white dark:bg-zinc-900 w-full max-w-xl rounded-[3rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl p-10 animate-in zoom-in-95">
               <div className="flex items-center justify-between mb-8 border-b dark:border-zinc-800 pb-5">
-                 <h3 className="text-2xl font-black text-readable">{modalMode === 'EDIT' ? 'تعديل بيانات الحساب' : 'إضافة حساب جديد بالدليل'}</h3>
+                 <h3 className="text-2xl font-black text-readable">{modalMode === 'EDIT' ? 'تعديل بيانات الحساب' : 'إضافة حساب جديد'}</h3>
                  <button onClick={() => setIsModalOpen(false)} className="text-zinc-400 hover:text-rose-500 transition-all"><X className="w-8 h-8"/></button>
               </div>
               <div className="space-y-5">
@@ -417,9 +389,9 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                     <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-zinc-500 uppercase mr-2">الكود المحاسبي</label><input type="text" className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-mono font-black text-center" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} /></div>
                     <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-zinc-500 uppercase mr-2">نوع البند</label><select className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-bold appearance-none cursor-pointer" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as any})}><option value="FOLDER">مجلد رئيسي</option><option value="ACCOUNT">حساب فرعي</option></select></div>
                  </div>
-                 <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-zinc-500 uppercase mr-2">اسم الحساب الرسمي</label><input type="text" className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-black text-lg" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
+                 <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-zinc-500 uppercase mr-2">اسم الحساب الرسمي</label><input type="text" className="bg-zinc-50 dark:bg-zinc-800 p-4 border-2 rounded-2xl font-black text-lg" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-zinc-500 uppercase mr-2">نوع التقرير الختامي</label><select className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-bold appearance-none cursor-pointer" value={formData.reportType} onChange={e => setFormData({...formData, reportType: e.target.value as any})}><option value="الميزانية">الميزانية العمومية</option><option value="المتاجرة">حساب المتاجرة</option><option value="الأرباح والخسائر">الأرباح والخسائر</option></select></div>
-                 <button onClick={handleSave} className="w-full bg-primary text-white py-5 rounded-[2rem] font-black shadow-2xl hover:scale-105 transition-all text-xl mt-6 flex items-center justify-center gap-3"><Save className="w-6 h-6"/> حفظ ومزامنة البيانات</button>
+                 <button onClick={handleSave} className="w-full bg-primary text-white py-5 rounded-[2rem] font-black shadow-2xl hover:scale-105 transition-all text-xl mt-6 flex items-center justify-center gap-3"><Save className="w-6 h-6"/> حفظ البيانات</button>
               </div>
            </div>
         </div>

@@ -155,7 +155,12 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
       image: item.image || ''
     });
     setEditingItemIndex(idx);
-    window.scrollTo({ top: 400, behavior: 'smooth' }); // التمرير لمنطقة الإضافة
+    
+    // التمرير لمنطقة الإضافة بسلاسة
+    const inputArea = document.getElementById('item-input-area');
+    if (inputArea) {
+      inputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   const handleAddOrUpdateUsedMaterial = () => {
@@ -196,6 +201,11 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     });
     setMaterialSearch(mat.name);
     setEditingMaterialIndex(idx);
+    
+    const matInputArea = document.getElementById('material-input-area');
+    if (matInputArea) {
+      matInputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   const handleSaveInvoice = () => {
@@ -524,7 +534,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-             <div className={`bg-zinc-50 dark:bg-zinc-950/40 p-5 rounded-[2rem] border-2 space-y-4 shadow-inner transition-all ${editingItemIndex !== null ? 'border-amber-500 ring-2 ring-amber-500/10' : 'border-zinc-200 dark:border-zinc-800'}`}>
+             <div id="item-input-area" className={`bg-zinc-50 dark:bg-zinc-950/40 p-5 rounded-[2rem] border-2 space-y-4 shadow-inner transition-all ${editingItemIndex !== null ? 'border-amber-500 ring-2 ring-amber-500/10' : 'border-zinc-200 dark:border-zinc-800'}`}>
                 <h4 className="text-sm font-black text-primary flex items-center justify-end gap-2 pb-2 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800">
                    {editingItemIndex !== null ? 'تعديل الصنف المختار' : 'الأصناف المباعة'} <ScrollText className="w-5 h-5" />
                 </h4>
@@ -532,6 +542,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                    <button 
                       onClick={handleAddOrUpdateItem} 
                       className={`p-3 rounded-xl border transition-all ${editingItemIndex !== null ? 'bg-amber-600 border-amber-400 text-white animate-pulse' : 'bg-zinc-800 dark:bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'}`}
+                      title={editingItemIndex !== null ? 'تأكيد التحديث' : 'إضافة صنف'}
                    >
                       {editingItemIndex !== null ? <Check className="w-6 h-6"/> : <Plus className="w-6 h-6"/>}
                    </button>
@@ -541,12 +552,15 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                       {manualItem.image ? <><img src={manualItem.image} className="w-full h-full object-cover" /><button onClick={(e) => { e.stopPropagation(); setManualItem(prev => ({ ...prev, image: '' })); }} className="absolute top-0 right-0 bg-rose-600 text-white p-0.5 rounded-bl shadow-lg hover:bg-rose-500 z-10"><X className="w-3 h-3" /></button></> : <><ImageIcon className="w-5 h-5 text-zinc-600" /><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageUpload} accept="image/*" /></>}
                    </div>
                    <input type="text" placeholder="اسم الصنف..." className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-right font-black text-white outline-none focus:border-zinc-600" value={manualItem.name} onChange={e => setManualItem({...manualItem, name: e.target.value})} />
+                   {editingItemIndex !== null && (
+                      <button onClick={() => { setEditingItemIndex(null); setManualItem({ name: '', quantity: 1, price: 0, serialNumber: '', image: '' }); }} className="p-3 bg-zinc-800 text-zinc-400 rounded-xl hover:text-rose-500" title="إلغاء التعديل"><X className="w-5 h-5"/></button>
+                   )}
                 </div>
                 <div className="space-y-2 mt-4 max-h-40 overflow-y-auto custom-scrollbar">
                    {newInvoice.items?.map((it, idx) => (
-                      <div key={it.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${editingItemIndex === idx ? 'bg-amber-50 border-amber-200' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'}`}>
+                      <div key={it.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${editingItemIndex === idx ? 'bg-amber-50 border-amber-500 dark:bg-amber-900/10' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'}`}>
                          <div className="flex items-center gap-3">
-                           <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-[10px] font-black">#{idx + 1}</span>
+                           <span className={`px-2 py-0.5 rounded text-[10px] font-black ${editingItemIndex === idx ? 'bg-amber-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800'}`}>#{idx + 1}</span>
                            {it.image && (
                              <img 
                                src={it.image} 
@@ -554,19 +568,22 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                                onClick={() => setPreviewImage(it.image!)} 
                              />
                            )}
-                           <span className={`font-bold text-sm ${editingItemIndex === idx ? 'text-amber-700' : ''}`}>{it.name}</span>
+                           <span className={`font-bold text-sm ${editingItemIndex === idx ? 'text-amber-700 dark:text-amber-400' : ''}`}>{it.name}</span>
                          </div>
                          <div className="flex items-center gap-2">
                             <span className="font-mono text-zinc-500 ml-2">{it.quantity} x {it.price.toLocaleString()}</span>
-                            <button onClick={() => startEditItem(idx)} className="text-amber-500 hover:bg-amber-100 p-1.5 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
-                            <button onClick={() => setNewInvoice({...newInvoice, items: newInvoice.items?.filter(i => i.id !== it.id)})} className="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => startEditItem(idx)} className={`p-1.5 rounded-lg transition-colors ${editingItemIndex === idx ? 'bg-amber-500 text-white' : 'text-amber-500 hover:bg-amber-100'}`}><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => { 
+                               setNewInvoice({...newInvoice, items: newInvoice.items?.filter(i => i.id !== it.id)});
+                               if(editingItemIndex === idx) { setEditingItemIndex(null); setManualItem({ name: '', quantity: 1, price: 0, serialNumber: '', image: '' }); }
+                            }} className="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                          </div>
                       </div>
                    ))}
                 </div>
              </div>
 
-             <div className={`p-5 rounded-[2rem] border-2 space-y-4 shadow-inner relative transition-all ${editingMaterialIndex !== null ? 'bg-amber-500/5 border-amber-500' : 'bg-rose-500/5 dark:bg-rose-950/20 border-rose-500/20'}`}>
+             <div id="material-input-area" className={`p-5 rounded-[2rem] border-2 space-y-4 shadow-inner relative transition-all ${editingMaterialIndex !== null ? 'bg-amber-500/5 border-amber-500' : 'bg-rose-500/5 dark:bg-rose-950/20 border-rose-500/20'}`}>
                 <h4 className="text-sm font-black text-rose-500 flex items-center justify-end gap-2 pb-2 uppercase tracking-widest border-b border-rose-500/10">
                    {editingMaterialIndex !== null ? 'تعديل المادة المستخدمة' : 'المواد المستخدمة (خصم مخزني)'} <HardDrive className="w-5 h-5" />
                 </h4>
@@ -576,9 +593,9 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                       <div className="flex items-center gap-2">
                         <button 
                            onClick={handleAddOrUpdateUsedMaterial} 
-                           className={`px-6 py-3 rounded-xl font-black shadow-lg transition-all ${editingMaterialIndex !== null ? 'bg-amber-600 text-white' : 'bg-primary text-white hover:brightness-110 active:scale-95'}`}
+                           className={`px-6 py-3 rounded-xl font-black shadow-lg transition-all ${editingMaterialIndex !== null ? 'bg-amber-600 text-white animate-pulse' : 'bg-primary text-white hover:brightness-110 active:scale-95'}`}
                         >
-                           {editingMaterialIndex !== null ? 'تحديث' : 'خصم'}
+                           {editingMaterialIndex !== null ? <Check className="w-5 h-5"/> : 'خصم'}
                         </button>
                         
                         <input type="number" placeholder="الكمية" className="w-24 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center font-black text-rose-500 outline-none" value={usedMaterial.quantity} onChange={e => setUsedMaterial({...usedMaterial, quantity: Number(e.target.value)})} />
@@ -624,16 +641,22 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                              </div>
                            )}
                         </div>
+                        {editingMaterialIndex !== null && (
+                          <button onClick={() => { setEditingMaterialIndex(null); setUsedMaterial({ code: '', name: '', quantity: 1 }); setMaterialSearch(''); }} className="p-3 bg-zinc-800 text-zinc-400 rounded-xl hover:text-rose-500" title="إلغاء التعديل"><X className="w-5 h-5"/></button>
+                        )}
                       </div>
                    </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2 mt-4 max-h-40 overflow-y-auto">
                    {newInvoice.usedMaterials?.map((m, idx) => (
-                      <div key={m.id} className={`border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm transition-all ${editingMaterialIndex === idx ? 'bg-amber-100 border-amber-400' : 'bg-white dark:bg-zinc-900 border-rose-200 dark:border-rose-900/50'}`}>
+                      <div key={m.id} className={`border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm transition-all ${editingMaterialIndex === idx ? 'bg-amber-100 border-amber-500 ring-2 ring-amber-500/20' : 'bg-white dark:bg-zinc-900 border-rose-200 dark:border-rose-900/50'}`}>
                          <span className={`text-xs font-bold ${editingMaterialIndex === idx ? 'text-amber-700' : 'text-rose-700'}`}>{m.name} ({m.quantity} {m.unit})</span>
                          <button onClick={() => startEditMaterial(idx)} className="text-amber-500 hover:text-amber-700 transition-colors"><Edit2 className="w-3 h-3"/></button>
-                         <button onClick={() => setNewInvoice({...newInvoice, usedMaterials: newInvoice.usedMaterials?.filter(x => x.id !== m.id)})} className="text-rose-300 hover:text-rose-600 transition-colors"><X className="w-3 h-3"/></button>
+                         <button onClick={() => { 
+                            setNewInvoice({...newInvoice, usedMaterials: newInvoice.usedMaterials?.filter(x => x.id !== m.id)});
+                            if(editingMaterialIndex === idx) { setEditingMaterialIndex(null); setUsedMaterial({ code: '', name: '', quantity: 1 }); setMaterialSearch(''); }
+                         }} className="text-rose-300 hover:text-rose-600 transition-colors"><X className="w-3 h-3"/></button>
                       </div>
                    ))}
                 </div>
