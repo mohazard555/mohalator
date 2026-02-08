@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, LogOut, FileOutput, Heart, Info, Bell, TrendingUp, Phone, UserCheck } from 'lucide-react';
+import { Settings as SettingsIcon, LogOut, FileOutput, Heart, Phone, UserCheck } from 'lucide-react';
 import { AppView, AppSettings, SalesInvoice } from './types';
 import Dashboard from './components/Dashboard';
 import SalesInvoiceView from './components/SalesInvoiceView';
@@ -12,7 +11,6 @@ import InventoryView from './components/InventoryView';
 import CashJournalView from './components/CashJournalView';
 import CustomerBalancesView from './components/CustomerBalancesView';
 import DailyBalancesView from './components/DailyBalancesView';
-import ProfitLossReportView from './components/ProfitLossReportView';
 import StockEntriesView from './components/StockEntriesView';
 import DetailedItemMovementView from './components/DetailedItemMovementView';
 import SalesReturnView from './components/SalesReturnView';
@@ -35,7 +33,6 @@ import LoginView from './components/LoginView';
 import DollarBalancesView from './components/DollarBalancesView';
 import InvoiceGalleryView from './components/InvoiceGalleryView';
 import JournalEntryView from './components/JournalEntryView';
-
 import BalanceSheetView from './components/BalanceSheetView';
 import TradingAccountView from './components/TradingAccountView';
 import IncomeStatementView from './components/IncomeStatementView';
@@ -60,17 +57,10 @@ const PHRASES = [
   "نبدأ من الأرقام… لنصل إلى القرارات الصحيحة.",
   "إدارة مالية دقيقة… تعني مستقبلًا أفضل.",
   "نرتّب حساباتك… لنرتّب أعمالك.",
-  "كل رقم له قصة… ونحن نرويها بوضوح.",
   "تحكم كامل… رؤية أوضح.",
   "حلول محاسبية تبسط التعقيد.",
   "مع Finexa… الأرقام تعمل لصالحك.",
   "تقارير دقيقة… نتائج مؤكدة.",
-  "حسابات متوازنة… أعمال متزنة.",
-  "نحو إدارة مالية أكثر ذكاءً.",
-  "نضع الدقة أولاً… في كل قيد.",
-  "مؤشرات مالية تساعدك على النمو.",
-  "تحليل أسرع… أداء أفضل.",
-  "نسهّل المحاسبة… لتركّز على عملك.",
   "كل شيء يبدأ من ميزانية واضحة."
 ];
 
@@ -87,7 +77,7 @@ const App: React.FC = () => {
     managerName: 'مدير النظام',
     accountantName: 'المحاسب الرئيسي',
     logoUrl: '', 
-    phone: '093XXXXXXX',
+    phone: '+963998171954',
     address: 'سوريا',
     primaryColor: '#1e40af',
     secondaryColor: '#1e3a8a',
@@ -141,12 +131,6 @@ const App: React.FC = () => {
               <span className="text-[11px] font-black text-primary/90 tracking-wide">{phrase}</span>
             </div>
           ))}
-          {PHRASES.map((phrase, i) => (
-            <div key={`dup-${i}`} className="flex items-center gap-4">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(30,64,175,0.8)] animate-pulse"></div>
-              <span className="text-[11px] font-black text-primary/90 tracking-wide">{phrase}</span>
-            </div>
-          ))}
         </div>
       </div>
 
@@ -162,4 +146,113 @@ const App: React.FC = () => {
           <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800 hidden md:block"></div>
           <div className="hidden lg:flex flex-col">
             <span className="text-xs font-black opacity-30 uppercase tracking-widest leading-none mb-1">المؤسسة النشطة</span>
-            <div className="flex items-center gap-2
+            <div className="flex items-center gap-2">
+              {settings.logoUrl && <img src={settings.logoUrl} className="w-5 h-5 object-contain" alt="Entity" />}
+              <span className="font-black text-sm text-readable opacity-90">{settings.companyName}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-1 border-l dark:border-zinc-800 pl-4 ml-2">
+            <button onClick={() => setCurrentView(AppView.PROFESSIONAL_INVOICE)} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-primary p-2.5 rounded-xl transition-all shadow-inner" title="تصدير فاتورة احترافية"><FileOutput className="w-6 h-6" /></button>
+            <button onClick={() => setCurrentView(AppView.SETTINGS)} className="p-2.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all" title="إعدادات النظام"><SettingsIcon className="w-6 h-6" /></button>
+          </div>
+          <div className="flex items-center gap-3">
+            {isAuthenticated && (
+              <button onClick={handleLogout} className="flex items-center gap-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white px-5 py-2.5 rounded-xl transition-all font-bold text-sm border border-rose-500/20 shadow-sm"><LogOut className="w-4 h-4" /><span className="hidden md:inline">خروج</span></button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 p-4 md:p-8 overflow-auto pb-24 print:p-0 print:bg-white">
+        {(() => {
+          switch (currentView) {
+            case AppView.DASHBOARD: return <Dashboard setView={setCurrentView} />;
+            case AppView.SALES_INVOICE: return <SalesInvoiceView onBack={() => { setEditingInvoice(null); setCurrentView(AppView.DASHBOARD); }} initialInvoice={editingInvoice || undefined} />;
+            case AppView.SALES_HISTORY: return <SalesHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} onEdit={(inv) => { setEditingInvoice(inv); setCurrentView(AppView.SALES_INVOICE); }} />;
+            case AppView.SALES_RETURN_HISTORY: return <SalesReturnHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} onEdit={(ret) => { setEditingReturn(ret); setCurrentView(AppView.SALES_RETURN); }} />;
+            case AppView.PURCHASE_HISTORY: return <PurchaseHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.PURCHASE_RETURN_HISTORY: return <PurchaseReturnHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.PROFESSIONAL_INVOICE: return <ProfessionalInvoiceView onBack={() => setCurrentView(AppView.DASHBOARD)} settings={settings} />;
+            case AppView.INVENTORY: return <InventoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.CASH_JOURNAL: return <CashJournalView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.CUSTOMER_BALANCES: return <CustomerBalancesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.CASH_FILE: return <DailyBalancesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.STOCK_ENTRIES: return <StockEntriesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.DETAILED_ITEM_MOVEMENT: return <DetailedItemMovementView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.CUSTOMER_INVOICE_COSTS: return <CustomerInvoiceCostsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.SALES_RETURN: return <SalesReturnView onBack={() => { setEditingReturn(null); setCurrentView(AppView.DASHBOARD); }} initialReturn={editingReturn || undefined} />;
+            case AppView.PURCHASE_RETURN: return <PurchaseReturnView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.DETAILED_SALES_REPORT: return <DetailedSalesReportView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.RECEIPT_VOUCHER: return <VoucherListView onBack={() => setCurrentView(AppView.DASHBOARD)} type="قبض" />;
+            case AppView.PAYMENT_VOUCHER: return <VoucherListView onBack={() => setCurrentView(AppView.DASHBOARD)} type="دفع" />;
+            case AppView.PURCHASE_INVOICE: return <PurchaseInvoiceView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.PARTY_MANAGEMENT: return <PartyManagementView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.SETTINGS: return <SettingsView onBack={() => setCurrentView(AppView.DASHBOARD)} settings={settings} setSettings={setSettings} />;
+            case AppView.WAREHOUSE_ANALYTICS: return <WarehouseAnalyticsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.WAREHOUSE_MANAGEMENT: return <WarehouseManagementView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.ARCHIVES: return <ArchivesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.INVESTMENT_REPORTS: return <InvestmentReportsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.ACCOUNTING_CATEGORIES: return <AccountingCategoriesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.GENERAL_LEDGER: return <GeneralLedgerView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.DOLLAR_BALANCES: return <DollarBalancesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.INVOICE_GALLERY: return <InvoiceGalleryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.JOURNAL_ENTRY: return <JournalEntryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.CHART_OF_ACCOUNTS: return <ChartOfAccountsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.BALANCE_SHEET: return <BalanceSheetView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.TRADING_ACCOUNT: return <TradingAccountView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.INCOME_STATEMENT: return <IncomeStatementView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.OPENING_ENTRIES: return <OpeningEntriesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.PERIODIC_INVENTORY: return <PeriodicInventoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            default: return <Dashboard setView={setCurrentView} />;
+          }
+        })()}
+      </main>
+
+      <footer className="no-print mt-auto py-8 px-8 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex flex-col gap-2 items-center md:items-start">
+             <div className="flex items-center gap-2 text-zinc-500 font-bold text-xs uppercase tracking-widest">
+               <span>© 2026</span>
+               <span className="text-blue-600 dark:text-blue-400 font-black italic">Finexa Intelligence Platform</span>
+               <span>جميع الحقوق محفوظة</span>
+             </div>
+             <div className="flex items-center gap-3 bg-zinc-100 dark:bg-zinc-900 px-5 py-2.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm transition-all hover:border-blue-500/30">
+                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] border-l dark:border-zinc-800 pl-3 ml-1">Core Developer</span>
+                <div className="flex items-center gap-3 text-[11px] font-black text-readable">
+                   <div className="flex items-center gap-1.5">
+                      <UserCheck className="w-4 h-4 text-blue-500" />
+                      <span className="tracking-tight">DEVELOPER MOHANNAD AHMAD - SY</span>
+                   </div>
+                   <div className="w-px h-3 bg-zinc-300 dark:bg-zinc-700"></div>
+                   <div className="flex items-center gap-1.5 hover:text-emerald-500 transition-colors cursor-pointer">
+                      <Phone className="w-4 h-4 text-emerald-500" />
+                      <span dir="ltr">TEL +963 998 171 954</span>
+                   </div>
+                </div>
+             </div>
+          </div>
+          <div className="flex items-center gap-3 bg-zinc-100 dark:bg-zinc-900 px-6 py-3 rounded-full border border-zinc-200 dark:border-zinc-800 shadow-inner group">
+            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em]">Engineering By</span>
+            <div className="w-px h-4 bg-zinc-300 dark:bg-zinc-700"></div>
+            <span className="text-sm font-black text-zinc-700 dark:text-zinc-200 group-hover:text-blue-600 transition-colors">FINEXA CORE ENGINE</span>
+            <Heart className="w-4 h-4 text-rose-500 fill-rose-500 animate-pulse" />
+          </div>
+        </div>
+      </footer>
+
+      <style>{`
+        @keyframes ticker {
+          0% { transform: translateX(30%); }
+          100% { transform: translateX(-100%); }
+        }
+        .animate-ticker { animation: ticker 120s linear infinite; }
+        .animate-ticker:hover { animation-play-state: paused; }
+      `}</style>
+    </div>
+  );
+};
+
+export default App;

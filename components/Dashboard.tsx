@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { MENU_GROUPS } from '../constants';
-import { AppView, AppSettings, SalesInvoice, PurchaseInvoice, CashEntry, InventoryItem, StockEntry } from '../types';
+import { AppView, AppSettings, SalesInvoice, PurchaseInvoice, CashEntry, InventoryItem, StockEntry, PeriodicInventory } from '../types';
 
 interface DashboardProps {
   setView: (view: AppView) => void;
@@ -26,14 +25,16 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
     const sSales = localStorage.getItem('sheno_sales_invoices');
     const sPurchases = localStorage.getItem('sheno_purchases');
     const sJournal = localStorage.getItem('sheno_cash_journal');
-    const sInventory = localStorage.getItem('sheno_inventory_list');
+    const sInventoryList = localStorage.getItem('sheno_inventory_list');
     const sStockMoves = localStorage.getItem('sheno_stock_entries');
+    const sPeriodic = localStorage.getItem('sheno_periodic_inventories');
 
     const sales: SalesInvoice[] = sSales ? JSON.parse(sSales) : [];
     const purchases: PurchaseInvoice[] = sPurchases ? JSON.parse(sPurchases) : [];
     const journal: CashEntry[] = sJournal ? JSON.parse(sJournal) : [];
-    const inventory: InventoryItem[] = sInventory ? JSON.parse(sInventory) : [];
+    const inventoryList: InventoryItem[] = sInventoryList ? JSON.parse(sInventoryList) : [];
     const stockMoves: StockEntry[] = sStockMoves ? JSON.parse(sStockMoves) : [];
+    const periodic: PeriodicInventory[] = sPeriodic ? JSON.parse(sPeriodic) : [];
 
     const todayStr = new Date().toISOString().split('T')[0];
 
@@ -43,29 +44,30 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
     // 2. إجمالي المشتريات
     const totalPurchases = purchases.reduce((s, c) => s + (Number(c.totalAmount) || 0), 0);
 
-    // 3. مقبوضات اليوم (ليرة سورية ودولار محول)
+    // 3. مقبوضات اليوم
     const dailyReceipts = journal
       .filter(j => j.date === todayStr)
-      .reduce((s, c) => s + (Number(c.receivedSYP) || 0) + (Number(c.receivedUSD) * 15000 || 0), 0); // تقدير صرف 15000 للملخص السريع
+      .reduce((s, c) => s + (Number(c.receivedSYP) || 0) + (Number(c.receivedUSD) * 15000 || 0), 0);
 
-    // 4. رصيد الصندوق الحالي (صافي ليرة سورية)
+    // 4. رصيد الصندوق النقدي
     const cashBalance = journal.reduce((s, c) => s + ((Number(c.receivedSYP) || 0) - (Number(c.paidSYP) || 0)), 0);
 
-    // 5. إجمالي قيمة المخزون (الجرد الحالي)
-    const inventoryValue = inventory.reduce((sum, item) => {
-      const itemMoves = stockMoves.filter(m => m.itemCode === item.code);
-      const added = itemMoves.filter(m => m.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
-      const issued = itemMoves.filter(m => m.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
-      const returned = itemMoves.filter(m => m.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
-      const currentBalance = (Number(item.openingStock) || 0) + added - issued + returned;
-      return sum + (currentBalance * (Number(item.price) || 0));
+    // 5. إجمالي قيمة مواد المخزن
+    const inventoryValue = inventoryList.reduce((sum, item) => {
+      const moves = stockMoves.filter(m => m.itemCode === item.code);
+      const added = moves.filter(m => m.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
+      const issued = moves.filter(m => m.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
+      const returned = moves.filter(m => m.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
+      const balance = (Number(item.openingStock) || 0) + added - issued + returned;
+      return sum + (balance * (Number(item.price) || 0));
     }, 0);
 
-    // 6. صافي الربح التقديري (مبيعات - مشتريات - مصاريف من اليومية)
-    const expenses = journal
-      .filter(j => j.type === 'دفع' || j.statement.includes('مصاريف'))
-      .reduce((s, c) => s + (Number(c.paidSYP) || 0), 0);
-    const netProfit = totalSales - totalPurchases - expenses;
+    // 6. صافي الربح المحقق (المبيعات - تكلفة البضاعة المباعة - المصاريف)
+    const openingStockVal = periodic.find(i => i.type === 'OPENING')?.totalValue || 0;
+    const cogs = openingStockVal + totalPurchases - inventoryValue;
+    const grossProfit = totalSales - cogs;
+    const expenses = journal.filter(j => j.paidSYP > 0 && !j.statement.includes('شراء')).reduce((s, c) => s + c.paidSYP, 0);
+    const netProfit = grossProfit - expenses;
 
     setStats({
       totalSales,
@@ -78,12 +80,12 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
   }, []);
 
   const boxes = [
-    { label: 'إجمالي المبيعات العامة', val: stats.totalSales, color: 'text-emerald-500', bg: 'bg-emerald-500/5' },
-    { label: 'إجمالي المشتريات', val: stats.totalPurchases, color: 'text-amber-500', bg: 'bg-amber-500/5' },
-    { label: 'قيمة بضاعة المخزن', val: stats.inventoryValue, color: 'text-blue-500', bg: 'bg-blue-500/5' },
-    { label: 'مقبوضات اليوم', val: stats.dailyReceipts, color: 'text-primary', bg: 'bg-primary/5' },
+    { label: 'إجمالي مبيعات المنشأة', val: stats.totalSales, color: 'text-emerald-500', bg: 'bg-emerald-500/5' },
+    { label: 'إجمالي المشتريات (توريد)', val: stats.totalPurchases, color: 'text-amber-500', bg: 'bg-amber-500/5' },
+    { label: 'قيمة مواد المخزن (جرد)', val: stats.inventoryValue, color: 'text-blue-500', bg: 'bg-blue-500/5' },
+    { label: 'مقبوضات نقدية (اليوم)', val: stats.dailyReceipts, color: 'text-primary', bg: 'bg-primary/5' },
     { label: 'رصيد الصندوق النقدي', val: stats.cashBalance, color: 'text-zinc-400', bg: 'bg-zinc-500/5' },
-    { label: 'صافي الأرباح المحققة', val: stats.netProfit, color: 'text-rose-500', bg: 'bg-rose-500/5' },
+    { label: 'صافي الربح المحقق حتى اللحظة', val: stats.netProfit, color: 'text-rose-500', bg: 'bg-rose-500/5' },
   ];
 
   return (
@@ -117,9 +119,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {boxes.map((st, i) => (
-          <div key={i} className={`${st.bg} p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col items-center text-center gap-2 group hover:scale-[1.02] transition-transform`}>
-            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{st.label} ({settings?.currencySymbol})</span>
-            <span className={`text-4xl font-mono font-black ${st.color}`}>{st.val.toLocaleString()}</span>
+          <div key={i} className={`${st.bg} p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl flex flex-col items-center text-center gap-3 group hover:scale-[1.03] transition-all hover:shadow-2xl`}>
+            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{st.label} ({settings?.currencySymbol})</span>
+            <span className={`text-4xl font-mono font-black ${st.color} tracking-tighter`}>{st.val.toLocaleString()}</span>
           </div>
         ))}
       </div>
