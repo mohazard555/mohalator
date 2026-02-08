@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Scale, ImageIcon, Printer, Eye, EyeOff } from 'lucide-react';
-import { CashEntry, SalesInvoice, PurchaseInvoice, PeriodicInventory, InventoryItem, StockEntry, OpeningEntry, Party, PartyType, AppSettings } from '../types';
+import { CashEntry, SalesInvoice, PurchaseInvoice, PeriodicInventory, InventoryItem, StockEntry, OpeningEntry, Party, PartyType, AppSettings, AccountingCategory } from '../types';
 import { ImageExportService } from '../utils/ImageExportService';
 import BalanceSheetReport from './BalanceSheetReport';
 
@@ -23,6 +23,8 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
   const [parties, setParties] = useState<Party[]>([]);
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
   const [stockEntries, setStockEntries] = useState<StockEntry[]>([]);
+  const [categories, setCategories] = useState<AccountingCategory[]>([]);
+  const [inventories, setInventories] = useState<PeriodicInventory[]>([]);
 
   useEffect(() => {
     const sSett = localStorage.getItem('sheno_settings');
@@ -33,6 +35,8 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
     const sPar = localStorage.getItem('sheno_parties');
     const sInvList = localStorage.getItem('sheno_inventory_list');
     const sStock = localStorage.getItem('sheno_stock_entries');
+    const sCat = localStorage.getItem('sheno_accounting_categories');
+    const sPeriodic = localStorage.getItem('sheno_periodic_inventories');
 
     if (sSett) setSettings(JSON.parse(sSett));
     if (sJou) setJournal(JSON.parse(sJou));
@@ -42,6 +46,8 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
     if (sPar) setParties(JSON.parse(sPar));
     if (sInvList) setInventoryList(JSON.parse(sInvList));
     if (sStock) setStockEntries(JSON.parse(sStock));
+    if (sCat) setCategories(JSON.parse(sCat));
+    if (sPeriodic) setInventories(JSON.parse(sPeriodic));
   }, []);
 
   const calculateFinancials = () => {
@@ -49,7 +55,7 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
     const filteredSales = sales.filter(s => s.date <= endDate);
     const filteredPurchases = purchases.filter(p => p.date <= endDate);
 
-    // بضاعة آخر المدة
+    // 1. بضاعة آخر المدة (الأصول)
     const closingStockItems = inventoryList.map(item => {
         const moves = stockEntries.filter(e => e.itemCode === item.code && e.date <= endDate);
         const added = moves.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
@@ -58,44 +64,62 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
         const balance = (item.openingStock || 0) + added - issued + returned;
         return { name: item.name, quantity: balance, unit: item.unit, price: item.price, total: balance * item.price };
     }).filter(it => it.quantity !== 0);
-
     const closingStockValue = closingStockItems.reduce((sum, it) => sum + it.total, 0);
-    const cashInHand = filteredJournal.reduce((s, c) => s + (c.receivedSYP - c.paidSYP), 0);
+
+    // 2. النقدية (الأصول)
+    const cashInHand = filteredJournal.reduce((s, c) => s + (Number(c.receivedSYP || 0) - Number(c.paidSYP || 0)), 0);
     
+    // 3. الزبائن (الأصول)
     const receivablesList = parties.filter(p => p.type === PartyType.CUSTOMER || p.type === PartyType.BOTH).map(p => {
         const pSales = filteredSales.filter(inv => inv.customerName === p.name).reduce((sum, inv) => sum + inv.totalAmount, 0);
         const pPaid = filteredJournal.filter(j => (j.partyName === p.name || j.statement.includes(p.name))).reduce((sum, j) => sum + j.receivedSYP, 0);
         return { name: p.name, balance: (p.openingBalance + pSales - pPaid) };
     }).filter(x => x.balance !== 0);
+    const receivables = receivablesList.reduce((s,c) => s + c.balance, 0);
 
+    // 4. الموردين (الخصوم)
     const payablesList = parties.filter(p => p.type === PartyType.SUPPLIER || p.type === PartyType.BOTH).map(p => {
         const pPurch = filteredPurchases.filter(inv => inv.supplierName === p.name).reduce((sum, inv) => sum + inv.totalAmount, 0);
         const pPaid = filteredJournal.filter(j => (j.partyName === p.name || j.statement.includes(p.name))).reduce((sum, j) => sum + j.paidSYP, 0);
         return { name: p.name, balance: (p.openingBalance + pPurch - pPaid) };
     }).filter(x => x.balance !== 0);
+    const payables = payablesList.reduce((s,c) => s + c.balance, 0);
 
+    // 5. الأصول الثابتة ورأس المال (من القيود الافتتاحية)
     const fixedAssetsList = openingEntries.filter(e => e.accountType === 'أصول').map(e => ({ name: e.accountName, balance: e.debit - e.credit }));
+    const fixedAssets = fixedAssetsList.reduce((s,c) => s + c.balance, 0);
+    
     const equityList = openingEntries.filter(e => e.accountType === 'حقوق ملكية').map(e => ({ name: e.accountName, balance: e.credit - e.debit }));
+    const equityOpening = equityList.reduce((s,c) => s + c.balance, 0);
 
-    // الربح حتى اللحظة
+    // 6. احتساب الأرباح المحققة (حقوق الملكية)
+    const openingStockInv = inventories.find(i => i.type === 'OPENING');
+    const openingStockValue = openingStockInv ? openingStockInv.totalValue : 0;
     const totalSales = filteredSales.reduce((s, c) => s + c.totalAmount, 0);
     const totalPurchases = filteredPurchases.reduce((s, c) => s + c.totalAmount, 0);
-    const opInv = JSON.parse(localStorage.getItem('sheno_periodic_inventories') || '[]').find((i:any)=>i.type==='OPENING')?.totalValue || 0;
-    const gross = totalSales - (opInv + totalPurchases - closingStockValue);
-    const expenses = filteredJournal.reduce((s, c) => s + c.paidSYP, 0);
-    const revenues = filteredJournal.reduce((s, c) => s + c.receivedSYP, 0);
-    // الربح الصافي التقريبي للميزانية
-    const netProfit = gross + revenues - expenses;
+    
+    const cogs = openingStockValue + totalPurchases - closingStockValue;
+    const grossProfit = totalSales - cogs;
+    
+    // مصاريف وإيرادات تشغيلية من أقسام الحسابات
+    const expenses = categories.filter(c => c.type === 'مصروفات').reduce((s, cat) => {
+        return s + filteredJournal.filter(j => j.categoryId === cat.id).reduce((sum, curr) => sum + curr.paidSYP, 0);
+    }, 0);
+    const otherRevenues = categories.filter(c => c.type === 'إيرادات').reduce((s, cat) => {
+        return s + filteredJournal.filter(j => j.categoryId === cat.id).reduce((sum, curr) => sum + curr.receivedSYP, 0);
+    }, 0);
+
+    const netProfit = grossProfit + otherRevenues - expenses;
 
     return { 
-      closingStockValue, closingStockItems, cashInHand, receivables: receivablesList.reduce((s,c) => s + c.balance, 0),
-      payables: payablesList.reduce((s,c) => s + c.balance, 0), fixedAssets: fixedAssetsList.reduce((s,c) => s + c.balance, 0),
-      equityOpening: equityList.reduce((s,c) => s + c.balance, 0), netProfit,
+      closingStockValue, closingStockItems, cashInHand, receivables,
+      payables, fixedAssets, equityOpening, netProfit,
       receivablesList, payablesList, fixedAssetsList, equityList
     };
   };
 
   const fin = calculateFinancials();
+
   const toggleSection = (id: string) => {
     const newSet = new Set(expandedSections);
     if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
@@ -105,10 +129,10 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
   const renderDetailTable = (data: { name: string; balance: number }[]) => {
     if (data.length === 0) return null;
     return (
-      <div className={`mt-3 overflow-hidden border rounded-xl bg-white dark:bg-zinc-950 ${!showDetailsInPrint ? 'no-print' : ''}`}>
+      <div className={`mt-3 overflow-hidden border border-zinc-100 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 ${!showDetailsInPrint ? 'no-print' : ''}`}>
         <table className="w-full text-right text-[10px]">
           <thead className="bg-zinc-50 dark:bg-zinc-900 border-b">
-            <tr className="text-zinc-500 font-black"><th className="p-2 border-l">البيان / الحساب</th><th className="p-2 text-center">الرصيد</th></tr>
+            <tr className="text-zinc-500 font-black"><th className="p-2 border-l">البيان / الحساب</th><th className="p-2 text-center">الرصيد الجاري</th></tr>
           </thead>
           <tbody className="divide-y text-zinc-700 dark:text-zinc-300">
             {data.map((item, idx) => (
@@ -130,8 +154,8 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
           <div className="flex items-center gap-3">
              <Scale className="w-8 h-8 text-primary" />
              <div>
-                <h2 className="text-2xl font-black text-readable">الميزانية العمومية</h2>
-                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">بيان المركز المالي الكلي</p>
+                <h2 className="text-2xl font-black text-readable">الميزانية العمومية والمركز المالي</h2>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">الأصول = الخصوم + حقوق الملكية</p>
              </div>
           </div>
         </div>

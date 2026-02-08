@@ -15,10 +15,11 @@ const IncomeStatementView: React.FC<IncomeStatementViewProps> = ({ onBack }) => 
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
-  // Data
   const [journal, setJournal] = useState<CashEntry[]>([]);
   const [sales, setSales] = useState<SalesInvoice[]>([]);
+  const [salesReturns, setSalesReturns] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<PurchaseInvoice[]>([]);
+  const [purchaseReturns, setPurchaseReturns] = useState<any[]>([]);
   const [categories, setCategories] = useState<AccountingCategory[]>([]);
   const [inventories, setInventories] = useState<PeriodicInventory[]>([]);
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
@@ -28,7 +29,9 @@ const IncomeStatementView: React.FC<IncomeStatementViewProps> = ({ onBack }) => 
     const sSett = localStorage.getItem('sheno_settings');
     const sJou = localStorage.getItem('sheno_cash_journal');
     const sSal = localStorage.getItem('sheno_sales_invoices');
+    const sSalRet = localStorage.getItem('sheno_sales_returns');
     const sPur = localStorage.getItem('sheno_purchases');
+    const sPurRet = localStorage.getItem('sheno_purchase_returns');
     const sCat = localStorage.getItem('sheno_accounting_categories');
     const sInv = localStorage.getItem('sheno_periodic_inventories');
     const sInvList = localStorage.getItem('sheno_inventory_list');
@@ -37,7 +40,9 @@ const IncomeStatementView: React.FC<IncomeStatementViewProps> = ({ onBack }) => 
     if (sSett) setSettings(JSON.parse(sSett));
     if (sJou) setJournal(JSON.parse(sJou));
     if (sSal) setSales(JSON.parse(sSal));
+    if (sSalRet) setSalesReturns(JSON.parse(sSalRet));
     if (sPur) setPurchases(JSON.parse(sPur));
+    if (sPurRet) setPurchaseReturns(JSON.parse(sPurRet));
     if (sCat) setCategories(JSON.parse(sCat));
     if (sInv) setInventories(JSON.parse(sInv));
     if (sInvList) setInventoryList(JSON.parse(sInvList));
@@ -45,47 +50,44 @@ const IncomeStatementView: React.FC<IncomeStatementViewProps> = ({ onBack }) => 
   }, []);
 
   const calculateFinancials = () => {
-    const filteredJournal = journal.filter(j => j.date >= startDate && j.date <= endDate);
     const filteredSales = sales.filter(s => s.date >= startDate && s.date <= endDate);
+    const filteredReturns = salesReturns.filter(r => r.date >= startDate && r.date <= endDate);
+    
+    // صافي المبيعات = إجمالي المبيعات - المرتجعات - الخصومات الممنوحة
+    const grossSales = filteredSales.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0);
+    const totalReturns = filteredReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0);
+    const totalDiscounts = filteredSales.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0);
+    const netSalesValue = grossSales - totalReturns - totalDiscounts;
+
+    // تكلفة البضاعة المباعة
     const filteredPurchases = purchases.filter(p => p.date >= startDate && p.date <= endDate);
-
-    const openingStockInv = inventories.filter(i => i.type === 'OPENING' && i.date <= startDate).sort((a,b) => b.date.localeCompare(a.date))[0];
-    const openingStockValue = openingStockInv?.totalValue || 0;
-
+    const openingStockValue = inventories.find(i => i.type === 'OPENING')?.totalValue || 0;
+    
     const closingStockValue = inventoryList.reduce((sum, item) => {
         const moves = stockEntries.filter(e => e.itemCode === item.code && e.date <= endDate);
-        const added = moves.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
-        const issued = moves.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
-        const returned = moves.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
-        const balance = (item.openingStock || 0) + added - issued + returned;
-        return sum + (balance * item.price);
+        const bal = (item.openingStock || 0) + 
+                   moves.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0) - 
+                   moves.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0) + 
+                   moves.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
+        return sum + (bal * item.price);
     }, 0);
 
-    const totalSales = filteredSales.reduce((s, c) => s + c.totalAmount, 0);
-    const totalPurchases = filteredPurchases.reduce((s, c) => s + c.totalAmount, 0);
+    const totalPurchases = filteredPurchases.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0);
     const cogs = openingStockValue + totalPurchases - closingStockValue;
-    const grossProfit = totalSales - cogs;
+    const grossProfit = netSalesValue - cogs;
 
+    // المصاريف والإيرادات التشغيلية
+    const filteredJournal = journal.filter(j => j.date >= startDate && j.date <= endDate);
     const expenseCats = categories.filter(c => c.type === 'مصروفات').map(cat => ({
-      id: cat.id,
-      name: cat.name,
+      id: cat.id, name: cat.name,
       total: filteredJournal.filter(j => j.categoryId === cat.id).reduce((s, c) => s + (c.paidSYP || 0), 0),
-      items: filteredJournal.filter(j => j.categoryId === cat.id).map(j => ({
-         date: j.date,
-         statement: j.statement,
-         amount: j.paidSYP || 0
-      }))
+      items: filteredJournal.filter(j => j.categoryId === cat.id).map(j => ({ date: j.date, statement: j.statement, amount: j.paidSYP }))
     })).filter(c => c.total > 0);
 
     const revenueCats = categories.filter(c => c.type === 'إيرادات').map(cat => ({
-      id: cat.id,
-      name: cat.name,
+      id: cat.id, name: cat.name,
       total: filteredJournal.filter(j => j.categoryId === cat.id).reduce((s, c) => s + (c.receivedSYP || 0), 0),
-      items: filteredJournal.filter(j => j.categoryId === cat.id).map(j => ({
-         date: j.date,
-         statement: j.statement,
-         amount: j.receivedSYP || 0
-      }))
+      items: filteredJournal.filter(j => j.categoryId === cat.id).map(j => ({ date: j.date, statement: j.statement, amount: j.receivedSYP }))
     })).filter(c => c.total > 0);
 
     const totalExpenses = expenseCats.reduce((s, c) => s + c.total, 0);
