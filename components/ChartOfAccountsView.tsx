@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Folder, FolderPlus, ChevronRight, ChevronDown, 
@@ -61,10 +60,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const defaultRoots: AccountNode[] = [
       { id: '1', code: '1', name: 'الموجودات', parentId: null, type: 'FOLDER', reportType: 'الميزانية' },
       { id: '11', code: '11', name: 'الموجودات الثابتة', parentId: '1', type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '111', code: '111', name: 'مباني وإنشاءات', parentId: '11', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '112', code: '112', name: 'آلات ومعدات', parentId: '11', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '113', code: '113', name: 'أثاث ومفروشات مكتبية', parentId: '11', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '114', code: '114', name: 'وسائل نقل وانتقال (سيارات)', parentId: '11', type: 'ACCOUNT', reportType: 'الميزانية' },
       { id: '12', code: '12', name: 'الموجودات المتداولة', parentId: '1', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '121', code: '121', name: 'الزبائن المدينون', parentId: '12', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '124', code: '124', name: 'المخزون السلعي', parentId: '12', type: 'FOLDER', reportType: 'الميزانية' },
@@ -74,7 +69,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
       { id: '132', code: '132', name: 'حساب المصرف البنكي', parentId: '13', type: 'ACCOUNT', reportType: 'الميزانية' },
       { id: '2', code: '2', name: 'المطاليب والخصوم', parentId: null, type: 'FOLDER', reportType: 'الميزانية' },
       { id: '21', code: '21', name: 'المطاليب الثابتة وحقوق الملكية', parentId: '2', type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '211', code: '211', name: 'رأس المال المخصص', parentId: '21', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '22', code: '22', name: 'المطاليب المتداولة', parentId: '2', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '221', code: '221', name: 'الموردون والدائنون', parentId: '22', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '3', code: '3', name: 'صافي المشتريات', parentId: null, type: 'FOLDER', reportType: 'المتاجرة' },
@@ -87,33 +81,18 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
       { id: '42', code: '42', name: 'مرتجع المبيعات', parentId: '4', type: 'ACCOUNT', reportType: 'المتاجرة' },
       { id: '43', code: '43', name: 'الحسم الممنوح', parentId: '4', type: 'ACCOUNT', reportType: 'المتاجرة' },
       { id: '5', code: '5', name: 'المصاريف التشغيلية والعمومية', parentId: null, type: 'FOLDER', reportType: 'الأرباح والخسائر' },
-      { id: '51', code: '51', name: 'مصاريف إيجار', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '52', code: '52', name: 'رواتب وأجور الموظفين', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '53', code: '53', name: 'كهرباء ومياه وانترنت', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '54', code: '54', name: 'قرطاسية ومطبوعات', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '55', code: '55', name: 'مصاريف صيانة وإصلاح', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
-      { id: '56', code: '56', name: 'مصاريف دعاية وإعلان', parentId: '5', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
       { id: '6', code: '6', name: 'الايرادات الأخرى والتحويلات', parentId: null, type: 'FOLDER', reportType: 'الأرباح والخسائر' },
-      { id: '61', code: '61', name: 'إيرادات خدمات متنوعة', parentId: '6', type: 'ACCOUNT', reportType: 'الأرباح والخسائر' },
       { id: '7', code: '7', name: 'بضاعة المتاجرة السنوية', parentId: null, type: 'FOLDER', reportType: 'المتاجرة' },
       { id: '71', code: '71', name: 'بضاعة اول المدة', parentId: '7', type: 'ACCOUNT', reportType: 'المتاجرة' },
       { id: '72', code: '72', name: 'بضاعة أخر المدة', parentId: '7', type: 'ACCOUNT', reportType: 'المتاجرة' }
     ];
 
     let currentAccounts: AccountNode[] = savedAccountsRaw ? JSON.parse(savedAccountsRaw) : defaultRoots;
-    defaultRoots.forEach(def => {
-      if (!currentAccounts.some(acc => acc.code === def.code)) {
-         currentAccounts.push(def);
-      }
-    });
-
     setAccounts(currentAccounts);
     if (sJou) setJournal(JSON.parse(sJou));
     if (sOp) setOpeningEntries(JSON.parse(sOp));
-    // Fixed incorrect state setter name from setAllSales to setSales
     if (sSal) setSales(JSON.parse(sSal));
     if (sSalRet) setSalesReturns(JSON.parse(sSalRet));
-    // Fixed incorrect state setter name from setAllPurchases to setPurchases
     if (sPur) setPurchases(JSON.parse(sPur));
     if (sPurRet) setPurchaseReturns(JSON.parse(sPurRet));
     if (sCat) setCategories(JSON.parse(sCat));
@@ -151,13 +130,14 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     // 3. المبيعات
     if (code === '41') balance += sales.reduce((s, c) => s + c.totalAmount, 0);
     if (code === '42') balance -= salesReturns.reduce((s, c) => s + (c.totalReturnAmount || 0), 0);
-    if (code === '43') balance -= sales.reduce((s, c) => s + (c.discountAmount || 0), 0);
+    if (code === '43') balance += sales.reduce((s, c) => s + (c.discountAmount || 0), 0); // الحسم الممنوح مدين بطبيعته في الربح والخسارة
 
     // 4. المشتريات
-    if (code === '31') balance += purchases.reduce((s, c) => s + c.totalAmount, 0);
+    // إجمالي المشتريات (31) = مجموع بنود الفواتير (Gross) بدون إضافات
+    if (code === '31') balance += purchases.reduce((s, c) => s + c.items.reduce((sum, item) => sum + item.total, 0), 0);
     if (code === '32') balance -= purchaseReturns.reduce((s, c) => s + (c.totalReturnAmount || 0), 0);
     if (code === '33') balance += purchases.reduce((s, c) => s + (c.transportExpenses || 0), 0);
-    if (code === '34') balance -= purchases.reduce((s, c) => s + (c.discountAmount || 0), 0);
+    if (code === '34') balance += purchases.reduce((s, c) => s + (c.discountAmount || 0), 0); // الحسم المكتسب دائن بطبيعته
 
     // 5. بضاعة أول المدة
     if (code === '71') {
@@ -209,6 +189,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const name = account.name;
     const code = account.code;
 
+    // ا) حركات من دفتر اليومية
     journal.filter(j => {
        if (code === '131') return !j.statement.includes('وجهة: المصرف');
        if (code === '132') return j.statement.includes('وجهة: المصرف') || j.partyName === 'المصرف' || j.partyName === 'حساب المصرف البنكي';
@@ -219,34 +200,89 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
         moves.push({ date: j.date, statement: j.statement, debit: (j.receivedSYP + j.receivedUSD), credit: (j.paidSYP + j.paidUSD), source: 'اليومية' });
     });
 
-    if (code === '41' || account.parentId === '121' || parties.some(p => p.name === name)) {
-       sales.filter(s => s.customerName === name || (code === '41')).forEach(s => {
-          moves.push({ date: s.date, statement: `فاتورة مبيع #${s.invoiceNumber}`, debit: s.totalAmount, credit: 0, source: 'المبيعات' });
+    // ب) حركات المبيعات (إجمالي المبيعات 41)
+    if (code === '41') {
+       sales.forEach(s => {
+          moves.push({ date: s.date, statement: `إثبات مبيعات فاتورة #${s.invoiceNumber} - العميل: ${s.customerName}`, debit: s.totalAmount, credit: 0, source: 'المبيعات' });
        });
     }
 
-    if (code === '31' || account.parentId === '221' || parties.some(p => p.name === name)) {
-       purchases.filter(p => p.supplierName === name || (code === '31')).forEach(p => {
-          moves.push({ date: p.date, statement: `فاتورة شراء #${p.invoiceNumber}`, debit: 0, credit: p.totalAmount, source: 'المشتريات' });
+    // ج) الحسم الممنوح (43)
+    if (code === '43') {
+       sales.filter(s => s.discountAmount && s.discountAmount > 0).forEach(s => {
+          moves.push({ date: s.date, statement: `حسم ممنوح للزبون: ${s.customerName} (فاتورة #${s.invoiceNumber})`, debit: s.discountAmount, credit: 0, source: 'المبيعات' });
+       });
+    }
+
+    // د) المشتريات (إجمالي المشتريات 31) - حصرياً مجموع البنود
+    if (code === '31') {
+       purchases.forEach(p => {
+          const subTotal = p.items.reduce((s, i) => s + i.total, 0);
+          moves.push({ date: p.date, statement: `توريد بضاعة فاتورة #${p.invoiceNumber} - المورد: ${p.supplierName}`, debit: subTotal, credit: 0, source: 'المشتريات' });
+       });
+    }
+
+    // هـ) مصاريف نقل المشتريات (33)
+    if (code === '33') {
+       purchases.filter(p => p.transportExpenses && p.transportExpenses > 0).forEach(p => {
+          moves.push({ date: p.date, statement: `مصاريف نقل توريد الفاتورة #${p.invoiceNumber}`, debit: p.transportExpenses, credit: 0, source: 'المشتريات' });
+       });
+    }
+
+    // و) الحسم المكتسب (34)
+    if (code === '34') {
+       purchases.filter(p => p.discountAmount && p.discountAmount > 0).forEach(p => {
+          moves.push({ date: p.date, statement: `حسم مكتسب من المورد: ${p.supplierName} (فاتورة #${p.invoiceNumber})`, debit: 0, credit: p.discountAmount, source: 'المشتريات' });
+       });
+    }
+
+    // ز) بضاعة أول المدة (71)
+    if (code === '71') {
+       const opInv = periodicInventories.find(i => i.type === 'OPENING');
+       if (opInv) {
+          opInv.items.forEach(it => {
+             moves.push({ date: opInv.date, statement: `جرد افتتاحي: ${it.itemName} (${it.quantity} وحدة)`, debit: it.total, credit: 0, source: 'الجرد الدوري' });
+          });
+       }
+    }
+
+    // ح) بضاعة آخر المدة (72 / 1241)
+    if (code === '72' || code === '1241') {
+       inventory.forEach(item => {
+          const movesItems = stockEntries.filter(e => e.itemCode === item.code);
+          const bal = (item.openingStock || 0) + 
+                     movesItems.filter(e => e.movementType === 'إدخال').reduce((sum, curr) => sum + curr.quantity, 0) - 
+                     movesItems.filter(e => e.movementType === 'صرف').reduce((sum, curr) => sum + curr.quantity, 0) + 
+                     movesItems.filter(e => e.movementType === 'مرتجع').reduce((sum, curr) => sum + curr.quantity, 0);
+          if (bal !== 0) {
+             moves.push({ date: new Date().toISOString().split('T')[0], statement: `رصيد جرد حالي: ${item.name} (${bal} ${item.unit})`, debit: (bal * item.price), credit: 0, source: 'المخزن' });
+          }
+       });
+    }
+
+    // ط) حركات الزبائن والموردين المنفردة
+    if (account.parentId === '121' || account.parentId === '221' || parties.some(p => p.name === name)) {
+       sales.filter(s => s.customerName === name).forEach(s => {
+          moves.push({ date: s.date, statement: `فاتورة مبيع #${s.invoiceNumber}`, debit: s.totalAmount, credit: 0, source: 'المبيعات' });
+       });
+       purchases.filter(p => p.supplierName === name).forEach(p => {
+          moves.push({ date: p.date, statement: `فاتورة توريد #${p.invoiceNumber}`, debit: 0, credit: p.totalAmount, source: 'المشتريات' });
        });
     }
 
     return moves.sort((a, b) => b.date.localeCompare(a.date));
   };
 
-  const handleSave = () => {
+  const handleSaveNode = () => {
     if (!formData.name || !formData.code) return;
     
-    // التزامن العكسي: إذا تم تعديل اسم حساب، نقوم بتعديل الاسم المرتبط به في الجهات أو الأقسام
     if (modalMode === 'EDIT' && selectedAccount && selectedAccount.name !== formData.name) {
-       // تحديث في الجهات (Parties)
        const savedParties = localStorage.getItem('sheno_parties');
        if (savedParties) {
           const pars: Party[] = JSON.parse(savedParties);
           const updatedPars = pars.map(p => p.name === selectedAccount.name ? { ...p, name: formData.name! } : p);
           localStorage.setItem('sheno_parties', JSON.stringify(updatedPars));
        }
-       // تحديث في الأقسام (Categories)
        const savedCats = localStorage.getItem('sheno_accounting_categories');
        if (savedCats) {
           const cats: AccountingCategory[] = JSON.parse(savedCats);
@@ -271,7 +307,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const node = accounts.find(a => a.id === id);
     if (!node) return;
 
-    // منع حذف الجذور الأساسية
     const systemRoots = ['1', '11', '12', '121', '124', '13', '2', '21', '22', '221', '3', '4', '5', '6', '7'];
     if (systemRoots.includes(node.code)) {
       alert('هذا الحساب من جذور النظام الأساسية ولا يمكن حذفه.');
@@ -322,7 +357,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                 </div>
               </div>
               <div className="flex items-center gap-6">
-                 <span className={`font-mono text-sm font-black min-w-[100px] text-left ${bal >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{bal !== 0 ? bal.toLocaleString() : '-'}</span>
+                 <span className={`font-mono text-sm font-black min-w-[100px] text-left ${bal >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{bal !== 0 ? Math.abs(bal).toLocaleString() : '-'}</span>
                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 no-print transition-all">
                     <button onClick={(e) => { e.stopPropagation(); setFormData({ ...formData, parentId: node.id, type: 'ACCOUNT' }); setModalMode('ADD'); setIsModalOpen(true); }} className="p-1.5 bg-white dark:bg-zinc-700 rounded-lg text-zinc-400 hover:text-primary shadow-sm" title="إضافة فرعي"><Plus className="w-4 h-4"/></button>
                     <button onClick={(e) => { e.stopPropagation(); setFormData(node); setModalMode('EDIT'); setIsModalOpen(true); }} className="p-1.5 bg-white dark:bg-zinc-700 rounded-lg text-zinc-400 hover:text-amber-500 shadow-sm" title="تعديل"><Edit2 className="w-4 h-4"/></button>
@@ -375,7 +410,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                  </div>
                  <div className="text-left bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 shadow-2xl relative z-10 min-w-[220px]">
                     <span className="text-[10px] font-black text-zinc-500 uppercase block mb-2 tracking-widest">NET BALANCE | الرصيد المتاح</span>
-                    <div className={`text-5xl font-mono font-black ${calculateBalance(selectedAccount) >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>{calculateBalance(selectedAccount).toLocaleString()}</div>
+                    <div className={`text-5xl font-mono font-black ${calculateBalance(selectedAccount) >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>{Math.abs(calculateBalance(selectedAccount)).toLocaleString()}</div>
                     <span className="text-xs font-bold text-zinc-600 uppercase mt-2 block tracking-widest">{settings?.currencySymbol}</span>
                  </div>
               </div>
@@ -471,7 +506,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                        <option value="الأرباح والخسائر">الأرباح والخسائر (Profit & Loss)</option>
                     </select>
                  </div>
-                 <button onClick={handleSave} className="w-full bg-primary text-white py-6 rounded-[2rem] font-black shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all text-2xl mt-8 flex items-center justify-center gap-4">
+                 <button onClick={handleSaveNode} className="w-full bg-primary text-white py-6 rounded-[2rem] font-black shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all text-2xl mt-8 flex items-center justify-center gap-4">
                     <Save className="w-8 h-8"/> حفظ وتثبيت البيانات
                  </button>
               </div>

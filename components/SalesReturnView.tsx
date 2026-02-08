@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Search, Save, Trash2, Edit2, RotateCcw, Printer, FileDown, X, Calendar, Filter, RefreshCcw } from 'lucide-react';
+import { ArrowRight, Search, Save, Trash2, Edit2, RotateCcw, Printer, FileDown, X, Calendar, Filter, RefreshCcw, Landmark } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, StockEntry, CashEntry, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
 import { tafqeet } from '../utils/tafqeet';
@@ -89,6 +88,10 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
     const returnId = editingReturnId || crypto.randomUUID();
     const returnDate = new Date().toISOString().split('T')[0];
     
+    // تحديد وجهة استرداد المال بناءً على الفاتورة الأصلية
+    const isCashSale = foundInvoice.paymentType === 'نقداً';
+    const cashAccount = foundInvoice.cashAccount || 'الصندوق';
+
     const returnEntry = {
       id: returnId,
       invoiceNumber: foundInvoice.invoiceNumber,
@@ -97,7 +100,9 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
       items: returnItems.filter(i => i.quantity > 0),
       totalReturnAmount: totalReturnAmount,
       totalAmountLiteral: tafqeet(totalReturnAmount, settings?.currency || "ليرة سورية"),
-      notes: editingReturnId ? 'تعديل مرتجع مبيعات' : 'مرتجع مبيعات'
+      notes: editingReturnId ? 'تعديل مرتجع مبيعات' : 'مرتجع مبيعات',
+      paymentType: foundInvoice.paymentType,
+      cashAccount: foundInvoice.cashAccount
     };
 
     if (editingReturnId) removeAssociatedMovements(editingReturnId);
@@ -109,6 +114,7 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
     setReturnHistory(updatedHistory);
     localStorage.setItem('sheno_sales_returns', JSON.stringify(updatedHistory));
 
+    // 1. تحديث حركات المستودع (إرجاع البضاعة للمخزن)
     const savedStock = localStorage.getItem('sheno_stock_entries');
     let stockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
     const returnMovements: StockEntry[] = returnEntry.items.map(item => ({
@@ -129,18 +135,49 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
     }));
     localStorage.setItem('sheno_stock_entries', JSON.stringify([...returnMovements, ...stockEntries]));
 
+    // 2. تحديث الحسابات المالية (الصندوق / المصرف / الزبون)
     const savedCash = localStorage.getItem('sheno_cash_journal');
     let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
-    const cashMove: CashEntry = {
-      id: crypto.randomUUID(),
-      date: returnDate,
-      statement: `استرداد مالي لمرتجع مبيع فاتورة ${foundInvoice.invoiceNumber}`,
-      receivedSYP: 0, paidSYP: totalReturnAmount, receivedUSD: 0, paidUSD: 0,
-      notes: 'مرتجع مبيعات', type: 'مرتجع', voucherNumber: returnId
-    };
-    localStorage.setItem('sheno_cash_journal', JSON.stringify([cashMove, ...cashEntries]));
     
-    alert('تم حفظ المرتجع وتحديث السجلات بنجاح');
+    // إذا كانت الفاتورة نقداً، يجب إخراج المبلغ من الصندوق/المصرف
+    if (isCashSale) {
+      const sourceName = cashAccount === 'المصرف' ? 'حساب المصرف البنكي' : 'الصندوق الرئيسي';
+      const cashMove: CashEntry = {
+        id: crypto.randomUUID(),
+        date: returnDate,
+        statement: `استرداد مالي لمرتجع مبيع فاتورة ${foundInvoice.invoiceNumber} - المصدر: ${cashAccount}`,
+        receivedSYP: 0, 
+        paidSYP: totalReturnAmount, 
+        receivedUSD: 0, 
+        paidUSD: 0,
+        partyName: sourceName,
+        notes: `مرتجع مبيعات - العميل: ${foundInvoice.customerName}`, 
+        type: 'مرتجع', 
+        voucherNumber: returnId
+      };
+      cashEntries.unshift(cashMove);
+    } else {
+      // إذا كانت الفاتورة آجلة، نسجل قيداً ورقياً (0 نقدية) لتوثيق الحدث في دفتر اليومية،
+      // وحساب رصيد الزبون سيتكفل بالباقي لأن المعادلة تخصم المرتجع آلياً.
+      const memoMove: CashEntry = {
+        id: crypto.randomUUID(),
+        date: returnDate,
+        statement: `مرتجع مبيعات آجل - فاتورة رقم ${foundInvoice.invoiceNumber}`,
+        receivedSYP: 0, 
+        paidSYP: 0, 
+        receivedUSD: 0, 
+        paidUSD: 0,
+        partyName: foundInvoice.customerName,
+        notes: 'تخفيض رصيد الزبون (إشعار دائن)',
+        type: 'مرتجع',
+        voucherNumber: returnId
+      };
+      cashEntries.unshift(memoMove);
+    }
+    
+    localStorage.setItem('sheno_cash_journal', JSON.stringify(cashEntries));
+    
+    alert('تم حفظ المرتجع وتعديل الحسابات (نقدية/رصيد) بنجاح');
     setFoundInvoice(null);
     setEditingReturnId(null);
     setInvoiceSearch('');
@@ -170,8 +207,8 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
   };
 
   const filteredHistory = returnHistory.filter(ret => {
-    const matchSearch = ret.customerName.toLowerCase().includes(historySearchTerm.toLowerCase()) || 
-                       ret.invoiceNumber.includes(historySearchTerm);
+    const matchSearch = (ret.customerName || '').toLowerCase().includes(historySearchTerm.toLowerCase()) || 
+                       (ret.invoiceNumber || '').includes(historySearchTerm);
     const matchDate = (!historyStartDate || ret.date >= historyStartDate) && 
                      (!historyEndDate || ret.date <= historyEndDate);
     return matchSearch && matchDate;
@@ -202,6 +239,12 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
         {foundInvoice && (
           <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border flex-1 flex justify-between animate-in slide-in-from-left-2">
             <div><p className="text-[10px] text-zinc-400 font-black uppercase">العميل</p><p className="font-black text-lg">{foundInvoice.customerName}</p></div>
+            <div>
+              <p className="text-[10px] text-zinc-400 font-black uppercase">نوع الفاتورة</p>
+              <span className={`font-bold px-2 py-0.5 rounded text-xs ${foundInvoice.paymentType === 'نقداً' ? 'bg-emerald-500/20 text-emerald-600' : 'bg-amber-500/20 text-amber-600'}`}>
+                {foundInvoice.paymentType} {foundInvoice.paymentType === 'نقداً' ? `(${foundInvoice.cashAccount})` : ''}
+              </span>
+            </div>
             <div><p className="text-[10px] text-zinc-400 font-black uppercase">تاريخ الفاتورة</p><p className="font-mono font-bold">{foundInvoice.date}</p></div>
           </div>
         )}
@@ -230,9 +273,17 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
               ))}
             </tbody>
           </table>
-          <div className="p-6 bg-zinc-50 dark:bg-zinc-800/50 flex justify-end gap-3">
-            <button onClick={handleSaveReturn} className="bg-primary text-white px-12 py-3 rounded-2xl font-black shadow-xl flex items-center gap-2"><Save className="w-5 h-5"/> {editingReturnId ? 'تحديث المرتجع' : 'حفظ المرتجع'}</button>
-            <button onClick={handleCancel} className="bg-zinc-200 dark:bg-zinc-800 px-10 py-3 rounded-2xl font-bold">إلغاء</button>
+          <div className="p-6 bg-zinc-50 dark:bg-zinc-800/50 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-2">
+               <AlertCircle className="w-5 h-5 text-amber-500" />
+               <p className="text-xs font-bold text-zinc-500">
+                 سيتم إرجاع المبلغ إلى: <span className="text-rose-700">{foundInvoice.paymentType === 'نقداً' ? foundInvoice.cashAccount : 'حساب الزبون (آجل)'}</span>
+               </p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={handleSaveReturn} className="bg-primary text-white px-12 py-3 rounded-2xl font-black shadow-xl flex items-center gap-2"><Save className="w-5 h-5"/> {editingReturnId ? 'تحديث المرتجع' : 'حفظ المرتجع'}</button>
+              <button onClick={handleCancel} className="bg-zinc-200 dark:bg-zinc-800 px-10 py-3 rounded-2xl font-bold">إلغاء</button>
+            </div>
           </div>
         </div>
       )}
@@ -294,7 +345,12 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
                     <tr key={ret.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group h-14">
                        <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-center text-rose-600 font-black">#{ret.invoiceNumber}</td>
                        <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono text-zinc-500">{ret.date}</td>
-                       <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-readable">{ret.customerName}</td>
+                       <td className="p-4 border-l border-zinc-100 dark:border-zinc-800 text-readable">
+                          <div className="flex flex-col">
+                            <span>{ret.customerName}</span>
+                            <span className="text-[8px] text-zinc-400 uppercase">{ret.paymentType} {ret.paymentType === 'نقداً' ? `(${ret.cashAccount})` : ''}</span>
+                          </div>
+                       </td>
                        <td className="p-4 border-l border-zinc-100 dark:border-zinc-800">
                           <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
                              {ret.items.map((it:any, i:number) => (
@@ -318,5 +374,11 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
     </div>
   );
 };
+
+const AlertCircle = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+  </svg>
+);
 
 export default SalesReturnView;

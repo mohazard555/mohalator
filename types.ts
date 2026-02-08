@@ -160,6 +160,8 @@ export interface PurchaseInvoice {
   discountAmount: number;
   notes: string;
   currencySymbol?: string;
+  paymentType: 'نقداً' | 'آجل';
+  cashAccount?: 'الصندوق' | 'المصرف';
 }
 
 export interface StockEntry {
