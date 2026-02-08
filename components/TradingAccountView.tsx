@@ -17,7 +17,9 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
 
   // Data
   const [sales, setSales] = useState<SalesInvoice[]>([]);
+  const [salesReturns, setSalesReturns] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<PurchaseInvoice[]>([]);
+  const [purchaseReturns, setPurchaseReturns] = useState<any[]>([]);
   const [inventories, setInventories] = useState<PeriodicInventory[]>([]);
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
   const [stockEntries, setStockEntries] = useState<StockEntry[]>([]);
@@ -25,52 +27,78 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
   useEffect(() => {
     const sSett = localStorage.getItem('sheno_settings');
     const sSal = localStorage.getItem('sheno_sales_invoices');
+    const sSalRet = localStorage.getItem('sheno_sales_returns');
     const sPur = localStorage.getItem('sheno_purchases');
+    const sPurRet = localStorage.getItem('sheno_purchase_returns');
     const sInv = localStorage.getItem('sheno_periodic_inventories');
     const sInvList = localStorage.getItem('sheno_inventory_list');
     const sStock = localStorage.getItem('sheno_stock_entries');
 
     if (sSett) setSettings(JSON.parse(sSett));
     if (sSal) setSales(JSON.parse(sSal));
+    if (sSalRet) setSalesReturns(JSON.parse(sSalRet));
     if (sPur) setPurchases(JSON.parse(sPur));
+    if (sPurRet) setPurchaseReturns(JSON.parse(sPurRet));
     if (sInv) setInventories(JSON.parse(sInv));
     if (sInvList) setInventoryList(JSON.parse(sInvList));
     if (sStock) setStockEntries(JSON.parse(sStock));
   }, []);
 
+  const safeRound = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
   const calculateFinancials = () => {
     const filteredSales = sales.filter(s => s.date >= startDate && s.date <= endDate);
+    const filteredSalesReturns = salesReturns.filter(r => r.date >= startDate && r.date <= endDate);
     const filteredPurchases = purchases.filter(p => p.date >= startDate && p.date <= endDate);
+    const filteredPurchaseReturns = purchaseReturns.filter(r => r.date >= startDate && r.date <= endDate);
 
+    // 1. المبيعات
+    const grossSales = safeRound(filteredSales.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0));
+    const salesReturnsVal = safeRound(filteredSalesReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
+    const salesDiscountsVal = safeRound(filteredSales.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
+    const netSales = safeRound(grossSales - salesReturnsVal - salesDiscountsVal);
+
+    // 2. المشتريات (صافي المشتريات)
+    const grossPurchases = safeRound(filteredPurchases.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0));
+    const purchaseTransport = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.transportExpenses) || 0), 0));
+    const purchaseReturnsVal = safeRound(filteredPurchaseReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
+    const purchaseDiscountsVal = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
+    const netPurchases = safeRound(grossPurchases + purchaseTransport - purchaseReturnsVal - purchaseDiscountsVal);
+
+    // 3. المخزون
     const openingStockInv = inventories.filter(i => i.type === 'OPENING' && i.date <= startDate).sort((a,b) => b.date.localeCompare(a.date))[0];
     const openingStockValue = openingStockInv?.totalValue || 0;
     const openingStockItems = openingStockInv?.items || [];
 
     const closingStockItems = inventoryList.map(item => {
         const moves = stockEntries.filter(e => e.itemCode === item.code && e.date <= endDate);
-        const added = moves.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
-        const issued = moves.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
-        const returned = moves.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
-        const balance = (item.openingStock || 0) + added - issued + returned;
-        return { name: item.name, quantity: balance, price: item.price, total: balance * item.price };
+        const bal = (item.openingStock || 0) + 
+                   moves.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0) - 
+                   moves.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0) + 
+                   moves.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
+        return { code: item.code, name: item.name, quantity: bal, price: item.price, total: bal * item.price };
     }).filter(it => it.quantity !== 0);
 
-    const closingStockValue = closingStockItems.reduce((sum, it) => sum + it.total, 0);
+    const closingStockValue = safeRound(closingStockItems.reduce((sum, it) => sum + it.total, 0));
 
-    const totalSales = filteredSales.reduce((s, c) => s + c.totalAmount, 0);
-    const totalPurchases = filteredPurchases.reduce((s, c) => s + c.totalAmount, 0);
-    const cogs = openingStockValue + totalPurchases - closingStockValue;
-    const grossProfit = totalSales - cogs;
+    // 4. تكلفة البضاعة المباعة والمجمل
+    const cogs = safeRound(openingStockValue + netPurchases - closingStockValue);
+    const grossProfit = safeRound(netSales - cogs);
 
     const purchaseItems = filteredPurchases.flatMap(p => p.items.map(i => ({ ...i, supplier: p.supplierName, invoice: p.invoiceNumber })));
     const saleItems = filteredSales.flatMap(s => s.items.map(i => ({ ...i, customer: s.customerName, invoice: s.invoiceNumber })));
 
-    return { totalSales, totalPurchases, cogs, grossProfit, openingStockValue, openingStockItems, closingStockValue, closingStockItems, purchaseItems, saleItems };
+    return { 
+      netSales, netPurchases, grossPurchases, purchaseTransport, purchaseReturnsVal, purchaseDiscountsVal,
+      cogs, grossProfit, openingStockValue, openingStockItems, 
+      closingStockValue, closingStockItems, purchaseItems, saleItems 
+    };
   };
 
   const fin = calculateFinancials();
   const toggleSection = (id: string) => {
     const newSet = new Set(expandedSections);
+    // Fix: replaced undefined variable 'n' with 'newSet'
     if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
     setExpandedSections(newSet);
   };

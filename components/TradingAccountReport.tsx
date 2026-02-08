@@ -1,6 +1,5 @@
 import React from 'react';
-/* Added Calculator to the imports from lucide-react to fix 'Cannot find name' error */
-import { MinusSquare, PlusSquare, FileSpreadsheet, ChevronDown, List, Calculator } from 'lucide-react';
+import { MinusSquare, PlusSquare, FileSpreadsheet, List, Calculator, ArrowDownLeft, Tag, Truck, RefreshCcw, Percent } from 'lucide-react';
 import { exportToCSV } from '../utils/export';
 
 interface TradingAccountReportProps {
@@ -14,8 +13,8 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
   const handleExportExcel = () => {
     const data = [
       { "الجانب": "مدين (منه)", "البيان": "بضاعة أول المدة", "القيمة": fin.openingStockValue },
-      { "الجانب": "مدين (منه)", "البيان": "إجمالي المشتريات", "القيمة": fin.totalPurchases },
-      { "الجانب": "دائن (له)", "البيان": "إجمالي المبيعات", "القيمة": fin.totalSales },
+      { "الجانب": "مدين (منه)", "البيان": "صافي المشتريات", "القيمة": fin.netPurchases },
+      { "الجانب": "دائن (له)", "البيان": "إجمالي المبيعات (صافي)", "القيمة": fin.netSales },
       { "الجانب": "دائن (له)", "البيان": "بضاعة آخر المدة", "القيمة": fin.closingStockValue },
       { "الجانب": "النتيجة", "البيان": "تكلفة البضاعة المباعة (COGS)", "القيمة": fin.cogs },
       { "الجانب": "النتيجة", "البيان": "مجمل الربح/الخسارة", "القيمة": fin.grossProfit }
@@ -72,7 +71,7 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
              <div className="flex-1 divide-y dark:divide-zinc-800">
                 <div className="p-5">
                    <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleSection('tr_opening')}>
-                      <span className="font-black text-sm flex items-center gap-2">
+                      <span className="font-black text-sm flex items-center gap-2 text-primary">
                          {expandedSections.has('tr_opening') ? <MinusSquare className="w-4 h-4 text-primary"/> : <PlusSquare className="w-4 h-4 text-zinc-300"/>}
                          بضاعة أول المدة
                       </span>
@@ -82,14 +81,38 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
                 </div>
 
                 <div className="p-5">
-                   <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleSection('tr_purchases')}>
-                      <span className="font-black text-sm flex items-center gap-2">
-                         {expandedSections.has('tr_purchases') ? <MinusSquare className="w-4 h-4 text-primary"/> : <PlusSquare className="w-4 h-4 text-zinc-300"/>}
-                         إجمالي المشتريات
+                   <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleSection('tr_net_purchases')}>
+                      <span className="font-black text-sm flex items-center gap-2 text-primary">
+                         {expandedSections.has('tr_net_purchases') ? <MinusSquare className="w-4 h-4 text-primary"/> : <PlusSquare className="w-4 h-4 text-zinc-300"/>}
+                         صافي المشتريات
                       </span>
-                      <span className="font-mono font-black text-lg">{fin.totalPurchases.toLocaleString()}</span>
+                      <span className="font-mono font-black text-lg">{(fin.netPurchases || 0).toLocaleString()}</span>
                    </div>
-                   {expandedSections.has('tr_purchases') && renderItemsTable(fin.purchaseItems, 'INVOICE')}
+                   
+                   {expandedSections.has('tr_net_purchases') && (
+                     <div className="mt-4 space-y-2 no-print bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                        <div className="flex justify-between items-center text-[11px] font-bold text-zinc-600 dark:text-zinc-400">
+                           <span className="flex items-center gap-2"><Tag className="w-3 h-3"/> إجمالي المشتريات</span>
+                           <span className="font-mono">+{(fin.grossPurchases || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px] font-bold text-primary">
+                           <span className="flex items-center gap-2"><Truck className="w-3 h-3"/> مصاريف النقل</span>
+                           <span className="font-mono">+{(fin.purchaseTransport || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px] font-bold text-rose-600">
+                           <span className="flex items-center gap-2"><RefreshCcw className="w-3 h-3"/> مردودات المشتريات</span>
+                           <span className="font-mono">-{(fin.purchaseReturnsVal || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px] font-bold text-emerald-600">
+                           <span className="flex items-center gap-2"><Percent className="w-3 h-3"/> الخصم المكتسب</span>
+                           <span className="font-mono">-{(fin.purchaseDiscountsVal || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center text-xs font-black">
+                           <span>الصافي النهائي للمشتريات</span>
+                           <span className="text-lg text-primary">{(fin.netPurchases || 0).toLocaleString()}</span>
+                        </div>
+                     </div>
+                   )}
                 </div>
 
                 {fin.grossProfit > 0 && (
@@ -107,24 +130,24 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
              <div className="flex-1 divide-y dark:divide-zinc-800">
                 <div className="p-5">
                    <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleSection('tr_sales')}>
-                      <span className="font-black text-sm flex items-center gap-2">
-                         {expandedSections.has('tr_sales') ? <MinusSquare className="w-4 h-4 text-primary"/> : <PlusSquare className="w-4 h-4 text-zinc-300"/>}
-                         إجمالي المبيعات
+                      <span className="font-black text-sm flex items-center gap-2 text-rose-800">
+                         {expandedSections.has('tr_sales') ? <MinusSquare className="w-4 h-4 text-rose-800"/> : <PlusSquare className="w-4 h-4 text-zinc-300"/>}
+                         إجمالي المبيعات (الصافي)
                       </span>
-                      <span className="font-mono font-black text-lg">{fin.totalSales.toLocaleString()}</span>
+                      <span className="font-mono font-black text-lg">{(fin.netSales || 0).toLocaleString()}</span>
                    </div>
-                   {expandedSections.has('tr_sales') && renderItemsTable(fin.saleItems, 'INVOICE')}
+                   {expandedSections.has('tr_sales') && renderItemsTable(fin.saleItems || [], 'INVOICE')}
                 </div>
 
                 <div className="p-5">
                    <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleSection('tr_closing')}>
-                      <span className="font-black text-sm flex items-center gap-2">
-                         {expandedSections.has('tr_closing') ? <MinusSquare className="w-4 h-4 text-primary"/> : <PlusSquare className="w-4 h-4 text-zinc-300"/>}
+                      <span className="font-black text-sm flex items-center gap-2 text-rose-800">
+                         {expandedSections.has('tr_closing') ? <MinusSquare className="w-4 h-4 text-rose-800"/> : <PlusSquare className="w-4 h-4 text-zinc-300"/>}
                          بضاعة آخر المدة
                       </span>
                       <span className="font-mono font-black text-lg">{fin.closingStockValue.toLocaleString()}</span>
                    </div>
-                   {expandedSections.has('tr_closing') && renderItemsTable(fin.closingStockItems, 'STOCK')}
+                   {expandedSections.has('tr_closing') && renderItemsTable(fin.closingStockItems || [], 'STOCK')}
                 </div>
 
                 {fin.grossProfit < 0 && (
@@ -144,7 +167,7 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
                 <div className="p-3 bg-zinc-200 dark:bg-zinc-800 rounded-2xl"><List className="w-5 h-5 text-zinc-500"/></div>
                 <div>
                    <h4 className="font-black text-sm text-readable">تكلفة البضاعة المباعة (COGS)</h4>
-                   <p className="text-[10px] text-zinc-400 font-bold">بضاعة أول المدة + مشتريات - آخر المدة</p>
+                   <p className="text-[10px] text-zinc-400 font-bold">بضاعة أول المدة + صافي مشتريات - بضاعة آخر المدة</p>
                 </div>
              </div>
              <div className="text-right">
@@ -158,12 +181,12 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
                 <div className="p-3 bg-primary text-white rounded-2xl shadow-lg"><Calculator className="w-5 h-5"/></div>
                 <div>
                    <h4 className="font-black text-sm text-primary">نسبة مجمل الربح</h4>
-                   <p className="text-[10px] text-zinc-400 font-bold">مقارنة الربح مع إجمالي المبيعات</p>
+                   <p className="text-[10px] text-zinc-400 font-bold">صافي المبيعات − التكلفة</p>
                 </div>
              </div>
              <div className="text-right">
                 <div className="text-3xl font-mono font-black text-primary">
-                   {((fin.grossProfit / (fin.totalSales || 1)) * 100).toFixed(1)}%
+                   {((fin.grossProfit / (fin.netSales || 1)) * 100).toFixed(1)}%
                 </div>
                 <span className="text-[10px] font-bold text-zinc-400 uppercase">مؤشر الأداء التجاري</span>
              </div>

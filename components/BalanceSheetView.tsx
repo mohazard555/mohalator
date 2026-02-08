@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Scale, ImageIcon, Printer, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Scale, ImageIcon, Printer, Eye, EyeOff, Calendar } from 'lucide-react';
 import { CashEntry, SalesInvoice, PurchaseInvoice, PeriodicInventory, InventoryItem, StockEntry, OpeningEntry, Party, PartyType, AppSettings, AccountingCategory } from '../types';
 import { ImageExportService } from '../utils/ImageExportService';
 import BalanceSheetReport from './BalanceSheetReport';
@@ -11,6 +11,7 @@ interface BalanceSheetViewProps {
 const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
   const reportRef = useRef<HTMLDivElement>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [showDetailsInPrint, setShowDetailsInPrint] = useState(false);
@@ -51,11 +52,12 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
   }, []);
 
   const calculateFinancials = () => {
-    const filteredJournal = journal.filter(j => j.date <= endDate);
-    const filteredSales = sales.filter(s => s.date <= endDate);
-    const filteredPurchases = purchases.filter(p => p.date <= endDate);
+    // فلترة الحركات بناءً على النطاق الزمني
+    const filteredJournal = journal.filter(j => j.date >= startDate && j.date <= endDate);
+    const filteredSales = sales.filter(s => s.date >= startDate && s.date <= endDate);
+    const filteredPurchases = purchases.filter(p => p.date >= startDate && p.date <= endDate);
 
-    // 1. بضاعة آخر المدة (الأصول)
+    // 1. بضاعة آخر المدة (الأصول) - تحسب حتى تاريخ النهاية المختار
     const closingStockItems = inventoryList.map(item => {
         const moves = stockEntries.filter(e => e.itemCode === item.code && e.date <= endDate);
         const added = moves.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
@@ -66,21 +68,21 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
     }).filter(it => it.quantity !== 0);
     const closingStockValue = closingStockItems.reduce((sum, it) => sum + it.total, 0);
 
-    // 2. النقدية (الأصول)
-    const cashInHand = filteredJournal.reduce((s, c) => s + (Number(c.receivedSYP || 0) - Number(c.paidSYP || 0)), 0);
+    // 2. النقدية (الأصول) - الرصيد التراكمي حتى نهاية الفترة
+    const cashInHand = journal.filter(j => j.date <= endDate).reduce((s, c) => s + (Number(c.receivedSYP || 0) - Number(c.paidSYP || 0)), 0);
     
     // 3. الزبائن (الأصول)
     const receivablesList = parties.filter(p => p.type === PartyType.CUSTOMER || p.type === PartyType.BOTH).map(p => {
-        const pSales = filteredSales.filter(inv => inv.customerName === p.name).reduce((sum, inv) => sum + inv.totalAmount, 0);
-        const pPaid = filteredJournal.filter(j => (j.partyName === p.name || j.statement.includes(p.name))).reduce((sum, j) => sum + j.receivedSYP, 0);
+        const pSales = sales.filter(inv => inv.customerName === p.name && inv.date <= endDate).reduce((sum, inv) => sum + inv.totalAmount, 0);
+        const pPaid = journal.filter(j => (j.partyName === p.name || j.statement.includes(p.name)) && j.date <= endDate).reduce((sum, j) => sum + j.receivedSYP, 0);
         return { name: p.name, balance: (p.openingBalance + pSales - pPaid) };
     }).filter(x => x.balance !== 0);
     const receivables = receivablesList.reduce((s,c) => s + c.balance, 0);
 
     // 4. الموردين (الخصوم)
     const payablesList = parties.filter(p => p.type === PartyType.SUPPLIER || p.type === PartyType.BOTH).map(p => {
-        const pPurch = filteredPurchases.filter(inv => inv.supplierName === p.name).reduce((sum, inv) => sum + inv.totalAmount, 0);
-        const pPaid = filteredJournal.filter(j => (j.partyName === p.name || j.statement.includes(p.name))).reduce((sum, j) => sum + j.paidSYP, 0);
+        const pPurch = purchases.filter(inv => inv.supplierName === p.name && inv.date <= endDate).reduce((sum, inv) => sum + inv.totalAmount, 0);
+        const pPaid = journal.filter(j => (j.partyName === p.name || j.statement.includes(p.name)) && j.date <= endDate).reduce((sum, j) => sum + j.paidSYP, 0);
         return { name: p.name, balance: (p.openingBalance + pPurch - pPaid) };
     }).filter(x => x.balance !== 0);
     const payables = payablesList.reduce((s,c) => s + c.balance, 0);
@@ -92,16 +94,16 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
     const equityList = openingEntries.filter(e => e.accountType === 'حقوق ملكية').map(e => ({ name: e.accountName, balance: e.credit - e.debit }));
     const equityOpening = equityList.reduce((s,c) => s + c.balance, 0);
 
-    // 6. احتساب الأرباح المحققة (حقوق الملكية)
-    const openingStockInv = inventories.find(i => i.type === 'OPENING');
+    // 6. احتساب الأرباح المحققة خلال الفترة المحددة
+    const openingStockInv = inventories.find(i => i.date <= startDate && i.type === 'OPENING') || inventories[0];
     const openingStockValue = openingStockInv ? openingStockInv.totalValue : 0;
+    
     const totalSales = filteredSales.reduce((s, c) => s + c.totalAmount, 0);
     const totalPurchases = filteredPurchases.reduce((s, c) => s + c.totalAmount, 0);
     
     const cogs = openingStockValue + totalPurchases - closingStockValue;
     const grossProfit = totalSales - cogs;
     
-    // مصاريف وإيرادات تشغيلية من أقسام الحسابات
     const expenses = categories.filter(c => c.type === 'مصروفات').reduce((s, cat) => {
         return s + filteredJournal.filter(j => j.categoryId === cat.id).reduce((sum, curr) => sum + curr.paidSYP, 0);
     }, 0);
@@ -175,8 +177,16 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
 
       <div className="bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-800 shadow-2xl flex flex-wrap items-center justify-between no-print mb-6">
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] text-slate-400 font-black uppercase mr-1">تاريخ الميزانية الجاري</span>
-            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-slate-900 border border-slate-700 text-white p-2 rounded-xl text-xs font-mono outline-none" />
+            <span className="text-[10px] text-slate-400 font-black uppercase mr-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> نطاق تقرير الميزانية</span>
+            <div className="flex items-center gap-3">
+               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-slate-900 border border-slate-700 text-white p-2 rounded-xl text-xs font-mono outline-none focus:border-primary" />
+               <span className="text-slate-600 font-black">←</span>
+               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-slate-900 border border-slate-700 text-white p-2 rounded-xl text-xs font-mono outline-none focus:border-primary" />
+            </div>
+          </div>
+          <div className="hidden lg:block text-left">
+             <p className="text-[9px] text-slate-500 font-black uppercase tracking-[0.3em]">Accounting Intelligence</p>
+             <p className="text-xs font-bold text-slate-400 italic">Financial Position Analysis</p>
           </div>
       </div>
 
@@ -188,7 +198,7 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
              </div>
              <div className="text-center">
                 <h2 className="text-2xl font-black underline decoration-primary/20 underline-offset-8">الميزانية العمومية</h2>
-                <p className="text-[10px] mt-4 font-bold text-zinc-400 uppercase tracking-widest">بتاريخ: {endDate}</p>
+                <p className="text-[10px] mt-4 font-bold text-zinc-400 uppercase tracking-widest">الفترة من: {startDate} إلى: {endDate}</p>
              </div>
              <div className="text-left text-[10px] font-black text-zinc-400">
                 <p>{settings?.address}</p><p dir="ltr">{settings?.phone}</p>
