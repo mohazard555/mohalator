@@ -19,7 +19,9 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
   // Data
   const [journal, setJournal] = useState<CashEntry[]>([]);
   const [sales, setSales] = useState<SalesInvoice[]>([]);
+  const [salesReturns, setSalesReturns] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<PurchaseInvoice[]>([]);
+  const [purchaseReturns, setPurchaseReturns] = useState<any[]>([]);
   const [openingEntries, setOpeningEntries] = useState<OpeningEntry[]>([]);
   const [parties, setParties] = useState<Party[]>([]);
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
@@ -31,7 +33,9 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
     const sSett = localStorage.getItem('sheno_settings');
     const sJou = localStorage.getItem('sheno_cash_journal');
     const sSal = localStorage.getItem('sheno_sales_invoices');
+    const sSalRet = localStorage.getItem('sheno_sales_returns');
     const sPur = localStorage.getItem('sheno_purchases');
+    const sPurRet = localStorage.getItem('sheno_purchase_returns');
     const sOp = localStorage.getItem('sheno_opening_entries');
     const sPar = localStorage.getItem('sheno_parties');
     const sInvList = localStorage.getItem('sheno_inventory_list');
@@ -42,7 +46,9 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
     if (sSett) setSettings(JSON.parse(sSett));
     if (sJou) setJournal(JSON.parse(sJou));
     if (sSal) setSales(JSON.parse(sSal));
+    if (sSalRet) setSalesReturns(JSON.parse(sSalRet));
     if (sPur) setPurchases(JSON.parse(sPur));
+    if (sPurRet) setPurchaseReturns(JSON.parse(sPurRet));
     if (sOp) setOpeningEntries(JSON.parse(sOp));
     if (sPar) setParties(JSON.parse(sPar));
     if (sInvList) setInventoryList(JSON.parse(sInvList));
@@ -52,55 +58,58 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
   }, []);
 
   const calculateFinancials = () => {
-    // فلترة الحركات بناءً على النطاق الزمني
     const filteredJournal = journal.filter(j => j.date >= startDate && j.date <= endDate);
     const filteredSales = sales.filter(s => s.date >= startDate && s.date <= endDate);
     const filteredPurchases = purchases.filter(p => p.date >= startDate && p.date <= endDate);
+    const filteredSalesReturns = salesReturns.filter(r => r.date >= startDate && r.date <= endDate);
+    const filteredPurchaseReturns = purchaseReturns.filter(r => r.date >= startDate && r.date <= endDate);
 
-    // 1. بضاعة آخر المدة (الأصول) - تحسب حتى تاريخ النهاية المختار
+    // 1. بضاعة آخر المدة (أصول)
     const closingStockItems = inventoryList.map(item => {
         const moves = stockEntries.filter(e => e.itemCode === item.code && e.date <= endDate);
         const added = moves.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
         const issued = moves.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
         const returned = moves.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
         const balance = (item.openingStock || 0) + added - issued + returned;
-        return { name: item.name, quantity: balance, unit: item.unit, price: item.price, total: balance * item.price };
+        return { name: item.name, quantity: balance, unit: item.unit, price: item.price, total: Math.abs(balance * item.price) };
     }).filter(it => it.quantity !== 0);
     const closingStockValue = closingStockItems.reduce((sum, it) => sum + it.total, 0);
 
-    // 2. النقدية (الأصول) - الرصيد التراكمي حتى نهاية الفترة
-    const cashInHand = journal.filter(j => j.date <= endDate).reduce((s, c) => s + (Number(c.receivedSYP || 0) - Number(c.paidSYP || 0)), 0);
+    // 2. النقدية (أصول)
+    const cashInHand = Math.abs(journal.filter(j => j.date <= endDate).reduce((s, c) => s + (Number(c.receivedSYP || 0) - Number(c.paidSYP || 0)), 0));
     
-    // 3. الزبائن (الأصول)
+    // 3. الزبائن (أصول)
     const receivablesList = parties.filter(p => p.type === PartyType.CUSTOMER || p.type === PartyType.BOTH).map(p => {
         const pSales = sales.filter(inv => inv.customerName === p.name && inv.date <= endDate).reduce((sum, inv) => sum + inv.totalAmount, 0);
+        const pSalesReturns = salesReturns.filter(ret => ret.customerName === p.name && ret.date <= endDate).reduce((sum, ret) => sum + ret.totalReturnAmount, 0);
         const pPaid = journal.filter(j => (j.partyName === p.name || j.statement.includes(p.name)) && j.date <= endDate).reduce((sum, j) => sum + j.receivedSYP, 0);
-        return { name: p.name, balance: (p.openingBalance + pSales - pPaid) };
+        return { name: p.name, balance: Math.abs(p.openingBalance + pSales - pSalesReturns - pPaid) };
     }).filter(x => x.balance !== 0);
     const receivables = receivablesList.reduce((s,c) => s + c.balance, 0);
 
-    // 4. الموردين (الخصوم)
+    // 4. الموردين (خصوم)
     const payablesList = parties.filter(p => p.type === PartyType.SUPPLIER || p.type === PartyType.BOTH).map(p => {
         const pPurch = purchases.filter(inv => inv.supplierName === p.name && inv.date <= endDate).reduce((sum, inv) => sum + inv.totalAmount, 0);
+        const pPurchReturns = purchaseReturns.filter(ret => ret.supplierName === p.name && ret.date <= endDate).reduce((sum, ret) => sum + ret.totalReturnAmount, 0);
         const pPaid = journal.filter(j => (j.partyName === p.name || j.statement.includes(p.name)) && j.date <= endDate).reduce((sum, j) => sum + j.paidSYP, 0);
-        return { name: p.name, balance: (p.openingBalance + pPurch - pPaid) };
+        return { name: p.name, balance: Math.abs(p.openingBalance + pPurch - pPurchReturns - pPaid) };
     }).filter(x => x.balance !== 0);
     const payables = payablesList.reduce((s,c) => s + c.balance, 0);
 
-    // 5. الأصول الثابتة ورأس المال (من القيود الافتتاحية)
-    const fixedAssetsList = openingEntries.filter(e => e.accountType === 'أصول').map(e => ({ name: e.accountName, balance: e.debit - e.credit }));
+    // 5. الأصول الثابتة (أصول)
+    const fixedAssetsList = openingEntries.filter(e => e.accountType === 'أصول').map(e => ({ name: e.accountName, balance: Math.abs(e.debit - e.credit) }));
     const fixedAssets = fixedAssetsList.reduce((s,c) => s + c.balance, 0);
     
-    const equityList = openingEntries.filter(e => e.accountType === 'حقوق ملكية').map(e => ({ name: e.accountName, balance: e.credit - e.debit }));
+    // 6. رأس المال (حقوق ملكية)
+    const equityList = openingEntries.filter(e => e.accountType === 'حقوق ملكية').map(e => ({ name: e.accountName, balance: Math.abs(e.credit - e.debit) }));
     const equityOpening = equityList.reduce((s,c) => s + c.balance, 0);
 
-    // 6. احتساب الأرباح المحققة خلال الفترة المحددة
+    // 7. احتساب الأرباح (تضاف لحقوق الملكية)
     const openingStockInv = inventories.find(i => i.date <= startDate && i.type === 'OPENING') || inventories[0];
     const openingStockValue = openingStockInv ? openingStockInv.totalValue : 0;
     
     const totalSales = filteredSales.reduce((s, c) => s + c.totalAmount, 0);
     const totalPurchases = filteredPurchases.reduce((s, c) => s + c.totalAmount, 0);
-    
     const cogs = openingStockValue + totalPurchases - closingStockValue;
     const grossProfit = totalSales - cogs;
     
@@ -134,7 +143,7 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
       <div className={`mt-3 overflow-hidden border border-zinc-100 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 ${!showDetailsInPrint ? 'no-print' : ''}`}>
         <table className="w-full text-right text-[10px]">
           <thead className="bg-zinc-50 dark:bg-zinc-900 border-b">
-            <tr className="text-zinc-500 font-black"><th className="p-2 border-l">البيان / الحساب</th><th className="p-2 text-center">الرصيد الجاري</th></tr>
+            <tr className="text-zinc-500 font-black"><th className="p-2 border-l">البيان / الحساب</th><th className="p-2 text-center">القيمة</th></tr>
           </thead>
           <tbody className="divide-y text-zinc-700 dark:text-zinc-300">
             {data.map((item, idx) => (

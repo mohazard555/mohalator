@@ -88,7 +88,7 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
     const returnId = editingReturnId || crypto.randomUUID();
     const returnDate = new Date().toISOString().split('T')[0];
     
-    // تحديد وجهة استرداد المال بناءً على الفاتورة الأصلية
+    // القاعدة المحاسبية: صرف نقدي فقط إذا كانت الفاتورة نقداً
     const isCashSale = foundInvoice.paymentType === 'نقداً';
     const cashAccount = foundInvoice.cashAccount || 'الصندوق';
 
@@ -114,7 +114,7 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
     setReturnHistory(updatedHistory);
     localStorage.setItem('sheno_sales_returns', JSON.stringify(updatedHistory));
 
-    // 1. تحديث حركات المستودع (إرجاع البضاعة للمخزن)
+    // 1. تحديث حركات المستودع
     const savedStock = localStorage.getItem('sheno_stock_entries');
     let stockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
     const returnMovements: StockEntry[] = returnEntry.items.map(item => ({
@@ -135,49 +135,46 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
     }));
     localStorage.setItem('sheno_stock_entries', JSON.stringify([...returnMovements, ...stockEntries]));
 
-    // 2. تحديث الحسابات المالية (الصندوق / المصرف / الزبون)
+    // 2. تحديث الحسابات المالية (فصل النقدي عن الآجل)
     const savedCash = localStorage.getItem('sheno_cash_journal');
     let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
     
-    // إذا كانت الفاتورة نقداً، يجب إخراج المبلغ من الصندوق/المصرف
     if (isCashSale) {
+      // رد نقدي حقيقي
       const sourceName = cashAccount === 'المصرف' ? 'حساب المصرف البنكي' : 'الصندوق الرئيسي';
-      const cashMove: CashEntry = {
+      cashEntries.unshift({
         id: crypto.randomUUID(),
         date: returnDate,
-        statement: `استرداد مالي لمرتجع مبيع فاتورة ${foundInvoice.invoiceNumber} - المصدر: ${cashAccount}`,
+        statement: `استرداد نقدي لمرتجع مبيع فاتورة ${foundInvoice.invoiceNumber} - المصدر: ${cashAccount}`,
         receivedSYP: 0, 
         paidSYP: totalReturnAmount, 
         receivedUSD: 0, 
         paidUSD: 0,
         partyName: sourceName,
-        notes: `مرتجع مبيعات - العميل: ${foundInvoice.customerName}`, 
+        notes: `استرجاع نقدية للزبون: ${foundInvoice.customerName}`, 
         type: 'مرتجع', 
         voucherNumber: returnId
-      };
-      cashEntries.unshift(cashMove);
+      });
     } else {
-      // إذا كانت الفاتورة آجلة، نسجل قيداً ورقياً (0 نقدية) لتوثيق الحدث في دفتر اليومية،
-      // وحساب رصيد الزبون سيتكفل بالباقي لأن المعادلة تخصم المرتجع آلياً.
-      const memoMove: CashEntry = {
+      // تصحيح رصيد آجل فقط (لا حركة نقدية في الصندوق)
+      cashEntries.unshift({
         id: crypto.randomUUID(),
         date: returnDate,
-        statement: `مرتجع مبيعات آجل - فاتورة رقم ${foundInvoice.invoiceNumber}`,
+        statement: `مرتجع مبيعات آجل (إشعار دائن) - فاتورة رقم ${foundInvoice.invoiceNumber}`,
         receivedSYP: 0, 
-        paidSYP: 0, 
+        paidSYP: 0, // 0 لعدم التأثير على رصيد الصندوق
         receivedUSD: 0, 
         paidUSD: 0,
-        partyName: foundInvoice.customerName,
-        notes: 'تخفيض رصيد الزبون (إشعار دائن)',
+        partyName: foundInvoice.customerName, // ربط الحركة بالزبون لتظهر في كشف حسابه
+        notes: 'تسوية رصيد الزبون آلياً',
         type: 'مرتجع',
         voucherNumber: returnId
-      };
-      cashEntries.unshift(memoMove);
+      });
     }
     
     localStorage.setItem('sheno_cash_journal', JSON.stringify(cashEntries));
     
-    alert('تم حفظ المرتجع وتعديل الحسابات (نقدية/رصيد) بنجاح');
+    alert('تم حفظ المرتجع وتحديث الأرصدة (الذمم/النقدية) وفق النظام المحاسبي.');
     setFoundInvoice(null);
     setEditingReturnId(null);
     setInvoiceSearch('');
@@ -185,7 +182,7 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
   };
 
   const handleDeleteReturn = (id: string) => {
-    if (window.confirm('حذف المرتجع نهائياً وإلغاء تأثيره؟')) {
+    if (window.confirm('حذف المرتجع نهائياً وإلغاء أثره؟')) {
       const updated = returnHistory.filter(r => r.id !== id);
       setReturnHistory(updated);
       localStorage.setItem('sheno_sales_returns', JSON.stringify(updated));
@@ -240,8 +237,8 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
           <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border flex-1 flex justify-between animate-in slide-in-from-left-2">
             <div><p className="text-[10px] text-zinc-400 font-black uppercase">العميل</p><p className="font-black text-lg">{foundInvoice.customerName}</p></div>
             <div>
-              <p className="text-[10px] text-zinc-400 font-black uppercase">نوع الفاتورة</p>
-              <span className={`font-bold px-2 py-0.5 rounded text-xs ${foundInvoice.paymentType === 'نقداً' ? 'bg-emerald-500/20 text-emerald-600' : 'bg-amber-500/20 text-amber-600'}`}>
+              <p className="text-[10px] text-zinc-400 font-black uppercase">حالة الدفع للأصل</p>
+              <span className={`font-bold px-3 py-1 rounded-full text-xs ${foundInvoice.paymentType === 'نقداً' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'}`}>
                 {foundInvoice.paymentType} {foundInvoice.paymentType === 'نقداً' ? `(${foundInvoice.cashAccount})` : ''}
               </span>
             </div>
@@ -252,37 +249,38 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
 
       {foundInvoice && (
         <div className={`bg-white dark:bg-zinc-900 rounded-3xl border-2 ${editingReturnId ? 'border-amber-500' : 'border-rose-900'} overflow-hidden shadow-2xl animate-in zoom-in-95 no-print`}>
-          <div className={`${editingReturnId ? 'bg-amber-600' : 'bg-rose-900'} p-3 text-white font-black flex justify-between text-sm px-6`}>
-             <span>{editingReturnId ? 'تعديل كميات المرتجع' : 'تحديد كميات المرتجع'}</span>
-             <span>#{foundInvoice.invoiceNumber}</span>
+          <div className={`${editingReturnId ? 'bg-amber-600' : 'bg-rose-900'} p-4 text-white font-black flex justify-between items-center px-6`}>
+             <span className="flex items-center gap-2"><RefreshCcw className="w-4 h-4"/> {editingReturnId ? 'تعديل كميات المرتجع' : 'تحديد كميات المرتجع'}</span>
+             <span className="bg-white/20 px-3 py-1 rounded-lg text-xs font-mono">Invoice #{foundInvoice.invoiceNumber}</span>
           </div>
           <table className="w-full text-right">
             <thead className="bg-zinc-50 dark:bg-zinc-800 text-[10px] text-zinc-500 font-black uppercase">
-              <tr><th className="p-3">المادة</th><th className="p-3 text-center">المباع</th><th className="p-3 text-center text-rose-500">المرتجع</th><th className="p-3 text-center">المجموع</th></tr>
+              <tr><th className="p-4">المادة</th><th className="p-4 text-center">المباع</th><th className="p-4 text-center text-rose-500">المرتجع</th><th className="p-4 text-center">السعر</th><th className="p-4 text-center bg-rose-500/5">المجموع</th></tr>
             </thead>
             <tbody className="divide-y font-bold text-readable">
               {returnItems.map(item => (
                 <tr key={item.id}>
-                  <td className="p-3">{item.name}</td>
-                  <td className="p-3 text-center font-mono text-zinc-400">{foundInvoice.items.find(i=>i.id===item.id || i.name === item.name)?.quantity}</td>
-                  <td className="p-3 text-center">
+                  <td className="p-4">{item.name}</td>
+                  <td className="p-4 text-center font-mono text-zinc-400">{foundInvoice.items.find(i=>i.id===item.id || i.name === item.name)?.quantity}</td>
+                  <td className="p-4 text-center">
                     <input type="number" min={0} value={item.quantity} onChange={e => setReturnItems(returnItems.map(i => i.id === item.id ? { ...i, quantity: Number(e.target.value) } : i))} className="bg-zinc-50 dark:bg-zinc-800 border-2 w-24 p-2 rounded-xl text-rose-600 font-black text-center outline-none focus:border-rose-500" />
                   </td>
-                  <td className="p-3 text-center font-mono text-emerald-600">{(item.quantity * item.price).toLocaleString()}</td>
+                  <td className="p-4 text-center font-mono text-zinc-500">{item.price.toLocaleString()}</td>
+                  <td className="p-4 text-center font-mono font-black text-rose-600 bg-rose-500/5">{(item.quantity * item.price).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div className="p-6 bg-zinc-50 dark:bg-zinc-800/50 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2">
+          <div className="p-6 bg-zinc-50 dark:bg-zinc-800/50 flex flex-col md:flex-row justify-between items-center gap-4 border-t dark:border-zinc-800">
+            <div className="flex items-center gap-3 bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700">
                <AlertCircle className="w-5 h-5 text-amber-500" />
-               <p className="text-xs font-bold text-zinc-500">
-                 سيتم إرجاع المبلغ إلى: <span className="text-rose-700">{foundInvoice.paymentType === 'نقداً' ? foundInvoice.cashAccount : 'حساب الزبون (آجل)'}</span>
+               <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400">
+                 سيتم التسوية على: <span className="text-rose-700 dark:text-rose-400 font-black">{foundInvoice.paymentType === 'نقداً' ? `رد نقدية من ${foundInvoice.cashAccount}` : 'خصم من رصيد الزبون (آجل)'}</span>
                </p>
             </div>
             <div className="flex gap-3">
-              <button onClick={handleSaveReturn} className="bg-primary text-white px-12 py-3 rounded-2xl font-black shadow-xl flex items-center gap-2"><Save className="w-5 h-5"/> {editingReturnId ? 'تحديث المرتجع' : 'حفظ المرتجع'}</button>
-              <button onClick={handleCancel} className="bg-zinc-200 dark:bg-zinc-800 px-10 py-3 rounded-2xl font-bold">إلغاء</button>
+              <button onClick={handleSaveReturn} className="bg-primary text-white px-12 py-3.5 rounded-2xl font-black shadow-xl flex items-center gap-2 hover:scale-105 transition-all"><Save className="w-5 h-5"/> {editingReturnId ? 'تعديل وحفظ' : 'تثبيت المرتجع'}</button>
+              <button onClick={handleCancel} className="bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-10 py-3.5 rounded-2xl font-bold">إلغاء</button>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { MinusSquare, PlusSquare, Box, Wallet, Scale, AlertTriangle, CheckCircle2, FileSpreadsheet } from 'lucide-react';
+import { MinusSquare, PlusSquare, Box, Wallet, Scale, AlertTriangle, CheckCircle2, FileSpreadsheet, UserCheck, ShieldCheck } from 'lucide-react';
 import { exportToCSV } from '../utils/export';
 
 interface BalanceSheetReportProps {
@@ -15,7 +15,7 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
   const totalEquity = fin.equityOpening + fin.netProfit;
   const totalLiabilitiesAndEquity = totalEquity + fin.payables;
   const balanceDiff = Math.abs(totalAssets - totalLiabilitiesAndEquity);
-  const isBalanced = balanceDiff < 1; // السماح بفرق تقريب بسيط جداً
+  const isBalanced = balanceDiff < 1;
 
   const handleExportExcel = () => {
     const data = [
@@ -24,11 +24,11 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
       { "الجانب": "الأصول", "البند": "الذمم المدينة (الزبائن)", "القيمة": fin.receivables },
       { "الجانب": "الأصول", "البند": "الأصول الثابتة", "القيمة": fin.fixedAssets },
       { "الجانب": "الأصول", "البند": "إجمالي الأصول", "القيمة": totalAssets },
-      { "الجانب": "المطاليب", "البند": "الذمم الدائنة (الموردين)", "القيمة": fin.payables },
-      { "الجانب": "المطاليب", "البند": "رأس المال", "القيمة": fin.equityOpening },
-      { "الجانب": "المطاليب", "البند": "الأرباح المحققة", "القيمة": fin.netProfit },
-      { "الجانب": "المطاليب", "البند": "إجمالي الخصوم وحقوق الملكية", "القيمة": totalLiabilitiesAndEquity },
-      { "الجانب": "فحص التوازن", "البند": isBalanced ? "متوازنة" : "يوجد فرق", "القيمة": balanceDiff }
+      { "الجانب": "الخصوم", "البند": "الذمم الدائنة (الموردين)", "القيمة": fin.payables },
+      { "الجانب": "حقوق الملكية", "البند": "رأس المال", "القيمة": fin.equityOpening },
+      { "الجانب": "حقوق الملكية", "البند": "الأرباح المحققة", "القيمة": fin.netProfit },
+      { "الجانب": "حقوق الملكية", "البند": "إجمالي حقوق الملكية", "القيمة": totalEquity },
+      { "الجانب": "المطاليب الكلية", "البند": "الخصوم + حقوق الملكية", "القيمة": totalLiabilitiesAndEquity }
     ];
     exportToCSV(data, 'الميزانية_العمومية');
   };
@@ -104,29 +104,9 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
          {/* جانب الخصوم وحقوق الملكية */}
          <div className="space-y-4">
              <h4 className="bg-zinc-400 text-zinc-900 p-3 rounded-xl font-black text-center text-xs uppercase tracking-widest">الخصوم وحقوق الملكية (المطاليب)</h4>
-             <div className="divide-y border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 shadow-sm">
+             <div className="border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 shadow-sm divide-y dark:divide-zinc-800">
                 
-                <div className="p-4 bg-zinc-50/50 dark:bg-zinc-800/30">
-                   <div className="flex justify-between items-center mb-2">
-                      <span className="font-black text-xs text-zinc-400 uppercase tracking-widest">حقوق الملكية (Equity)</span>
-                   </div>
-                   <div className="space-y-3">
-                      <div className="flex justify-between items-center cursor-pointer group" onClick={() => toggleSection('bs_equity')}>
-                         <span className="font-bold text-sm flex items-center gap-2">
-                            {expandedSections.has('bs_equity') ? <MinusSquare className="w-4 h-4 text-primary"/> : <PlusSquare className="w-4 h-4 text-zinc-300"/>}
-                            رأس المال المخصص
-                         </span>
-                         <span className="font-mono font-black">{fin.equityOpening.toLocaleString()}</span>
-                      </div>
-                      {expandedSections.has('bs_equity') && renderDetailTable(fin.equityList)}
-                      
-                      <div className="flex justify-between items-center pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                         <span className="font-bold text-sm text-emerald-600">الأرباح المحققة (حتى التاريخ)</span>
-                         <span className="font-mono font-black text-emerald-600">+{fin.netProfit.toLocaleString()}</span>
-                      </div>
-                   </div>
-                </div>
-
+                {/* قسم الخصوم */}
                 <div className="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                    <div className="flex justify-between items-center cursor-pointer group" onClick={() => toggleSection('bs_payables')}>
                       <span className="font-bold text-sm flex items-center gap-2">
@@ -137,9 +117,36 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
                    </div>
                    {expandedSections.has('bs_payables') && renderDetailTable(fin.payablesList)}
                 </div>
+
+                {/* قسم حقوق الملكية */}
+                <div className="p-4 bg-zinc-50/30 dark:bg-zinc-800/20">
+                   <div className="flex items-center gap-2 mb-4">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600"/>
+                      <span className="font-black text-xs text-zinc-400 uppercase tracking-widest">حقوق الملكية (Equity)</span>
+                   </div>
+                   <div className="space-y-4">
+                      <div className="flex justify-between items-center cursor-pointer group" onClick={() => toggleSection('bs_equity')}>
+                         <span className="font-bold text-sm flex items-center gap-2">
+                            {expandedSections.has('bs_equity') ? <MinusSquare className="w-4 h-4 text-primary"/> : <PlusSquare className="w-4 h-4 text-zinc-300"/>}
+                            رأس المال (المساهمات)
+                         </span>
+                         <span className="font-mono font-black">{fin.equityOpening.toLocaleString()}</span>
+                      </div>
+                      {expandedSections.has('bs_equity') && renderDetailTable(fin.equityList)}
+                      
+                      <div className="flex justify-between items-center pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                         <div className="flex items-center gap-2">
+                            <UserCheck className="w-4 h-4 text-emerald-600"/>
+                            <span className="font-bold text-sm text-emerald-700">صافي الربح المحقق (المحتجز)</span>
+                         </div>
+                         <span className="font-mono font-black text-emerald-700">{fin.netProfit.toLocaleString()}</span>
+                      </div>
+                   </div>
+                </div>
              </div>
-             <div className="flex justify-between p-5 bg-zinc-900 text-white rounded-2xl font-black text-xl shadow-lg border-b-4 border-zinc-400">
-                <span>إجمالي الخصوم والملكبة</span>
+             
+             <div className="flex justify-between p-5 bg-zinc-800 text-white rounded-2xl font-black text-xl shadow-lg border-b-4 border-emerald-500">
+                <span>إجمالي الخصوم وحقوق الملكية</span>
                 <span className="font-mono">{totalLiabilitiesAndEquity.toLocaleString()}</span>
              </div>
          </div>

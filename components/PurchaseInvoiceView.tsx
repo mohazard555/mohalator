@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Plus, Trash2, Edit2, Save, X, ShoppingBag, Truck, ScrollText, Calendar, Hash, Box, Printer, FileDown, Coins, CreditCard, Search, MessageSquare, Tag, Percent, Check, Landmark } from 'lucide-react';
 import { PurchaseInvoice, InvoiceItem, StockEntry, Party, PartyType, CashEntry, AppSettings, InventoryItem } from '../types';
@@ -207,6 +206,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
     let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
     const isPrimary = selectedCurrencyType === 'primary';
 
+    // 1. دفعة المورد (تؤثر على حساب المورد كـ Debit)
     if (invoice.paidAmount > 0) {
       const source = invoice.paymentType === 'نقداً' ? (invoice.cashAccount || 'الصندوق') : 'آجل';
       cashEntries.unshift({
@@ -217,20 +217,23 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
         receivedUSD: 0, 
         paidUSD: !isPrimary ? invoice.paidAmount : 0,
         notes: invoice.notes, 
-        partyName: invoice.supplierName,
+        partyName: invoice.supplierName, // هنا يتم ربطها بالمورد
         type: 'شراء'
       });
     }
 
+    // 2. مصاريف النقل (لا تؤثر على حساب المورد - تؤثر على حساب المصاريف فقط)
     if (transport > 0) {
       cashEntries.unshift({
         id: crypto.randomUUID(), date: invoice.date,
-        statement: `مصاريف نقل مشتريات للفاتورة رقم ${invoice.invoiceNumber} - المورد: ${invoice.supplierName}`,
+        statement: `مصاريف نقل مشتريات للفاتورة رقم ${invoice.invoiceNumber} - توريد: ${invoice.supplierName}`,
         receivedSYP: 0,
         paidSYP: isPrimary ? transport : 0,
         receivedUSD: 0,
         paidUSD: !isPrimary ? transport : 0,
-        notes: 'مصاريف نقل بضاعة', type: 'دفع'
+        notes: 'مصاريف نقل بضاعة', 
+        partyName: 'مصاريف نقل المشتريات', // ربطها بحساب المصروف بدلاً من المورد
+        type: 'دفع'
       });
     }
 
