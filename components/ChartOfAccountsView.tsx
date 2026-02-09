@@ -106,6 +106,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     setAccounts(currentAccounts);
     if (sJou) setJournal(JSON.parse(sJou));
     if (sOp) setOpeningEntries(JSON.parse(sOp));
+    /* Fixed: changed setAllSales to setSales as it was incorrectly using a non-existent state setter */
     if (sSal) setSales(JSON.parse(sSal));
     if (sSalRet) setSalesReturns(JSON.parse(sSalRet));
     if (sPur) setPurchases(JSON.parse(sPur));
@@ -121,7 +122,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
   const calculateBalance = (account: AccountNode): number => {
     if (account.type === 'FOLDER') {
       const children = accounts.filter(a => a.parentId === account.id);
-      // تصحيح: جمع القيم المطلقة للأرصدة الفرعية لضمان أن المجموع الكلي يعكس مجموع الأرقام الظاهرة بصرياً
       return children.reduce((s, c) => s + Math.abs(calculateBalance(c)), 0);
     }
     
@@ -130,12 +130,10 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const name = account.name;
     const code = account.code;
 
-    // 1. القيد الافتتاحي
     const ops = openingEntries.filter(e => e.accountName === name);
     debitTotal += ops.reduce((s, c) => s + Number(c.debit), 0);
     creditTotal += ops.reduce((s, c) => s + Number(c.credit), 0);
 
-    // 2. الحركات النقدية والبنكية
     const isBox = code === '131';
     const isBank = code === '132';
 
@@ -153,12 +151,13 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        creditTotal += counterMoves.reduce((s, c) => s + Number(c.receivedSYP + c.receivedUSD), 0);
     }
 
-    // 3. المبيعات والمشتريات والبضاعة
     if (code === '41') debitTotal += sales.reduce((s, c) => s + c.totalAmount, 0); 
-    if (code === '42') creditTotal += salesReturns.reduce((s, c) => s + (c.totalReturnAmount || 0), 0); 
+    if (code === '42') creditTotal += salesReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0); 
+    if (code === '43') debitTotal += sales.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0); 
     if (code === '31') debitTotal += purchases.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0); 
-    if (code === '32') creditTotal += purchaseReturns.reduce((s, c) => s + (c.totalReturnAmount || 0), 0); 
-    if (code === '33') debitTotal += purchases.reduce((s, c) => s + (c.transportExpenses || 0), 0); 
+    if (code === '32') creditTotal += purchaseReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0); 
+    if (code === '33') debitTotal += purchases.reduce((s, c) => s + (Number(c.transportExpenses) || 0), 0); 
+    if (code === '34') creditTotal += purchases.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0); 
     
     if (code === '71' || code === '1242') debitTotal += periodicInventories.find(i => i.type === 'OPENING')?.totalValue || 0;
     if (code === '72' || code === '1241') {
@@ -172,7 +171,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        }, 0);
     }
 
-    // 4. الزبائن والموردين
     const party = parties.find(p => p.name === name);
     if (party) {
        const isUnderAssets = account.parentId === '121' || code.startsWith('1');
@@ -181,12 +179,12 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        if (party.type === 'عميل' || (party.type === 'عميل ومورد' && isUnderAssets)) {
           debitTotal += party.openingBalance;
           debitTotal += sales.filter(s => s.customerName === name).reduce((sum, inv) => sum + inv.totalAmount, 0);
-          creditTotal += salesReturns.filter(ret => ret.customerName === name).reduce((sum, ret) => sum + ret.totalReturnAmount, 0);
+          creditTotal += salesReturns.filter(ret => ret.customerName === name).reduce((sum, ret) => sum + (ret.totalReturnAmount || 0), 0);
        }
        if (party.type === 'مورد' || (party.type === 'عميل ومورد' && isUnderLiabilities)) {
           creditTotal += party.openingBalance;
           creditTotal += purchases.filter(p => p.supplierName === name).reduce((sum, inv) => sum + inv.totalAmount, 0);
-          debitTotal += purchaseReturns.filter(ret => ret.supplierName === name).reduce((sum, ret) => sum + ret.totalReturnAmount, 0);
+          debitTotal += purchaseReturns.filter(ret => ret.supplierName === name).reduce((sum, ret) => sum + (ret.totalReturnAmount || 0), 0);
        }
     }
 
@@ -227,13 +225,38 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     }
 
     if (code === '41') {
-       sales.forEach(s => moves.push({ date: s.date, statement: `فاتورة مبيعات #${s.invoiceNumber}`, debit: s.totalAmount, credit: 0, source: 'المبيعات' }));
+       sales.forEach(s => moves.push({ date: s.date, statement: `إجمالي مبيعات فاتورة #${s.invoiceNumber}`, debit: s.totalAmount, credit: 0, source: 'المبيعات' }));
+    }
+    if (code === '42') {
+       salesReturns.forEach(r => moves.push({ date: r.date, statement: `مرتجع مبيعات فاتورة #${r.invoiceNumber}`, debit: 0, credit: r.totalReturnAmount, source: 'المرتجع' }));
+    }
+    if (code === '43') {
+       sales.filter(s => (s.discountAmount || 0) > 0).forEach(s => moves.push({ date: s.date, statement: `حسم ممنوح فاتورة #${s.invoiceNumber}`, debit: s.discountAmount, credit: 0, source: 'المبيعات' }));
     }
     if (code === '31') {
-       purchases.forEach(p => moves.push({ date: p.date, statement: `فاتورة مشتريات #${p.invoiceNumber}`, debit: p.items.reduce((s,i)=>s+i.total,0), credit: 0, source: 'المشتريات' }));
+       purchases.forEach(p => moves.push({ date: p.date, statement: `إجمالي مشتريات فاتورة #${p.invoiceNumber}`, debit: p.items.reduce((s,i)=>s+i.total,0), credit: 0, source: 'المشتريات' }));
+    }
+    if (code === '32') {
+       purchaseReturns.forEach(r => moves.push({ date: r.date, statement: `مرتجع مشتريات فاتورة #${r.invoiceNumber}`, debit: r.totalReturnAmount, credit: 0, source: 'المرتجع' }));
     }
     if (code === '33') {
        purchases.filter(p => p.transportExpenses > 0).forEach(p => moves.push({ date: p.date, statement: `نقل مشتريات فاتورة #${p.invoiceNumber}`, debit: p.transportExpenses, credit: 0, source: 'المشتريات' }));
+    }
+    if (code === '34') {
+       purchases.filter(p => (p.discountAmount || 0) > 0).forEach(p => moves.push({ date: p.date, statement: `حسم مكتسب فاتورة #${p.invoiceNumber}`, debit: 0, credit: p.discountAmount, source: 'المشتريات' }));
+    }
+
+    if (code === '72' || code === '1241') {
+       inventory.forEach(item => {
+          const moves_item = stockEntries.filter(e => e.itemCode === item.code);
+          const bal = (item.openingStock || 0) + 
+                     moves_item.filter(e => e.movementType === 'إدخال').reduce((sum, curr) => sum + curr.quantity, 0) - 
+                     moves_item.filter(e => e.movementType === 'صرف').reduce((sum, curr) => sum + curr.quantity, 0) + 
+                     moves_item.filter(e => e.movementType === 'مرتجع').reduce((sum, curr) => sum + curr.quantity, 0);
+          if (bal !== 0) {
+            moves.push({ date: new Date().toISOString().split('T')[0], statement: `جرد مادة: ${item.name} (${item.unit})`, debit: (bal * item.price), credit: 0, source: 'الجرد الحالي' });
+          }
+       });
     }
 
     const isParty = account.parentId === '121' || account.parentId === '221' || parties.some(p => p.name === name);
@@ -251,6 +274,26 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     if (!formData.name || !formData.code) return;
     const newNode = { ...formData, id: modalMode === 'EDIT' ? selectedAccount!.id : crypto.randomUUID() } as AccountNode;
     const updated = modalMode === 'EDIT' ? accounts.map(a => a.id === selectedAccount!.id ? newNode : a) : [...accounts, newNode];
+    
+    // مزامنة الجهات تلقائياً عند الإضافة من الدليل
+    if (modalMode === 'ADD' && (newNode.parentId === '121' || newNode.parentId === '221')) {
+      const savedParties = localStorage.getItem('sheno_parties');
+      let currentParties: Party[] = savedParties ? JSON.parse(savedParties) : [];
+      if (!currentParties.some(p => p.name === newNode.name)) {
+        const newParty: Party = {
+          id: newNode.id,
+          code: newNode.code,
+          name: newNode.name,
+          phone: '',
+          address: '',
+          type: newNode.parentId === '121' ? PartyType.CUSTOMER : PartyType.SUPPLIER,
+          openingBalance: 0
+        };
+        currentParties.push(newParty);
+        localStorage.setItem('sheno_parties', JSON.stringify(currentParties));
+      }
+    }
+
     setAccounts(updated);
     localStorage.setItem('sheno_chart_accounts', JSON.stringify(updated));
     setIsModalOpen(false);
@@ -281,7 +324,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                 </div>
               </div>
               <div className="flex items-center gap-6">
-                 {/* عرض الرصيد كقيمة مطلقة وتلوينه بالأحمر في حال كان عكسياً (أقل من صفر) لشرح النقص في المجموع بصرياً */}
                  <span className={`font-mono text-sm font-black min-w-[100px] text-left ${bal >= 0 ? 'text-emerald-600' : 'text-rose-600 animate-pulse'}`}>{bal !== 0 ? Math.abs(bal).toLocaleString() : '-'}</span>
                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 no-print transition-all">
                     <button onClick={(e) => { e.stopPropagation(); setFormData({ ...formData, parentId: node.id, type: 'ACCOUNT' }); setModalMode('ADD'); setIsModalOpen(true); }} className="p-1.5 bg-white dark:bg-zinc-700 rounded-lg text-zinc-400 hover:text-primary shadow-sm" title="إضافة فرعي"><Plus className="w-4 h-4"/></button>
