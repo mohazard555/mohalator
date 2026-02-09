@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Folder, ChevronRight, ChevronDown, 
   Search, Plus, Trash2, Edit2, X, Landmark, 
-  ArrowLeftRight, Calculator, ImageIcon, FileSpreadsheet, Printer, Save, History, ArrowRight
+  ArrowLeftRight, Calculator, ImageIcon, FileSpreadsheet, Printer, Save, History, ArrowRight, Info, ArrowUpRight, ArrowDownLeft
 } from 'lucide-react';
 import { AccountNode, CashEntry, OpeningEntry, AppSettings, SalesInvoice, PurchaseInvoice, AccountingCategory, Party, PartyType, InventoryItem, StockEntry, PeriodicInventory } from '../types';
 import { ImageExportService } from '../utils/ImageExportService';
@@ -21,6 +21,9 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'ADD' | 'EDIT'>('ADD');
   
+  // حالة لعرض تفاصيل الحركة المحددة بشكل تفصيلي
+  const [selectedMovement, setSelectedMovement] = useState<any | null>(null);
+
   const [journal, setJournal] = useState<CashEntry[]>([]);
   const [openingEntries, setOpeningEntries] = useState<OpeningEntry[]>([]);
   const [sales, setSales] = useState<SalesInvoice[]>([]);
@@ -65,21 +68,16 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
       { id: '113', code: '113', name: 'أثاث ومفروشات مكتبية', parentId: '11', type: 'ACCOUNT', reportType: 'الميزانية' },
       { id: '12', code: '12', name: 'الموجودات المتداولة', parentId: '1', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '121', code: '121', name: 'الزبائن المدينون', parentId: '12', type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '122', code: '122', name: 'مدينون مختلفون', parentId: '12', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '123', code: '123', name: 'مسحوبات شركاء', parentId: '12', type: 'ACCOUNT', reportType: 'الميزانية' },
       { id: '124', code: '124', name: 'المخزون السلعي', parentId: '12', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '1241', code: '1241', name: 'بضاعة آخر المدة (مخزن)', parentId: '124', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '1242', code: '1242', name: 'بضاعة اول المدة', parentId: '124', type: 'ACCOUNT', reportType: 'الميزانية' },
       { id: '13', code: '13', name: 'الأموال الجاهزة ونقدية', parentId: '1', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '131', code: '131', name: 'الصندوق الرئيسي', parentId: '13', type: 'ACCOUNT', reportType: 'الميزانية' },
       { id: '132', code: '132', name: 'حساب المصرف البنكي', parentId: '13', type: 'ACCOUNT', reportType: 'الميزانية' },
       { id: '2', code: '2', name: 'المطاليب والخصوم', parentId: null, type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '21', code: '21', name: 'المطاليب الثابتة وحقوق الملكية', parentId: '2', type: 'FOLDER', reportType: 'الميزانية' },
-      { id: '211', code: '211', name: 'راس المال', parentId: '21', type: 'ACCOUNT', reportType: 'الميزانية' },
+      { id: '21', code: '21', name: 'حقوق الملكية والمطاليب الثابتة', parentId: '2', type: 'FOLDER', reportType: 'الميزانية' },
+      { id: '211', code: '211', name: 'رأس المال', parentId: '21', type: 'ACCOUNT', reportType: 'الميزانية' },
       { id: '212', code: '212', name: 'قروض طويلة الأجل', parentId: '21', type: 'ACCOUNT', reportType: 'الميزانية' },
       { id: '213', code: '213', name: 'التزامات تمويلية', parentId: '21', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '214', code: '214', name: 'سندات مستحقة', parentId: '21', type: 'ACCOUNT', reportType: 'الميزانية' },
-      { id: '215', code: '215', name: 'مخصصات طويلة الأجل', parentId: '21', type: 'ACCOUNT', reportType: 'الميزانية' },
       { id: '22', code: '22', name: 'المطاليب المتداولة', parentId: '2', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '221', code: '221', name: 'الموردون والدائنون', parentId: '22', type: 'FOLDER', reportType: 'الميزانية' },
       { id: '3', code: '3', name: 'صافي المشتريات', parentId: null, type: 'FOLDER', reportType: 'المتاجرة' },
@@ -121,6 +119,23 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
   const calculateBalance = (account: AccountNode): number => {
     if (account.type === 'FOLDER') {
       const children = accounts.filter(a => a.parentId === account.id);
+      
+      // تطبيق المعادلات الخاصة لصافي المبيعات والمشتريات
+      if (account.code === '3') { // صافي المشتريات
+         const b31 = calculateBalance(children.find(c => c.code === '31') || children[0]); // إجمالي المشتريات
+         const b33 = calculateBalance(children.find(c => c.code === '33') || children[0]); // مصاريف النقل
+         const b32 = calculateBalance(children.find(c => c.code === '32') || children[0]); // مرتجع المشتريات
+         const b34 = calculateBalance(children.find(c => c.code === '34') || children[0]); // الحسم المكتسب
+         return (b31 + b33) - (b32 + b34);
+      }
+      
+      if (account.code === '4') { // صافي المبيعات
+         const b41 = calculateBalance(children.find(c => c.code === '41') || children[0]); // إجمالي المبيعات
+         const b42 = calculateBalance(children.find(c => c.code === '42') || children[0]); // مرتجع المبيعات
+         const b43 = calculateBalance(children.find(c => c.code === '43') || children[0]); // الحسم الممنوح
+         return b41 - (b42 + b43);
+      }
+
       return children.reduce((s, c) => s + Math.abs(calculateBalance(c)), 0);
     }
     
@@ -129,65 +144,49 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const name = account.name;
     const code = account.code;
 
+    // 1. الأرصدة الافتتاحية
     const ops = openingEntries.filter(e => e.accountName === name);
     debitTotal += ops.reduce((s, c) => s + Number(c.debit), 0);
     creditTotal += ops.reduce((s, c) => s + Number(c.credit), 0);
 
+    // 2. حركات اليومية
     const isBox = code === '131';
-    const isBank = code === '132';
-
-    if (isBox || isBank) {
-       const journalMoves = journal.filter(j => {
-          if (isBox) return !j.statement.includes('وجهة: المصرف');
-          if (isBank) return j.statement.includes('وجهة: المصرف') || j.partyName === 'المصرف';
-          return false;
-       });
+    const journalMoves = journal.filter(j => isBox ? !j.statement.includes('وجهة: المصرف') : j.partyName === name);
+    
+    if (isBox) {
        debitTotal += journalMoves.reduce((s, c) => s + Number(c.receivedSYP + c.receivedUSD), 0);
        creditTotal += journalMoves.reduce((s, c) => s + Number(c.paidSYP + c.paidUSD), 0);
     } else {
-       const counterMoves = journal.filter(j => j.partyName === name);
-       debitTotal += counterMoves.reduce((s, c) => s + Number(c.paidSYP + c.paidUSD), 0);
-       creditTotal += counterMoves.reduce((s, c) => s + Number(c.receivedSYP + c.receivedUSD), 0);
+       debitTotal += journalMoves.reduce((s, c) => s + Number(c.paidSYP + c.paidUSD), 0);
+       creditTotal += journalMoves.reduce((s, c) => s + Number(c.receivedSYP + c.receivedUSD), 0);
     }
 
-    if (code === '41') debitTotal += sales.reduce((s, c) => s + c.totalAmount, 0); 
+    // 3. ربط الحسابات الاسمية (إجمالي، حسم، نقل)
+    if (code === '41') debitTotal += sales.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0); 
     if (code === '42') creditTotal += salesReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0); 
     if (code === '43') debitTotal += sales.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0); 
     if (code === '31') debitTotal += purchases.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0); 
     if (code === '32') creditTotal += purchaseReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0); 
     if (code === '33') debitTotal += purchases.reduce((s, c) => s + (Number(c.transportExpenses) || 0), 0); 
     if (code === '34') creditTotal += purchases.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0); 
-    
-    if (code === '71' || code === '1242') debitTotal += periodicInventories.find(i => i.type === 'OPENING')?.totalValue || 0;
-    if (code === '72' || code === '1241') {
-       debitTotal += inventory.reduce((s, item) => {
-          const moves = stockEntries.filter(e => e.itemCode === item.code);
-          const bal = (item.openingStock || 0) + 
-                     moves.filter(e => e.movementType === 'إدخال').reduce((sum, curr) => sum + curr.quantity, 0) - 
-                     moves.filter(e => e.movementType === 'صرف').reduce((sum, curr) => sum + curr.quantity, 0) + 
-                     moves.filter(e => e.movementType === 'مرتجع').reduce((sum, curr) => sum + curr.quantity, 0);
-          return s + (bal * item.price);
-       }, 0);
-    }
 
+    // 4. منطق ذمم الزبائن والموردين (المبالغ قبل الخصم)
     const party = parties.find(p => p.name === name);
     if (party) {
-       const isUnderAssets = account.parentId === '121' || code.startsWith('1');
-       const isUnderLiabilities = account.parentId === '221' || code.startsWith('2');
-
-       if (party.type === 'عميل' || (party.type === 'عميل ومورد' && isUnderAssets)) {
+       if (party.type === 'عميل' || account.parentId === '121') {
           debitTotal += party.openingBalance;
-          debitTotal += sales.filter(s => s.customerName === name).reduce((sum, inv) => sum + inv.totalAmount, 0);
+          // يُسجل على الزبون كامل قيمة البضاعة (Gross) دون خصم الحسم الممنوح
+          debitTotal += sales.filter(s => s.customerName === name).reduce((sum, inv) => sum + inv.items.reduce((acc, it) => acc + it.total, 0), 0);
           creditTotal += salesReturns.filter(ret => ret.customerName === name).reduce((sum, ret) => sum + (ret.totalReturnAmount || 0), 0);
-       }
-       if (party.type === 'مورد' || (party.type === 'عميل ومورد' && isUnderLiabilities)) {
+       } else if (party.type === 'مورد' || account.parentId === '221') {
           creditTotal += party.openingBalance;
-          creditTotal += purchases.filter(p => p.supplierName === name).reduce((sum, inv) => sum + inv.totalAmount, 0);
+          // يُسجل للمورد (إجمالي البضاعة + مصاريف النقل) دون خصم الحسم المكتسب
+          creditTotal += purchases.filter(p => p.supplierName === name).reduce((sum, inv) => sum + (inv.items.reduce((acc, it) => acc + it.total, 0) + (inv.transportExpenses || 0)), 0);
           debitTotal += purchaseReturns.filter(ret => ret.supplierName === name).reduce((sum, ret) => sum + (ret.totalReturnAmount || 0), 0);
        }
     }
 
-    const isDebitNature = code.startsWith('1') || code.startsWith('5') || code.startsWith('3') || code === '71';
+    const isDebitNature = code.startsWith('1') || code.startsWith('5') || code.startsWith('3') || code === '71' || code === '43';
     return isDebitNature ? (debitTotal - creditTotal) : (creditTotal - debitTotal);
   };
 
@@ -196,74 +195,106 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const name = account.name;
     const code = account.code;
 
+    // حجب بضاعة أول/آخر المدة من كشف الحركات (71، 72)
+    if (code === '71' || code === '72') return [];
+
     openingEntries.filter(e => e.accountName === name).forEach(e => {
-        moves.push({ date: e.date, statement: `قيد افتتاحي: ${e.notes || '---'}`, debit: e.debit, credit: e.credit, source: 'الافتتاحي' });
+        moves.push({ 
+           date: e.date, 
+           statement: `قيد افتتاحي: ${e.notes || 'تثبيت رصيد أول مدة'}`, 
+           debit: e.debit, 
+           credit: e.credit, 
+           source: 'السجل الافتتاحي', 
+           party: name,
+           counterAccount: 'رأس المال / أصول',
+           notes: e.notes 
+        });
     });
 
     const isBox = code === '131';
-    const isBank = code === '132';
-
-    if (isBox || isBank) {
-       journal.filter(j => {
-          if (isBox) return !j.statement.includes('وجهة: المصرف');
-          if (isBank) return j.statement.includes('وجهة: المصرف') || j.partyName === 'المصرف';
-          return false;
-       }).forEach(j => {
-          moves.push({ date: j.date, statement: j.statement, debit: (j.receivedSYP + j.receivedUSD), credit: (j.paidSYP + j.paidUSD), source: 'الصندوق' });
+    journal.filter(j => isBox ? !j.statement.includes('وجهة: المصرف') : j.partyName === name).forEach(j => {
+       moves.push({ 
+          date: j.date, 
+          statement: j.statement, 
+          debit: isBox ? (j.receivedSYP + j.receivedUSD) : (j.paidSYP + j.paidUSD), 
+          credit: isBox ? (j.paidSYP + j.paidUSD) : (j.receivedSYP + j.receivedUSD), 
+          source: isBox ? 'الصندوق' : 'سند يومية',
+          party: isBox ? 'الصندوق' : j.partyName,
+          counterAccount: isBox ? (j.partyName || 'حساب متنوع') : 'الصندوق / المصرف',
+          notes: j.notes
        });
-    } else {
-       journal.filter(j => j.partyName === name).forEach(j => {
-          moves.push({ 
-             date: j.date, 
-             statement: j.statement, 
-             debit: (j.paidSYP + j.paidUSD), 
-             credit: (j.receivedSYP + j.receivedUSD), 
-             source: 'اليومية' 
-          });
-       });
-    }
+    });
 
-    if (code === '41') {
-       sales.forEach(s => moves.push({ date: s.date, statement: `إجمالي مبيعات فاتورة #${s.invoiceNumber}`, debit: s.totalAmount, credit: 0, source: 'المبيعات' }));
-    }
-    if (code === '42') {
-       salesReturns.forEach(r => moves.push({ date: r.date, statement: `مرتجع مبيعات فاتورة #${r.invoiceNumber}`, debit: 0, credit: r.totalReturnAmount, source: 'المرتجع' }));
-    }
-    if (code === '43') {
-       sales.filter(s => (s.discountAmount || 0) > 0).forEach(s => moves.push({ date: s.date, statement: `حسم ممنوح فاتورة #${s.invoiceNumber}`, debit: s.discountAmount, credit: 0, source: 'المبيعات' }));
-    }
-    if (code === '31') {
-       purchases.forEach(p => moves.push({ date: p.date, statement: `إجمالي مشتريات فاتورة #${p.invoiceNumber}`, debit: p.items.reduce((s,i)=>s+i.total,0), credit: 0, source: 'المشتريات' }));
-    }
-    if (code === '32') {
-       purchaseReturns.forEach(r => moves.push({ date: r.date, statement: `مرتجع مشتريات فاتورة #${r.invoiceNumber}`, debit: r.totalReturnAmount, credit: 0, source: 'المرتجع' }));
-    }
-    if (code === '33') {
-       purchases.filter(p => p.transportExpenses > 0).forEach(p => moves.push({ date: p.date, statement: `نقل مشتريات فاتورة #${p.invoiceNumber}`, debit: p.transportExpenses, credit: 0, source: 'المشتريات' }));
-    }
-    if (code === '34') {
-       purchases.filter(p => (p.discountAmount || 0) > 0).forEach(p => moves.push({ date: p.date, statement: `حسم مكتسب فاتورة #${p.invoiceNumber}`, debit: 0, credit: p.discountAmount, source: 'المشتريات' }));
-    }
+    // حركات الحسابات الاسمية مع تفاصيل الخصم
+    if (code === '41') sales.forEach(s => moves.push({ 
+        date: s.date, statement: `إجمالي مبيعات فاتورة #${s.invoiceNumber}`, 
+        debit: s.items.reduce((sum, it) => sum + it.total, 0), credit: 0, source: 'فاتورة مبيعات',
+        party: 'المبيعات العامة', counterAccount: s.customerName, 
+        amountBefore: s.items.reduce((sum, it) => sum + it.total, 0), discount: s.discountAmount, netAmount: s.totalAmount 
+    }));
 
-    if (code === '72' || code === '1241') {
-       inventory.forEach(item => {
-          const moves_item = stockEntries.filter(e => e.itemCode === item.code);
-          const bal = (item.openingStock || 0) + 
-                     moves_item.filter(e => e.movementType === 'إدخال').reduce((sum, curr) => sum + curr.quantity, 0) - 
-                     moves_item.filter(e => e.movementType === 'صرف').reduce((sum, curr) => sum + curr.quantity, 0) + 
-                     moves_item.filter(e => e.movementType === 'مرتجع').reduce((sum, curr) => sum + curr.quantity, 0);
-          if (bal !== 0) {
-            moves.push({ date: new Date().toISOString().split('T')[0], statement: `جرد مادة: ${item.name} (${item.unit})`, debit: (bal * item.price), credit: 0, source: 'الجرد الحالي' });
-          }
-       });
-    }
+    if (code === '42') salesReturns.forEach(r => moves.push({ 
+        date: r.date, statement: `مرتجع مبيعات فاتورة #${r.invoiceNumber}`, 
+        debit: 0, credit: r.totalReturnAmount, source: 'سند مرتجع',
+        party: 'مرتجع مبيعات', counterAccount: r.customerName
+    }));
 
-    const isParty = account.parentId === '121' || account.parentId === '221' || parties.some(p => p.name === name);
+    if (code === '43') sales.filter(s => (s.discountAmount || 0) > 0).forEach(s => moves.push({ 
+        date: s.date, statement: `حسم ممنوح فاتورة #${s.invoiceNumber}`, 
+        debit: s.discountAmount, credit: 0, source: 'فاتورة مبيعات',
+        party: 'الحسم الممنوح', counterAccount: s.customerName
+    }));
+
+    if (code === '31') purchases.forEach(p => moves.push({ 
+        date: p.date, statement: `إجمالي مشتريات فاتورة #${p.invoiceNumber}`, 
+        debit: p.items.reduce((sum, it) => sum + it.total, 0), credit: 0, source: 'فاتورة مشتريات',
+        party: 'المشتريات العامة', counterAccount: p.supplierName,
+        amountBefore: p.items.reduce((sum, it) => sum + it.total, 0), transport: p.transportExpenses, discount: p.discountAmount, netAmount: p.totalAmount
+    }));
+
+    if (code === '32') purchaseReturns.forEach(r => moves.push({ 
+        date: r.date, statement: `مرتجع مشتريات فاتورة #${r.invoiceNumber}`, 
+        debit: r.totalReturnAmount, credit: 0, source: 'سند مرتجع',
+        party: 'مرتجع مشتريات', counterAccount: r.supplierName
+    }));
+
+    if (code === '33') purchases.filter(p => p.transportExpenses > 0).forEach(p => moves.push({ 
+        date: p.date, statement: `نقل مشتريات فاتورة #${p.invoiceNumber}`, 
+        debit: p.transportExpenses, credit: 0, source: 'فاتورة مشتريات',
+        party: 'نقل مشتريات', counterAccount: 'الصندوق / المورد'
+    }));
+
+    if (code === '34') purchases.filter(p => (p.discountAmount || 0) > 0).forEach(p => moves.push({ 
+        date: p.date, statement: `حسم مكتسب فاتورة #${p.invoiceNumber}`, 
+        debit: 0, credit: p.discountAmount, source: 'فاتورة مشتريات',
+        party: 'الحسم المكتسب', counterAccount: p.supplierName
+    }));
+
+    // حركات ذمم الزبائن والموردين
+    const isParty = account.parentId === '121' || account.parentId === '221';
     if (isParty) {
-       sales.filter(s => s.customerName === name).forEach(s => moves.push({ date: s.date, statement: `مبيعات فاتورة #${s.invoiceNumber}`, debit: s.totalAmount, credit: 0, source: 'المبيعات' }));
-       salesReturns.filter(r => r.customerName === name).forEach(r => moves.push({ date: r.date, statement: `مرتجع مبيعات #${r.invoiceNumber}`, debit: 0, credit: r.totalReturnAmount, source: 'المرتجع' }));
-       purchases.filter(p => p.supplierName === name).forEach(p => moves.push({ date: p.date, statement: `مشتريات فاتورة #${p.invoiceNumber}`, debit: 0, credit: p.totalAmount, source: 'المشتريات' }));
-       purchaseReturns.filter(r => r.supplierName === name).forEach(r => moves.push({ date: r.date, statement: `مرتجع مشتريات #${r.invoiceNumber}`, debit: r.totalReturnAmount, credit: 0, source: 'المرتجع' }));
+       sales.filter(s => s.customerName === name).forEach(s => moves.push({ 
+          date: s.date, statement: `سحب بضاعة (إجمالي) فاتورة #${s.invoiceNumber}`, 
+          debit: s.items.reduce((sum, it) => sum + it.total, 0), credit: 0, source: 'فاتورة مبيعات',
+          party: name, counterAccount: 'المبيعات',
+          amountBefore: s.items.reduce((sum, it) => sum + it.total, 0), discount: s.discountAmount, netAmount: s.totalAmount
+       }));
+       salesReturns.filter(r => r.customerName === name).forEach(r => moves.push({ 
+          date: r.date, statement: `مرتجع مبيعات #${r.invoiceNumber}`, 
+          debit: 0, credit: r.totalReturnAmount, source: 'سند مرتجع',
+          party: name, counterAccount: 'مرتجع مبيعات'
+       }));
+       purchases.filter(p => p.supplierName === name).forEach(p => moves.push({ 
+          date: p.date, statement: `توريد بضاعة (إجمالي) فاتورة #${p.invoiceNumber}`, 
+          debit: 0, credit: (p.items.reduce((sum, it) => sum + it.total, 0) + (p.transportExpenses || 0)), source: 'فاتورة مشتريات',
+          party: name, counterAccount: 'المشتريات',
+          amountBefore: p.items.reduce((sum, it) => sum + it.total, 0), transport: p.transportExpenses, discount: p.discountAmount, netAmount: p.totalAmount
+       }));
+       purchaseReturns.filter(r => r.supplierName === name).forEach(r => moves.push({ 
+          date: r.date, statement: `مرتجع مشتريات #${r.invoiceNumber}`, 
+          debit: r.totalReturnAmount, credit: 0, source: 'سند مرتجع',
+          party: name, counterAccount: 'مرتجع مشتريات'
+       }));
     }
 
     return moves.sort((a, b) => a.date.localeCompare(b.date));
@@ -274,21 +305,12 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const newNode = { ...formData, id: modalMode === 'EDIT' ? selectedAccount!.id : crypto.randomUUID() } as AccountNode;
     const updated = modalMode === 'EDIT' ? accounts.map(a => a.id === selectedAccount!.id ? newNode : a) : [...accounts, newNode];
     
-    // مزامنة الجهات تلقائياً عند الإضافة من الدليل
+    // المزامنة التلقائية مع سجل الجهات (زبائن وموردين)
     if (modalMode === 'ADD' && (newNode.parentId === '121' || newNode.parentId === '221')) {
       const savedParties = localStorage.getItem('sheno_parties');
       let currentParties: Party[] = savedParties ? JSON.parse(savedParties) : [];
       if (!currentParties.some(p => p.name === newNode.name)) {
-        const newParty: Party = {
-          id: newNode.id,
-          code: newNode.code,
-          name: newNode.name,
-          phone: '',
-          address: '',
-          type: newNode.parentId === '121' ? PartyType.CUSTOMER : PartyType.SUPPLIER,
-          openingBalance: 0
-        };
-        currentParties.push(newParty);
+        currentParties.push({ id: newNode.id, code: newNode.code, name: newNode.name, phone: '', address: '', type: newNode.parentId === '121' ? PartyType.CUSTOMER : PartyType.SUPPLIER, openingBalance: 0 });
         localStorage.setItem('sheno_parties', JSON.stringify(currentParties));
       }
     }
@@ -325,9 +347,9 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
               <div className="flex items-center gap-6">
                  <span className={`font-mono text-sm font-black min-w-[100px] text-left ${bal >= 0 ? 'text-emerald-600' : 'text-rose-600 animate-pulse'}`}>{bal !== 0 ? Math.abs(bal).toLocaleString() : '-'}</span>
                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 no-print transition-all">
-                    <button onClick={(e) => { e.stopPropagation(); setFormData({ ...formData, parentId: node.id, type: 'ACCOUNT' }); setModalMode('ADD'); setIsModalOpen(true); }} className="p-1.5 bg-white dark:bg-zinc-700 rounded-lg text-zinc-400 hover:text-primary shadow-sm" title="إضافة فرعي"><Plus className="w-4 h-4"/></button>
-                    <button onClick={(e) => { e.stopPropagation(); setFormData(node); setModalMode('EDIT'); setIsModalOpen(true); }} className="p-1.5 bg-white dark:bg-zinc-700 rounded-lg text-zinc-400 hover:text-amber-500 shadow-sm" title="تعديل"><Edit2 className="w-4 h-4"/></button>
-                    <button onClick={(e) => { e.stopPropagation(); if(!['1','2','3','4','5','6','7'].includes(node.code)) { const ids = new Set([node.id]); const f = (pid:string)=>{accounts.filter(a=>a.parentId===pid).forEach(c=>{ids.add(c.id); f(c.id);});}; f(node.id); setAccounts(accounts.filter(a=>!ids.has(a.id))); localStorage.setItem('sheno_chart_accounts', JSON.stringify(accounts.filter(a=>!ids.has(a.id)))); setSelectedAccount(null); } else alert('حساب جذري'); }} className="p-1.5 bg-white dark:bg-zinc-700 rounded-lg text-zinc-400 hover:text-rose-500 shadow-sm" title="حذف"><Trash2 className="w-4 h-4"/></button>
+                    <button onClick={(e) => { e.stopPropagation(); setFormData({ ...formData, parentId: node.id, type: 'ACCOUNT' }); setModalMode('ADD'); setIsModalOpen(true); }} className="p-1.5 bg-white dark:bg-zinc-700 rounded-lg text-zinc-400 hover:text-primary shadow-sm"><Plus className="w-4 h-4"/></button>
+                    <button onClick={(e) => { e.stopPropagation(); setFormData(node); setModalMode('EDIT'); setIsModalOpen(true); }} className="p-1.5 bg-white dark:bg-zinc-700 rounded-lg text-zinc-400 hover:text-amber-500 shadow-sm"><Edit2 className="w-4 h-4"/></button>
+                    <button onClick={(e) => { e.stopPropagation(); if(!['1','2','3','4','5','6','7'].includes(node.code)) { const ids = new Set([node.id]); const f = (pid:string)=>{accounts.filter(a=>a.parentId===pid).forEach(c=>{ids.add(c.id); f(c.id);});}; f(node.id); setAccounts(accounts.filter(a=>!ids.has(a.id))); localStorage.setItem('sheno_chart_accounts', JSON.stringify(accounts.filter(a=>!ids.has(a.id)))); setSelectedAccount(null); } else alert('حساب جذري لا يمكن حذفه'); }} className="p-1.5 bg-white dark:bg-zinc-700 rounded-lg text-zinc-400 hover:text-rose-500 shadow-sm"><Trash2 className="w-4 h-4"/></button>
                  </div>
               </div>
             </div>
@@ -400,11 +422,11 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                        </thead>
                        <tbody className="divide-y dark:divide-zinc-800 font-bold text-zinc-700 dark:text-zinc-300">
                           {accountMoves.length === 0 ? (
-                            <tr><td colSpan={5} className="p-32 text-center italic text-zinc-400 font-black text-2xl uppercase tracking-tighter">لا توجد حركات مسجلة مباشرة لهذا الحساب</td></tr>
+                            <tr><td colSpan={5} className="p-32 text-center italic text-zinc-400 font-black text-2xl uppercase tracking-tighter">لا توجد حركات مسجلة حالياً لهذا الحساب</td></tr>
                           ) : accountMoves.map((m, i) => (
-                             <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 h-16 transition-colors">
+                             <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 h-16 transition-colors cursor-pointer group" onClick={() => setSelectedMovement(m)}>
                                 <td className="p-5 font-mono text-zinc-400 border-l dark:border-zinc-800">{m.date}</td>
-                                <td className="p-5 text-readable border-l dark:border-zinc-800">{m.statement}</td>
+                                <td className="p-5 text-readable border-l dark:border-zinc-800 group-hover:text-primary">{m.statement}</td>
                                 <td className="p-5 text-center font-mono text-emerald-600 border-l dark:border-zinc-800 text-xl">{m.debit > 0 ? m.debit.toLocaleString() : '-'}</td>
                                 <td className="p-5 text-center font-mono text-rose-600 border-l dark:border-zinc-800 text-xl">{m.credit > 0 ? m.credit.toLocaleString() : '-'}</td>
                                 <td className="p-5 text-center text-[10px] text-zinc-400 font-black uppercase tracking-widest">{m.source}</td>
@@ -429,7 +451,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
            <div className="bg-white dark:bg-zinc-900 w-full max-w-xl rounded-[3rem] border border-zinc-200 shadow-2xl p-10 animate-in zoom-in-95">
               <div className="flex items-center justify-between mb-8 border-b dark:border-zinc-800 pb-6">
                  <h3 className="text-3xl font-black text-readable tracking-tight">{modalMode === 'EDIT' ? 'تعديل الحساب' : 'إضافة حساب جديد'}</h3>
-                 <button onClick={() => setIsModalOpen(false)} className="p-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-2xl transition-all"><X className="w-8 h-8 text-zinc-400" /></button>
+                 <button onClick={() => setIsModalOpen(false)} className="p-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all"><X className="w-8 h-8 text-zinc-400" /></button>
               </div>
               <div className="space-y-6">
                  <div className="grid grid-cols-2 gap-5">
@@ -458,6 +480,87 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                     </select>
                  </div>
                  <button onClick={handleSaveNode} className="w-full bg-primary text-white py-6 rounded-[2rem] font-black shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all text-2xl mt-8 flex items-center justify-center gap-4"><Save className="w-8 h-8"/> حفظ وتثبيت البيانات</button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* نافذة تفاصيل الحركة المحددة المطورة (Modal) */}
+      {selectedMovement && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[400] flex items-center justify-center p-4 overflow-y-auto">
+           <div className="bg-white dark:bg-zinc-900 w-full max-w-3xl rounded-[3rem] border-2 border-primary/20 shadow-2xl overflow-hidden animate-in zoom-in-95 my-8">
+              <div className="bg-zinc-900 p-8 text-white flex justify-between items-center relative overflow-hidden">
+                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-3xl rounded-full"></div>
+                 <div className="flex items-center gap-5 relative z-10">
+                    <div className="p-4 bg-primary rounded-3xl shadow-xl"><Info className="w-8 h-8"/></div>
+                    <div>
+                       <h3 className="text-3xl font-black tracking-tight">تفاصيل السند المالي</h3>
+                       <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em]">SECURED TRANSACTION ANALYSIS</span>
+                    </div>
+                 </div>
+                 <button onClick={() => setSelectedMovement(null)} className="p-3 hover:bg-white/10 rounded-full transition-all relative z-10"><X className="w-8 h-8 text-zinc-400" /></button>
+              </div>
+
+              <div className="p-10 space-y-10">
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="space-y-1">
+                       <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block border-r-2 border-primary pr-3">تاريخ العملية</span>
+                       <div className="text-2xl font-mono font-black text-readable mr-3">{selectedMovement.date}</div>
+                    </div>
+                    <div className="space-y-1">
+                       <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block border-r-2 border-zinc-200 pr-3">نوع السند</span>
+                       <div className="text-xl font-black text-readable mr-3">{selectedMovement.source}</div>
+                    </div>
+                    <div className="space-y-1">
+                       <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block border-r-2 border-zinc-200 pr-3">الحساب المقابل</span>
+                       <div className="text-xl font-black text-primary mr-3">{selectedMovement.counterAccount || '---'}</div>
+                    </div>
+                 </div>
+
+                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800">
+                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-2">البيان الرسمي للعملية</span>
+                    <div className="text-2xl font-black text-readable leading-relaxed italic">"{selectedMovement.statement}"</div>
+                 </div>
+
+                 {/* تحليل المبالغ والخصومات */}
+                 <div className="space-y-4">
+                    <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                       <Calculator className="w-4 h-4" /> تحليل المبالغ المالية
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                       <div className="bg-zinc-100 dark:bg-zinc-800 p-6 rounded-3xl flex flex-col items-center">
+                          <span className="text-[9px] font-black text-zinc-500 uppercase mb-2">المبلغ قبل الخصم</span>
+                          <span className="text-2xl font-mono font-black text-zinc-600">{(selectedMovement.amountBefore || (selectedMovement.debit + selectedMovement.credit)).toLocaleString()}</span>
+                       </div>
+                       <div className="bg-rose-50 dark:bg-rose-900/10 p-6 rounded-3xl flex flex-col items-center border border-rose-100 dark:border-rose-900/30">
+                          <span className="text-[9px] font-black text-rose-500 uppercase mb-2">قيمة الخصم / الحسم</span>
+                          <span className="text-2xl font-mono font-black text-rose-600">{(selectedMovement.discount || 0).toLocaleString()}</span>
+                       </div>
+                       <div className="bg-emerald-50 dark:bg-emerald-900/10 p-6 rounded-3xl flex flex-col items-center border border-emerald-100 dark:border-emerald-900/30">
+                          <span className="text-[9px] font-black text-emerald-500 uppercase mb-2">المبلغ الصافي</span>
+                          <span className="text-3xl font-mono font-black text-emerald-700">{(selectedMovement.netAmount || (selectedMovement.debit + selectedMovement.credit)).toLocaleString()}</span>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-8 pt-4 border-t dark:border-zinc-800">
+                    <div className="flex items-center gap-4">
+                       <div className="p-3 bg-emerald-500 text-white rounded-2xl shadow-lg"><ArrowUpRight className="w-6 h-6"/></div>
+                       <div>
+                          <span className="text-[9px] font-black text-zinc-400 uppercase">الجانب المدين (+)</span>
+                          <div className="text-2xl font-mono font-black text-emerald-600">{selectedMovement.debit.toLocaleString()}</div>
+                       </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                       <div className="p-3 bg-rose-500 text-white rounded-2xl shadow-lg"><ArrowDownLeft className="w-6 h-6"/></div>
+                       <div>
+                          <span className="text-[9px] font-black text-zinc-400 uppercase">الجانب الدائن (-)</span>
+                          <div className="text-2xl font-mono font-black text-rose-600">{selectedMovement.credit.toLocaleString()}</div>
+                       </div>
+                    </div>
+                 </div>
+
+                 <button onClick={() => setSelectedMovement(null)} className="w-full bg-zinc-900 text-white py-6 rounded-[2rem] font-black text-xl shadow-2xl hover:brightness-110 active:scale-95 transition-all mt-4">إغلاق النافذة</button>
               </div>
            </div>
         </div>
