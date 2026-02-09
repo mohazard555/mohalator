@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, Box, Clock, FileDown, User, Hash, HardDrive, ScrollText, Image as ImageIcon, CreditCard, Coins, Upload, Search, Filter, Calendar, Package, ChevronDown, Check, Landmark, Percent } from 'lucide-react';
 import { SalesInvoice, InvoiceItem, StockEntry, Party, PartyType, InventoryItem, CashEntry, AppSettings } from '../types';
@@ -28,6 +29,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
   const [materialSearch, setMaterialSearch] = useState('');
   const [showMaterialResults, setShowMaterialResults] = useState(false);
 
+  // حالات تتبع تعديل البنود
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [editingMaterialIndex, setEditingMaterialIndex] = useState<number | null>(null);
 
@@ -154,6 +156,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     });
     setEditingItemIndex(idx);
     
+    // التمرير لمنطقة الإضافة بسلاسة
     const inputArea = document.getElementById('item-input-area');
     if (inputArea) {
       inputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -220,11 +223,9 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     const currencyName = selectedCurrencyType === 'primary' ? (settings?.currency || 'ليرة سورية') : (settings?.secondaryCurrency || 'دولار');
     const currencySymbol = selectedCurrencyType === 'primary' ? (settings?.currencySymbol || 'ل.س') : (settings?.secondaryCurrencySymbol || '$');
 
-    const invoiceId = editingId || crypto.randomUUID();
-
     const invoice: SalesInvoice = {
       ...newInvoice as SalesInvoice,
-      id: invoiceId,
+      id: editingId || crypto.randomUUID(),
       invoiceNumber: invNum,
       time: editingId ? (newInvoice.time || time) : time,
       totalAmount: finalTotal,
@@ -232,10 +233,11 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
       totalAmountLiteral: tafqeet(finalTotal, currencyName)
     };
 
-    // 1. تنظيف وتحديث حركات المستودع باستخدام المعرف الفريد ID
     const savedStock = localStorage.getItem('sheno_stock_entries');
     let stockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
-    stockEntries = stockEntries.filter(e => e.movementCode !== invoiceId);
+    if (editingId) {
+      stockEntries = stockEntries.filter(e => e.invoiceNumber !== invoice.invoiceNumber);
+    }
 
     const usedStockMoves: StockEntry[] = (invoice.usedMaterials || []).map(m => ({
       id: crypto.randomUUID(),
@@ -252,16 +254,16 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
       invoiceNumber: invoice.invoiceNumber,
       partyName: invoice.customerName,
       statement: `مواد مستخدمة في الفاتورة رقم ${invoice.invoiceNumber}`,
-      notes: invoice.notes,
-      movementCode: invoiceId // الربط بالمعرف
+      notes: invoice.notes
     }));
 
     localStorage.setItem('sheno_stock_entries', JSON.stringify([...usedStockMoves, ...stockEntries]));
 
-    // 2. تنظيف وتحديث حركات اليومية باستخدام المعرف الفريد ID
     const savedCash = localStorage.getItem('sheno_cash_journal');
     let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
-    cashEntries = cashEntries.filter(e => e.voucherNumber !== invoiceId);
+    if (editingId) {
+      cashEntries = cashEntries.filter(e => !e.statement.includes(`فاتورة مبيعات رقم ${invoice.invoiceNumber}`));
+    }
 
     const isPrimary = selectedCurrencyType === 'primary';
     
@@ -277,8 +279,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
         paidUSD: 0,
         notes: `الزبون: ${invoice.customerName}`,
         partyName: invoice.customerName,
-        type: 'بيع',
-        voucherNumber: invoiceId // الربط بالمعرف
+        type: 'بيع'
       });
     }
 
@@ -293,8 +294,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
         paidUSD: !isPrimary ? discount : 0,
         notes: `حسم للزبون: ${invoice.customerName}`,
         partyName: invoice.customerName,
-        type: 'حسم',
-        voucherNumber: invoiceId // الربط بالمعرف
+        type: 'حسم'
       });
     }
 
@@ -319,19 +319,22 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
 
   const handleDelete = (id: string) => {
     if (window.confirm('حذف الفاتورة نهائياً؟')) {
+      const invToDelete = invoices.find(i => i.id === id);
       const updated = invoices.filter(i => i.id !== id);
       setInvoices(updated);
       localStorage.setItem('sheno_sales_invoices', JSON.stringify(updated));
       
-      const savedStock = localStorage.getItem('sheno_stock_entries');
-      if (savedStock) {
-          const stock = JSON.parse(savedStock).filter((e: StockEntry) => e.movementCode !== id);
-          localStorage.setItem('sheno_stock_entries', JSON.stringify(stock));
-      }
-      const savedCash = localStorage.getItem('sheno_cash_journal');
-      if (savedCash) {
-          const cash = JSON.parse(savedCash).filter((e: CashEntry) => e.voucherNumber !== id);
-          localStorage.setItem('sheno_cash_journal', JSON.stringify(cash));
+      if (invToDelete) {
+        const savedStock = localStorage.getItem('sheno_stock_entries');
+        if (savedStock) {
+           const stock = JSON.parse(savedStock).filter((e: StockEntry) => e.invoiceNumber !== invToDelete.invoiceNumber);
+           localStorage.setItem('sheno_stock_entries', JSON.stringify(stock));
+        }
+        const savedCash = localStorage.getItem('sheno_cash_journal');
+        if (savedCash) {
+           const cash = JSON.parse(savedCash).filter((e: CashEntry) => !e.statement.includes(`رقم ${invToDelete.invoiceNumber}`));
+           localStorage.setItem('sheno_cash_journal', JSON.stringify(cash));
+        }
       }
       loadData();
     }

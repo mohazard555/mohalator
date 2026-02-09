@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowRight, Plus, Trash2, Save, X, Search, 
@@ -91,9 +92,6 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
 
     const savedJou = localStorage.getItem('sheno_cash_journal');
     let jou: CashEntry[] = savedJou ? JSON.parse(savedJou) : [];
-
-    // تنظيف القيود القديمة التي تحمل نفس رقم السند ونوع "قيد"
-    jou = jou.filter(j => !(j.voucherNumber === voucherNumber && j.type === 'قيد'));
 
     const newJournalEntries: CashEntry[] = validRows.map(r => ({
         id: crypto.randomUUID(),

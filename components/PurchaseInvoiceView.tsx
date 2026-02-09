@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Plus, Trash2, Edit2, Save, X, ShoppingBag, Truck, ScrollText, Calendar, Hash, Box, Printer, FileDown, Coins, CreditCard, Search, MessageSquare, Tag, Percent, Check, Landmark } from 'lucide-react';
 import { PurchaseInvoice, InvoiceItem, StockEntry, Party, PartyType, CashEntry, AppSettings, InventoryItem } from '../types';
@@ -145,11 +146,11 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
       
       const stock = localStorage.getItem('sheno_stock_entries');
       if (stock) {
-        localStorage.setItem('sheno_stock_entries', JSON.stringify(JSON.parse(stock).filter((e:StockEntry) => e.movementCode !== id)));
+        localStorage.setItem('sheno_stock_entries', JSON.stringify(JSON.parse(stock).filter((e:StockEntry) => e.invoiceNumber !== invNum)));
       }
       const cash = localStorage.getItem('sheno_cash_journal');
       if (cash) {
-        localStorage.setItem('sheno_cash_journal', JSON.stringify(JSON.parse(cash).filter((e:CashEntry) => e.voucherNumber !== id)));
+        localStorage.setItem('sheno_cash_journal', JSON.stringify(JSON.parse(cash).filter((e:CashEntry) => !e.statement.includes(`رقم ${invNum}`))));
       }
     }
   };
@@ -168,11 +169,9 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
     const time = new Date().toLocaleTimeString('ar-SA');
     const currencySymbol = selectedCurrencyType === 'primary' ? (settings?.currencySymbol || 'ل.س') : (settings?.secondaryCurrencySymbol || '$');
     
-    const invoiceId = editingId || crypto.randomUUID();
-
     const invoice: PurchaseInvoice = {
       ...newInvoice as PurchaseInvoice,
-      id: invoiceId,
+      id: editingId || crypto.randomUUID(),
       time: editingId ? (newInvoice.time || time) : time,
       totalAmount: finalTotal,
       currencySymbol: currencySymbol,
@@ -180,11 +179,19 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
       discountAmount: discount
     };
 
-    // 1. تنظيف الحركات السابقة المرتبطة بالـ ID
+    if (editingId) {
+      const stock = localStorage.getItem('sheno_stock_entries');
+      if (stock) localStorage.setItem('sheno_stock_entries', JSON.stringify(JSON.parse(stock).filter((e:StockEntry) => e.invoiceNumber !== invoice.invoiceNumber)));
+      const cash = localStorage.getItem('sheno_cash_journal');
+      if (cash) localStorage.setItem('sheno_cash_journal', JSON.stringify(JSON.parse(cash).filter((e:CashEntry) => !e.statement.includes(`رقم ${invoice.invoiceNumber}`))));
+    }
+
+    const updated = editingId ? purchases.map(p => p.id === editingId ? invoice : p) : [invoice, ...purchases];
+    setPurchases(updated);
+    localStorage.setItem('sheno_purchases', JSON.stringify(updated));
+
     const savedStock = localStorage.getItem('sheno_stock_entries');
     let stockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
-    stockEntries = stockEntries.filter(e => e.movementCode !== invoiceId);
-
     const stockMoves: StockEntry[] = invoice.items.map(i => ({
       id: crypto.randomUUID(), date: invoice.date,
       day: new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(new Date(invoice.date)),
@@ -192,16 +199,12 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
       unit: i.unit, price: i.price, warehouse: 'المستودع الرئيسي',
       movementType: 'إدخال', quantity: i.quantity, invoiceNumber: invoice.invoiceNumber,
       statement: `شراء من المورد: ${invoice.supplierName}`,
-      notes: i.notes,
-      movementCode: invoiceId
+      notes: i.notes
     }));
     localStorage.setItem('sheno_stock_entries', JSON.stringify([...stockMoves, ...stockEntries]));
 
-    // 2. تنظيف اليومية بالـ ID
     const savedCash = localStorage.getItem('sheno_cash_journal');
     let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
-    cashEntries = cashEntries.filter(e => e.voucherNumber !== invoiceId);
-
     const isPrimary = selectedCurrencyType === 'primary';
 
     if (invoice.paidAmount > 0) {
@@ -215,8 +218,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
         paidUSD: !isPrimary ? invoice.paidAmount : 0,
         notes: invoice.notes, 
         partyName: invoice.supplierName,
-        type: 'شراء',
-        voucherNumber: invoiceId
+        type: 'شراء'
       });
     }
 
@@ -228,17 +230,11 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
         paidSYP: isPrimary ? transport : 0,
         receivedUSD: 0,
         paidUSD: !isPrimary ? transport : 0,
-        notes: 'مصاريف نقل بضاعة', 
-        type: 'دفع',
-        voucherNumber: invoiceId
+        notes: 'مصاريف نقل بضاعة', type: 'دفع'
       });
     }
 
     localStorage.setItem('sheno_cash_journal', JSON.stringify(cashEntries));
-
-    const updated = editingId ? purchases.map(p => p.id === editingId ? invoice : p) : [invoice, ...purchases];
-    setPurchases(updated);
-    localStorage.setItem('sheno_purchases', JSON.stringify(updated));
 
     setIsAdding(false);
     setEditingId(null);
