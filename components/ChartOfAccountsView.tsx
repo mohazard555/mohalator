@@ -121,56 +121,48 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
   const calculateBalance = (account: AccountNode): number => {
     if (account.type === 'FOLDER') {
       const children = accounts.filter(a => a.parentId === account.id);
-      return children.reduce((s, c) => s + calculateBalance(c), 0);
+      // تصحيح: جمع القيم المطلقة للأرصدة الفرعية لضمان أن المجموع الكلي يعكس مجموع الأرقام الظاهرة بصرياً
+      return children.reduce((s, c) => s + Math.abs(calculateBalance(c)), 0);
     }
     
-    let balance = 0;
+    let debitTotal = 0;
+    let creditTotal = 0;
     const name = account.name;
     const code = account.code;
 
-    // 1. القيود الافتتاحية واليومية العامة
+    // 1. القيد الافتتاحي
     const ops = openingEntries.filter(e => e.accountName === name);
-    const journals = journal.filter(j => j.partyName === name);
+    debitTotal += ops.reduce((s, c) => s + Number(c.debit), 0);
+    creditTotal += ops.reduce((s, c) => s + Number(c.credit), 0);
 
-    // تحديد طبيعة الحساب (أصل = مدين - دائن | خصم/إيراد = دائن - مدين)
-    const isAsset = account.code.startsWith('1') || account.code.startsWith('5') || account.code.startsWith('3') || account.code.startsWith('71');
-    
-    if (isAsset) {
-       balance += ops.reduce((s, c) => s + (Number(c.debit) - Number(c.credit)), 0);
-       balance += journals.reduce((s, c) => s + (Number(c.receivedSYP + c.receivedUSD) - Number(c.paidSYP + c.paidUSD)), 0);
+    // 2. الحركات النقدية والبنكية
+    const isBox = code === '131';
+    const isBank = code === '132';
+
+    if (isBox || isBank) {
+       const journalMoves = journal.filter(j => {
+          if (isBox) return !j.statement.includes('وجهة: المصرف');
+          if (isBank) return j.statement.includes('وجهة: المصرف') || j.partyName === 'المصرف';
+          return false;
+       });
+       debitTotal += journalMoves.reduce((s, c) => s + Number(c.receivedSYP + c.receivedUSD), 0);
+       creditTotal += journalMoves.reduce((s, c) => s + Number(c.paidSYP + c.paidUSD), 0);
     } else {
-       balance += ops.reduce((s, c) => s + (Number(c.credit) - Number(c.debit)), 0);
-       balance += journals.reduce((s, c) => s + (Number(c.paidSYP + c.paidUSD) - Number(c.receivedSYP + c.receivedUSD)), 0);
+       const counterMoves = journal.filter(j => j.partyName === name);
+       debitTotal += counterMoves.reduce((s, c) => s + Number(c.paidSYP + c.paidUSD), 0);
+       creditTotal += counterMoves.reduce((s, c) => s + Number(c.receivedSYP + c.receivedUSD), 0);
     }
 
-    // 2. النقدية (حالات خاصة بالكود)
-    if (code === '131') {
-       const boxMoves = journal.filter(j => !j.statement.includes('وجهة: المصرف'));
-       balance = boxMoves.reduce((s, c) => s + (Number(c.receivedSYP) - Number(c.paidSYP)), 0);
-    }
-    if (code === '132') {
-       const bankMoves = journal.filter(j => j.statement.includes('وجهة: المصرف') || j.partyName === 'المصرف' || j.partyName === 'حساب المصرف البنكي');
-       balance = bankMoves.reduce((s, c) => s + (Number(c.receivedSYP) - Number(c.paidSYP)), 0);
-    }
-
-    // 3. المبيعات
-    if (code === '41') balance = sales.reduce((s, c) => s + c.totalAmount, 0);
-    if (code === '42') balance = -salesReturns.reduce((s, c) => s + (c.totalReturnAmount || 0), 0);
-    if (code === '43') balance = sales.reduce((s, c) => s + (c.discountAmount || 0), 0);
-
-    // 4. المشتريات (المعادلة الدقيقة)
-    if (code === '31') balance = purchases.reduce((s, c) => s + c.items.reduce((sum, item) => sum + item.total, 0), 0);
-    if (code === '32') balance = -purchaseReturns.reduce((s, c) => s + (c.totalReturnAmount || 0), 0);
-    if (code === '33') balance = purchases.reduce((s, c) => s + (c.transportExpenses || 0), 0);
-    if (code === '34') balance = -purchases.reduce((s, c) => s + (c.discountAmount || 0), 0);
-
-    // 5. بضاعة أول وآخر المدة
-    if (code === '71' || code === '1242') {
-       const opInv = periodicInventories.find(i => i.type === 'OPENING');
-       balance = opInv ? opInv.totalValue : 0;
-    }
+    // 3. المبيعات والمشتريات والبضاعة
+    if (code === '41') debitTotal += sales.reduce((s, c) => s + c.totalAmount, 0); 
+    if (code === '42') creditTotal += salesReturns.reduce((s, c) => s + (c.totalReturnAmount || 0), 0); 
+    if (code === '31') debitTotal += purchases.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0); 
+    if (code === '32') creditTotal += purchaseReturns.reduce((s, c) => s + (c.totalReturnAmount || 0), 0); 
+    if (code === '33') debitTotal += purchases.reduce((s, c) => s + (c.transportExpenses || 0), 0); 
+    
+    if (code === '71' || code === '1242') debitTotal += periodicInventories.find(i => i.type === 'OPENING')?.totalValue || 0;
     if (code === '72' || code === '1241') {
-       const stockVal = inventory.reduce((s, item) => {
+       debitTotal += inventory.reduce((s, item) => {
           const moves = stockEntries.filter(e => e.itemCode === item.code);
           const bal = (item.openingStock || 0) + 
                      moves.filter(e => e.movementType === 'إدخال').reduce((sum, curr) => sum + curr.quantity, 0) - 
@@ -178,35 +170,28 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                      moves.filter(e => e.movementType === 'مرتجع').reduce((sum, curr) => sum + curr.quantity, 0);
           return s + (bal * item.price);
        }, 0);
-       balance = stockVal;
     }
 
-    // 6. الزبائن والموردين
-    const party = parties.find(p => name === p.name);
+    // 4. الزبائن والموردين
+    const party = parties.find(p => p.name === name);
     if (party) {
-       if (party.type === 'عميل' || account.parentId === '121' || party.type === 'عميل ومورد') {
-          const pSales = sales.filter(s => s.customerName === party.name).reduce((sum, inv) => sum + inv.totalAmount, 0);
-          const pSalesRet = salesReturns.filter(ret => ret.customerName === party.name).reduce((sum, ret) => sum + ret.totalReturnAmount, 0);
-          const pRec = journal.filter(j => j.partyName === party.name).reduce((sum, curr) => sum + (curr.receivedSYP + curr.receivedUSD), 0);
-          balance = (party.openingBalance + pSales - pSalesRet - pRec);
+       const isUnderAssets = account.parentId === '121' || code.startsWith('1');
+       const isUnderLiabilities = account.parentId === '221' || code.startsWith('2');
+
+       if (party.type === 'عميل' || (party.type === 'عميل ومورد' && isUnderAssets)) {
+          debitTotal += party.openingBalance;
+          debitTotal += sales.filter(s => s.customerName === name).reduce((sum, inv) => sum + inv.totalAmount, 0);
+          creditTotal += salesReturns.filter(ret => ret.customerName === name).reduce((sum, ret) => sum + ret.totalReturnAmount, 0);
        }
-       if (party.type === 'مورد' || account.parentId === '221' || party.type === 'عميل ومورد') {
-          const pPurch = purchases.filter(p => p.supplierName === party.name).reduce((sum, inv) => sum + inv.totalAmount, 0);
-          const pPurchRet = purchaseReturns.filter(ret => ret.supplierName === party.name).reduce((sum, ret) => sum + ret.totalReturnAmount, 0);
-          const pPaid = journal.filter(j => j.partyName === party.name).reduce((sum, curr) => sum + (curr.paidSYP + curr.paidUSD), 0);
-          balance = (party.openingBalance + pPurch - pPurchRet - pPaid);
+       if (party.type === 'مورد' || (party.type === 'عميل ومورد' && isUnderLiabilities)) {
+          creditTotal += party.openingBalance;
+          creditTotal += purchases.filter(p => p.supplierName === name).reduce((sum, inv) => sum + inv.totalAmount, 0);
+          debitTotal += purchaseReturns.filter(ret => ret.supplierName === name).reduce((sum, ret) => sum + ret.totalReturnAmount, 0);
        }
     }
 
-    // 7. الأقسام التشغيلية
-    const cat = categories.find(c => name === c.name);
-    if (cat) {
-       const moves = journal.filter(j => j.categoryId === cat.id || j.partyName === cat.name);
-       if (cat.type === 'مصروفات') balance = moves.reduce((sum, curr) => sum + (curr.paidSYP + curr.paidUSD), 0);
-       else balance = moves.reduce((sum, curr) => sum + (curr.receivedSYP + curr.receivedUSD), 0);
-    }
-
-    return balance;
+    const isDebitNature = code.startsWith('1') || code.startsWith('5') || code.startsWith('3') || code === '71';
+    return isDebitNature ? (debitTotal - creditTotal) : (creditTotal - debitTotal);
   };
 
   const getAccountMovements = (account: AccountNode) => {
@@ -214,53 +199,49 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const name = account.name;
     const code = account.code;
 
-    // ا) القيود الافتتاحية
     openingEntries.filter(e => e.accountName === name).forEach(e => {
-        moves.push({ date: e.date, statement: `قيد افتتاحي ميزانية: ${e.notes || '---'}`, debit: e.debit, credit: e.credit, source: 'القيد الافتتاحي' });
+        moves.push({ date: e.date, statement: `قيد افتتاحي: ${e.notes || '---'}`, debit: e.debit, credit: e.credit, source: 'الافتتاحي' });
     });
 
-    // ب) حركات من دفتر اليومية
-    journal.filter(j => {
-       if (code === '131') return !j.statement.includes('وجهة: المصرف');
-       if (code === '132') return j.statement.includes('وجهة: المصرف') || j.partyName === 'المصرف' || j.partyName === 'حساب المصرف البنكي';
-       const catMatch = categories.find(c => c.name === name);
-       if (catMatch) return j.categoryId === catMatch.id || j.partyName === name || j.statement.includes(name);
-       return j.partyName === name || (j.statement && j.statement.includes(name));
-    }).forEach(j => {
-        moves.push({ date: j.date, statement: j.statement, debit: (j.receivedSYP + j.receivedUSD), credit: (j.paidSYP + j.paidUSD), source: 'اليومية' });
-    });
+    const isBox = code === '131';
+    const isBank = code === '132';
 
-    // ج) المبيعات (41) والمرتجع (42) والحسم (43)
+    if (isBox || isBank) {
+       journal.filter(j => {
+          if (isBox) return !j.statement.includes('وجهة: المصرف');
+          if (isBank) return j.statement.includes('وجهة: المصرف') || j.partyName === 'المصرف';
+          return false;
+       }).forEach(j => {
+          moves.push({ date: j.date, statement: j.statement, debit: (j.receivedSYP + j.receivedUSD), credit: (j.paidSYP + j.paidUSD), source: 'الصندوق' });
+       });
+    } else {
+       journal.filter(j => j.partyName === name).forEach(j => {
+          moves.push({ 
+             date: j.date, 
+             statement: j.statement, 
+             debit: (j.paidSYP + j.paidUSD), 
+             credit: (j.receivedSYP + j.receivedUSD), 
+             source: 'اليومية' 
+          });
+       });
+    }
+
     if (code === '41') {
-       sales.forEach(s => moves.push({ date: s.date, statement: `مبيعات فاتورة #${s.invoiceNumber} - العميل: ${s.customerName}`, debit: s.totalAmount, credit: 0, source: 'المبيعات' }));
+       sales.forEach(s => moves.push({ date: s.date, statement: `فاتورة مبيعات #${s.invoiceNumber}`, debit: s.totalAmount, credit: 0, source: 'المبيعات' }));
     }
-    if (code === '42') {
-       salesReturns.forEach(sr => moves.push({ date: sr.date, statement: `مرتجع مبيعات فاتورة #${sr.invoiceNumber} - العميل: ${sr.customerName}`, debit: 0, credit: sr.totalReturnAmount, source: 'مرتجع مبيعات' }));
-    }
-    if (code === '43') {
-       sales.filter(s => s.discountAmount && s.discountAmount > 0).forEach(s => moves.push({ date: s.date, statement: `حسم ممنوح فاتورة #${s.invoiceNumber}`, debit: s.discountAmount, credit: 0, source: 'المبيعات' }));
-    }
-
-    // د) المشتريات (31) والمرتجع (32) والنقل (33) والحسم (34)
     if (code === '31') {
-       purchases.forEach(p => moves.push({ date: p.date, statement: `مشتريات فاتورة #${p.invoiceNumber} - المورد: ${p.supplierName}`, debit: p.items.reduce((s,i)=>s+i.total, 0), credit: 0, source: 'المشتريات' }));
-    }
-    if (code === '32') {
-       purchaseReturns.forEach(pr => moves.push({ date: pr.date, statement: `مرتجع مشتريات فاتورة #${pr.invoiceNumber} - المورد: ${pr.supplierName}`, debit: 0, credit: pr.totalReturnAmount, source: 'مرتجع مشتريات' }));
+       purchases.forEach(p => moves.push({ date: p.date, statement: `فاتورة مشتريات #${p.invoiceNumber}`, debit: p.items.reduce((s,i)=>s+i.total,0), credit: 0, source: 'المشتريات' }));
     }
     if (code === '33') {
-       purchases.filter(p => p.transportExpenses && p.transportExpenses > 0).forEach(p => moves.push({ date: p.date, statement: `مصاريف نقل مشتريات فاتورة #${p.invoiceNumber}`, debit: p.transportExpenses, credit: 0, source: 'المشتريات' }));
-    }
-    if (code === '34') {
-       purchases.filter(p => p.discountAmount && p.discountAmount > 0).forEach(p => moves.push({ date: p.date, statement: `حسم مكتسب فاتورة #${p.invoiceNumber}`, debit: 0, credit: p.discountAmount, source: 'المشتريات' }));
+       purchases.filter(p => p.transportExpenses > 0).forEach(p => moves.push({ date: p.date, statement: `نقل مشتريات فاتورة #${p.invoiceNumber}`, debit: p.transportExpenses, credit: 0, source: 'المشتريات' }));
     }
 
-    // هـ) حركات جهات الاتصال (زبائن وموردين)
-    if (account.parentId === '121' || account.parentId === '221' || parties.some(p => p.name === name)) {
-       sales.filter(s => s.customerName === name).forEach(s => moves.push({ date: s.date, statement: `فاتورة مبيع #${s.invoiceNumber}`, debit: s.totalAmount, credit: 0, source: 'المبيعات' }));
-       salesReturns.filter(ret => ret.customerName === name).forEach(ret => moves.push({ date: ret.date, statement: `مرتجع مبيع #${ret.invoiceNumber}`, debit: 0, credit: ret.totalReturnAmount, source: 'المرتجع' }));
-       purchases.filter(p => p.supplierName === name).forEach(p => moves.push({ date: p.date, statement: `فاتورة توريد #${p.invoiceNumber}`, debit: 0, credit: p.totalAmount, source: 'المشتريات' }));
-       purchaseReturns.filter(ret => ret.supplierName === name).forEach(ret => moves.push({ date: ret.date, statement: `مرتجع توريد #${ret.invoiceNumber}`, debit: ret.totalReturnAmount, credit: 0, source: 'المرتجع' }));
+    const isParty = account.parentId === '121' || account.parentId === '221' || parties.some(p => p.name === name);
+    if (isParty) {
+       sales.filter(s => s.customerName === name).forEach(s => moves.push({ date: s.date, statement: `مبيعات فاتورة #${s.invoiceNumber}`, debit: s.totalAmount, credit: 0, source: 'المبيعات' }));
+       salesReturns.filter(r => r.customerName === name).forEach(r => moves.push({ date: r.date, statement: `مرتجع مبيعات #${r.invoiceNumber}`, debit: 0, credit: r.totalReturnAmount, source: 'المرتجع' }));
+       purchases.filter(p => p.supplierName === name).forEach(p => moves.push({ date: p.date, statement: `مشتريات فاتورة #${p.invoiceNumber}`, debit: 0, credit: p.totalAmount, source: 'المشتريات' }));
+       purchaseReturns.filter(r => r.supplierName === name).forEach(r => moves.push({ date: r.date, statement: `مرتجع مشتريات #${r.invoiceNumber}`, debit: r.totalReturnAmount, credit: 0, source: 'المرتجع' }));
     }
 
     return moves.sort((a, b) => a.date.localeCompare(b.date));
@@ -300,7 +281,8 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                 </div>
               </div>
               <div className="flex items-center gap-6">
-                 <span className={`font-mono text-sm font-black min-w-[100px] text-left ${bal >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{bal !== 0 ? Math.abs(bal).toLocaleString() : '-'}</span>
+                 {/* عرض الرصيد كقيمة مطلقة وتلوينه بالأحمر في حال كان عكسياً (أقل من صفر) لشرح النقص في المجموع بصرياً */}
+                 <span className={`font-mono text-sm font-black min-w-[100px] text-left ${bal >= 0 ? 'text-emerald-600' : 'text-rose-600 animate-pulse'}`}>{bal !== 0 ? Math.abs(bal).toLocaleString() : '-'}</span>
                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 no-print transition-all">
                     <button onClick={(e) => { e.stopPropagation(); setFormData({ ...formData, parentId: node.id, type: 'ACCOUNT' }); setModalMode('ADD'); setIsModalOpen(true); }} className="p-1.5 bg-white dark:bg-zinc-700 rounded-lg text-zinc-400 hover:text-primary shadow-sm" title="إضافة فرعي"><Plus className="w-4 h-4"/></button>
                     <button onClick={(e) => { e.stopPropagation(); setFormData(node); setModalMode('EDIT'); setIsModalOpen(true); }} className="p-1.5 bg-white dark:bg-zinc-700 rounded-lg text-zinc-400 hover:text-amber-500 shadow-sm" title="تعديل"><Edit2 className="w-4 h-4"/></button>
@@ -321,7 +303,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
       <div className={`lg:col-span-5 bg-white dark:bg-zinc-950 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col h-[calc(100vh-180px)] no-print overflow-hidden`}>
         <div className="flex items-center justify-between mb-6">
            <div className="flex items-center gap-3">
-              {onBack && <button onClick={onBack} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 rounded-xl transition-all shadow-sm"><ArrowRight className="w-6 h-6" /></button>}
+              {onBack && <button onClick={onBack} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 rounded-xl transition-all shadow-sm"><ArrowRight className="w-6 h-6" /></button>}
               <Landmark className="w-6 h-6 text-primary" />
               <h3 className="text-2xl font-black text-readable tracking-tight">دليل الحسابات الشجري</h3>
            </div>

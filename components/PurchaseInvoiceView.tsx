@@ -164,7 +164,11 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
     const subTotal = (newInvoice.items || []).reduce((s, i) => s + i.total, 0);
     const transport = Number(newInvoice.transportExpenses) || 0;
     const discount = Number(newInvoice.discountAmount) || 0;
-    const finalTotal = subTotal + transport - discount;
+    
+    // القاعدة المحاسبية الجديدة:
+    // إذا كانت الفاتورة آجلة، تُضاف مصاريف النقل لذمة المورد.
+    // إذا كانت نقدية، لا تُضاف لذمة المورد بل تُدفع من الصندوق كمصروف.
+    const finalTotalForSupplier = subTotal - discount + (newInvoice.paymentType === 'آجل' ? transport : 0);
     
     const time = new Date().toLocaleTimeString('ar-SA');
     const currencySymbol = selectedCurrencyType === 'primary' ? (settings?.currencySymbol || 'ل.س') : (settings?.secondaryCurrencySymbol || '$');
@@ -173,7 +177,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
       ...newInvoice as PurchaseInvoice,
       id: editingId || crypto.randomUUID(),
       time: editingId ? (newInvoice.time || time) : time,
-      totalAmount: finalTotal,
+      totalAmount: finalTotalForSupplier, // هذا المبلغ هو ما يظهر في كشف حساب المورد كـ Credit
       currencySymbol: currencySymbol,
       transportExpenses: transport,
       discountAmount: discount
@@ -207,30 +211,34 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
     let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
     const isPrimary = selectedCurrencyType === 'primary';
 
+    // 1. دفعة المورد (تخصم من ذمة المورد)
     if (invoice.paidAmount > 0) {
-      const source = invoice.paymentType === 'نقداً' ? (invoice.cashAccount || 'الصندوق') : 'آجل';
+      const sourceAccount = invoice.paymentType === 'نقداً' ? (invoice.cashAccount || 'الصندوق') : 'آجل';
       cashEntries.unshift({
         id: crypto.randomUUID(), date: invoice.date,
-        statement: `دفعة مقابل فاتورة مشتريات رقم ${invoice.invoiceNumber} - المصدر: ${source}`,
+        statement: `دفعة للمورد مقابل فاتورة مشتريات رقم ${invoice.invoiceNumber} - المصدر: ${sourceAccount}`,
         receivedSYP: 0, 
         paidSYP: isPrimary ? invoice.paidAmount : 0, 
         receivedUSD: 0, 
         paidUSD: !isPrimary ? invoice.paidAmount : 0,
         notes: invoice.notes, 
-        partyName: invoice.supplierName,
+        partyName: invoice.supplierName, // ربط مباشر بالمورد لتظهر كحركة مدينة له
         type: 'شراء'
       });
     }
 
-    if (transport > 0) {
+    // 2. معالجة مصاريف النقل نقدياً (إذا كانت الفاتورة نقداً)
+    if (invoice.paymentType === 'نقداً' && transport > 0) {
       cashEntries.unshift({
         id: crypto.randomUUID(), date: invoice.date,
-        statement: `مصاريف نقل مشتريات للفاتورة رقم ${invoice.invoiceNumber} - المورد: ${invoice.supplierName}`,
-        receivedSYP: 0,
-        paidSYP: isPrimary ? transport : 0,
-        receivedUSD: 0,
+        statement: `مصاريف نقل مشتريات (دفع نقدي) للفاتورة رقم ${invoice.invoiceNumber}`,
+        receivedSYP: 0, 
+        paidSYP: isPrimary ? transport : 0, 
+        receivedUSD: 0, 
         paidUSD: !isPrimary ? transport : 0,
-        notes: 'مصاريف نقل بضاعة', type: 'دفع'
+        notes: 'مصاريف نقل بضاعة مسددة فوراً', 
+        partyName: 'مصاريف نقل المشتريات', // تُسجل على حساب المصروف ولا تظهر في حساب المورد
+        type: 'دفع'
       });
     }
 
@@ -243,6 +251,11 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
   };
 
   const subTotal = (newInvoice.items || []).reduce((s, i) => s + i.total, 0);
+  // FIX: Calculate finalTotalForSupplier in component scope for display in the summary box.
+  const transportVal = Number(newInvoice.transportExpenses) || 0;
+  const discountVal = Number(newInvoice.discountAmount) || 0;
+  const finalTotalForSupplier = subTotal - discountVal + (newInvoice.paymentType === 'آجل' ? transportVal : 0);
+
   const filteredInventory = inventory.filter(i => 
     i.name.toLowerCase().includes(itemSearch.toLowerCase()) || 
     i.code.toLowerCase().includes(itemSearch.toLowerCase())
@@ -529,8 +542,8 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                   </div>
                   <div className="w-px h-12 bg-zinc-800"></div>
                   <div className="flex flex-col">
-                     <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">الصافي النهائي</span>
-                     <span className="text-4xl font-mono font-black text-amber-500">{ (subTotal + (newInvoice.transportExpenses || 0) - (newInvoice.discountAmount || 0)).toLocaleString() }</span>
+                     <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">الصافي النهائي للمورد</span>
+                     <span className="text-4xl font-mono font-black text-amber-500">{ finalTotalForSupplier.toLocaleString() }</span>
                   </div>
                </div>
                <div className="flex justify-end gap-3">
