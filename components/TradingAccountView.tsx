@@ -52,53 +52,70 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
     const filteredPurchases = purchases.filter(p => p.date >= startDate && p.date <= endDate);
     const filteredPurchaseReturns = purchaseReturns.filter(r => r.date >= startDate && r.date <= endDate);
 
-    // 1. المبيعات
-    const grossSales = safeRound(filteredSales.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0));
+    // 1. صافي المبيعات
+    const grossSales = safeRound(filteredSales.reduce((s, c) => s + c.totalAmount, 0));
     const salesReturnsVal = safeRound(filteredSalesReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
     const salesDiscountsVal = safeRound(filteredSales.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
     const netSales = safeRound(grossSales - salesReturnsVal - salesDiscountsVal);
 
-    // 2. المشتريات (صافي المشتريات)
+    // 2. صافي المشتريات خلال الفترة
     const grossPurchases = safeRound(filteredPurchases.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0));
     const purchaseTransport = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.transportExpenses) || 0), 0));
-    const purchaseReturnsVal = safeRound(filteredPurchaseReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
-    const purchaseDiscountsVal = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
-    const netPurchases = safeRound(grossPurchases + purchaseTransport - purchaseReturnsVal - purchaseDiscountsVal);
+    const pReturnsVal = safeRound(filteredPurchaseReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
+    const pDiscountsVal = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
+    const netPurchases = safeRound(grossPurchases + purchaseTransport - pReturnsVal - pDiscountsVal);
 
-    // 3. المخزون
-    const openingStockInv = inventories.filter(i => i.type === 'OPENING' && i.date <= startDate).sort((a,b) => b.date.localeCompare(a.date))[0];
-    const openingStockValue = openingStockInv?.totalValue || 0;
-    const openingStockItems = openingStockInv?.items || [];
+    // 3. حساب المخزون الزمني (بضاعة أول المدة هي الرصيد المتوفر قبل تاريخ البداية)
+    const calculateStockAtDate = (targetDate: string) => {
+      const items = inventoryList.map(item => {
+        const moves = stockEntries.filter(e => e.itemCode === item.code && e.date < targetDate);
+        const added = moves.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
+        const issued = moves.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
+        const returned = moves.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
+        const balance = (item.openingStock || 0) + added - issued + returned;
+        return { name: item.name, quantity: balance, price: item.price, total: balance * item.price };
+      });
+      return { items: items.filter(i => i.quantity !== 0), total: items.reduce((s, i) => s + i.total, 0) };
+    };
 
-    const closingStockItems = inventoryList.map(item => {
-        const moves = stockEntries.filter(e => e.itemCode === item.code && e.date <= endDate);
-        const bal = (item.openingStock || 0) + 
-                   moves.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0) - 
-                   moves.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0) + 
-                   moves.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
-        return { code: item.code, name: item.name, quantity: bal, price: item.price, total: bal * item.price };
-    }).filter(it => it.quantity !== 0);
+    // حساب بضاعة آخر المدة (حتى تاريخ النهاية)
+    const calculateClosingStock = (targetDate: string) => {
+      const items = inventoryList.map(item => {
+        const moves = stockEntries.filter(e => e.itemCode === item.code && e.date <= targetDate);
+        const added = moves.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
+        const issued = moves.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
+        const returned = moves.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
+        const balance = (item.openingStock || 0) + added - issued + returned;
+        return { name: item.name, quantity: balance, price: item.price, total: balance * item.price };
+      });
+      return { items: items.filter(i => i.quantity !== 0), total: items.reduce((s, i) => s + i.total, 0) };
+    };
 
-    const closingStockValue = safeRound(closingStockItems.reduce((sum, it) => sum + it.total, 0));
+    const openingStock = calculateStockAtDate(startDate);
+    const closingStock = calculateClosingStock(endDate);
 
-    // 4. تكلفة البضاعة المباعة والمجمل
+    const openingStockValue = safeRound(openingStock.total);
+    const closingStockValue = safeRound(closingStock.total);
+
+    // 4. تكلفة البضاعة المباعة (COGS)
     const cogs = safeRound(openingStockValue + netPurchases - closingStockValue);
+    
+    // 5. مجمل الربح
     const grossProfit = safeRound(netSales - cogs);
 
-    const purchaseItems = filteredPurchases.flatMap(p => p.items.map(i => ({ ...i, supplier: p.supplierName, invoice: p.invoiceNumber })));
-    const saleItems = filteredSales.flatMap(s => s.items.map(i => ({ ...i, customer: s.customerName, invoice: s.invoiceNumber })));
-
     return { 
-      netSales, netPurchases, grossPurchases, purchaseTransport, purchaseReturnsVal, purchaseDiscountsVal,
-      cogs, grossProfit, openingStockValue, openingStockItems, 
-      closingStockValue, closingStockItems, purchaseItems, saleItems 
+      netSales, netPurchases, grossPurchases, purchaseTransport, purchaseReturnsVal: pReturnsVal, purchaseDiscountsVal: pDiscountsVal,
+      cogs, grossProfit, openingStockValue, openingStockItems: openingStock.items, 
+      closingStockValue, closingStockItems: closingStock.items,
+      purchaseItems: filteredPurchases.flatMap(p => p.items.map(i => ({ ...i, supplier: p.supplierName, invoice: p.invoiceNumber }))),
+      saleItems: filteredSales.flatMap(s => s.items.map(i => ({ ...i, customer: s.customerName, invoice: s.invoiceNumber })))
     };
   };
 
   const fin = calculateFinancials();
+
   const toggleSection = (id: string) => {
     const newSet = new Set(expandedSections);
-    // Fix: replaced undefined variable 'n' with 'newSet'
     if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
     setExpandedSections(newSet);
   };
@@ -132,10 +149,14 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
           <div className="flex flex-col gap-1">
             <span className="text-[10px] text-slate-400 font-black uppercase mr-1">نطاق التقرير الزمني</span>
             <div className="flex items-center gap-3">
-               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-slate-900 border border-slate-700 text-white p-2 rounded-xl text-xs font-mono outline-none" />
+               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-slate-900 border border-slate-700 text-white p-2 rounded-xl text-xs font-mono outline-none focus:border-primary" />
                <span className="text-slate-700 font-black">←</span>
-               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-slate-900 border border-slate-700 text-white p-2 rounded-xl text-xs font-mono outline-none" />
+               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-slate-900 border border-slate-700 text-white p-2 rounded-xl text-xs font-mono outline-none focus:border-primary" />
             </div>
+          </div>
+          <div className="text-left text-xs font-bold text-slate-400">
+             <p>نظام ساملاتور المحاسبي الذكي</p>
+             <p className="text-[9px] uppercase tracking-widest text-slate-500">Trading Ledger Analysis</p>
           </div>
       </div>
 
