@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Folder, FolderPlus, ChevronRight, ChevronDown, 
+  Folder, ChevronRight, ChevronDown, 
   Search, Plus, Trash2, Edit2, X, Landmark, 
-  ArrowLeftRight, Calculator, ImageIcon, FileSpreadsheet, Printer, Save, History, Banknote, ArrowRight
+  ArrowLeftRight, Calculator, ImageIcon, FileSpreadsheet, Printer, Save, History, ArrowRight
 } from 'lucide-react';
 import { AccountNode, CashEntry, OpeningEntry, AppSettings, SalesInvoice, PurchaseInvoice, AccountingCategory, Party, PartyType, InventoryItem, StockEntry, PeriodicInventory } from '../types';
 import { ImageExportService } from '../utils/ImageExportService';
@@ -106,7 +106,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     setAccounts(currentAccounts);
     if (sJou) setJournal(JSON.parse(sJou));
     if (sOp) setOpeningEntries(JSON.parse(sOp));
-    /* Fixed: changed setAllSales to setSales as it was incorrectly using a non-existent state setter */
     if (sSal) setSales(JSON.parse(sSal));
     if (sSalRet) setSalesReturns(JSON.parse(sSalRet));
     if (sPur) setPurchases(JSON.parse(sPur));
