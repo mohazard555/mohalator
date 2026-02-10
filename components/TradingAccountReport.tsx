@@ -93,7 +93,7 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
                      <div className="mt-4 space-y-2 no-print bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
                         <div className="flex justify-between items-center text-[11px] font-bold text-zinc-600 dark:text-zinc-400">
                            <span className="flex items-center gap-2"><Tag className="w-3 h-3"/> إجمالي المشتريات</span>
-                           <span className="font-mono">+{(fin.grossPurchases || 0).toLocaleString()}</span>
+                           <span className="font-mono">+{(fin.grossPurchasesVal || 0).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center text-[11px] font-bold text-primary">
                            <span className="flex items-center gap-2"><Truck className="w-3 h-3"/> مصاريف النقل</span>
@@ -136,6 +136,27 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
                       </span>
                       <span className="font-mono font-black text-lg">{(fin.netSales || 0).toLocaleString()}</span>
                    </div>
+                   
+                   {expandedSections.has('tr_sales') && (
+                     <div className="mt-4 space-y-2 no-print bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                        <div className="flex justify-between items-center text-[11px] font-bold text-zinc-600 dark:text-zinc-400">
+                           <span className="flex items-center gap-2"><Tag className="w-3 h-3"/> إجمالي المبيعات (Gross)</span>
+                           <span className="font-mono">+{(fin.grossSalesVal || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px] font-bold text-rose-600">
+                           <span className="flex items-center gap-2"><RefreshCcw className="w-3 h-3"/> مردودات المبيعات</span>
+                           <span className="font-mono">-{(fin.salesReturnsVal || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px] font-bold text-amber-600">
+                           <span className="flex items-center gap-2"><Percent className="w-3 h-3"/> الخصم الممنوح</span>
+                           <span className="font-mono">-{(fin.salesDiscountsVal || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center text-xs font-black">
+                           <span>الصافي النهائي للمبيعات</span>
+                           <span className="text-lg text-rose-700">{(fin.netSales || 0).toLocaleString()}</span>
+                        </div>
+                     </div>
+                   )}
                    {expandedSections.has('tr_sales') && renderItemsTable(fin.saleItems || [], 'INVOICE')}
                 </div>
 

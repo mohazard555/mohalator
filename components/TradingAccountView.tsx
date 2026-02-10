@@ -5,7 +5,8 @@ import { ImageExportService } from '../utils/ImageExportService';
 import TradingAccountReport from './TradingAccountReport';
 
 interface TradingAccountViewProps {
-  onBack: void;
+  // Fix: Changed onBack from void to () => void to allow function passing from App.tsx and use as onClick handler
+  onBack: () => void;
 }
 
 const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
@@ -47,38 +48,29 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
   const safeRound = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
   const calculateFinancials = () => {
+    // الاعتماد الكلي على التصفية الحالية فقط
     const filteredSales = sales.filter(s => s.date >= startDate && s.date <= endDate);
     const filteredSalesReturns = salesReturns.filter(r => r.date >= startDate && r.date <= endDate);
     const filteredPurchases = purchases.filter(p => p.date >= startDate && p.date <= endDate);
     const filteredPurchaseReturns = purchaseReturns.filter(r => r.date >= startDate && r.date <= endDate);
 
-    // 1. صافي المبيعات: إجمالي - مرتجع - حسم
-    const grossSales = safeRound(filteredSales.reduce((s, c) => s + c.totalAmount, 0));
+    // 1. صافي المبيعات: إجمالي - (مرتجع + حسم ممنوح)
+    const grossSales = safeRound(filteredSales.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0));
     const salesReturnsVal = safeRound(filteredSalesReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
     const salesDiscountsVal = safeRound(filteredSales.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
-    const netSales = safeRound(grossSales - salesReturnsVal - salesDiscountsVal);
+    const netSales = safeRound(grossSales - (salesReturnsVal + salesDiscountsVal));
 
-    // 2. صافي المشتريات المصحح: (إجمالي + نقل) - (مرتجع + حسم مكتسب)
+    // 2. صافي المشتريات: (إجمالي + نقل) - (مرتجع + حسم مكتسب)
     const grossPurchases = safeRound(filteredPurchases.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0));
     const purchaseTransport = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.transportExpenses) || 0), 0));
     const pReturnsVal = safeRound(filteredPurchaseReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
     const pDiscountsVal = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
     
-    // المعادلة الصحيحة المطلوبة
     const netPurchases = safeRound((grossPurchases + purchaseTransport) - (pReturnsVal + pDiscountsVal));
 
-    // 3. حساب المخزون الزمني
-    const calculateStockAtDate = (targetDate: string) => {
-      const items = inventoryList.map(item => {
-        const moves = stockEntries.filter(e => e.itemCode === item.code && e.date < targetDate);
-        const added = moves.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
-        const issued = moves.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
-        const returned = moves.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
-        const balance = (item.openingStock || 0) + added - issued + returned;
-        return { name: item.name, quantity: balance, price: item.price, total: balance * item.price };
-      });
-      return { items: items.filter(i => i.quantity !== 0), total: items.reduce((s, i) => s + i.total, 0) };
-    };
+    // 3. بضاعة أول وآخر المدة
+    const openingStockAtDate = inventories.filter(i => i.type === 'OPENING' && i.date <= startDate).sort((a,b) => b.date.localeCompare(a.date))[0];
+    const openingStockValue = safeRound(openingStockAtDate?.totalValue || 0);
 
     const calculateClosingStock = (targetDate: string) => {
       const items = inventoryList.map(item => {
@@ -92,21 +84,16 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
       return { items: items.filter(i => i.quantity !== 0), total: items.reduce((s, i) => s + i.total, 0) };
     };
 
-    const openingStock = calculateStockAtDate(startDate);
     const closingStock = calculateClosingStock(endDate);
-
-    const openingStockValue = safeRound(openingStock.total);
     const closingStockValue = safeRound(closingStock.total);
 
-    // 4. تكلفة البضاعة المباعة (COGS)
+    // 4. مجمل الربح/الخسارة
     const cogs = safeRound(openingStockValue + netPurchases - closingStockValue);
-    
-    // 5. مجمل الربح
     const grossProfit = safeRound(netSales - cogs);
 
     return { 
       netSales, netPurchases, grossPurchases, purchaseTransport, purchaseReturnsVal: pReturnsVal, purchaseDiscountsVal: pDiscountsVal,
-      cogs, grossProfit, openingStockValue, openingStockItems: openingStock.items, 
+      cogs, grossProfit, openingStockValue, openingStockItems: openingStockAtDate?.items || [], 
       closingStockValue, closingStockItems: closingStock.items,
       purchaseItems: filteredPurchases.flatMap(p => p.items.map(i => ({ ...i, supplier: p.supplierName, invoice: p.invoiceNumber }))),
       saleItems: filteredSales.flatMap(s => s.items.map(i => ({ ...i, customer: s.customerName, invoice: s.invoiceNumber })))

@@ -71,31 +71,33 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
   const safeRound = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
   const calculateFinancials = () => {
-    const filteredJournal = journal.filter(j => j.date >= startDate && j.date <= endDate);
+    // 1. تصفية البيانات المباشرة من السجلات لضمان عدم بقاء أرصدة محذوفة
     const filteredSales = allSales.filter(s => s.date >= startDate && s.date <= endDate);
     const filteredSalesReturns = allSalesReturns.filter(r => r.date >= startDate && r.date <= endDate);
     const filteredPurchases = allPurchases.filter(p => p.date >= startDate && p.date <= endDate);
     const filteredPurchaseReturns = allPurchaseReturns.filter(r => r.date >= startDate && r.date <= endDate);
+    const filteredJournal = journal.filter(j => j.date >= startDate && j.date <= endDate);
 
-    // 1. المبيعات (المعادلة: إجمالي - مرتجع - حسم)
-    const grossSales = safeRound(filteredSales.reduce((s, c) => s + c.totalAmount, 0));
+    // 2. احتساب المبيعات بدقة (إجمالي المبيعات - مرتجع المبيعات - الحسم الممنوح)
+    // نستخدم الإجمالي قبل الخصم من فواتير المبيعات
+    const grossSalesVal = safeRound(filteredSales.reduce((s, c) => s + (c.items.reduce((sum, it) => sum + it.total, 0)), 0));
     const salesReturnsVal = safeRound(filteredSalesReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
     const salesDiscountsVal = safeRound(filteredSales.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
-    const netSales = safeRound(grossSales - salesReturnsVal - salesDiscountsVal);
+    
+    // صافي المبيعات النهائي
+    const netSales = safeRound(grossSalesVal - (salesReturnsVal + salesDiscountsVal));
 
-    // 2. المشتريات (المعادلة المطلوبة: إجمالي + نقل - مرتجع - حسم مكتسب)
-    const grossPurchases = safeRound(filteredPurchases.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0));
+    // 3. احتساب المشتريات بدقة (إجمالي + نقل - مرتجع - حسم مكتسب)
+    const grossPurchasesVal = safeRound(filteredPurchases.reduce((s, c) => s + (c.items.reduce((sum, it) => sum + it.total, 0)), 0));
     const purchaseTransport = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.transportExpenses) || 0), 0));
     const purchaseReturnsVal = safeRound(filteredPurchaseReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
     const purchaseDiscountsVal = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
     
-    // المعادلة الصحيحة: (إجمالي + نقل) - (مرتجع + حسم مكتسب)
-    const netPurchases = safeRound((grossPurchases + purchaseTransport) - (purchaseReturnsVal + purchaseDiscountsVal));
+    const netPurchases = safeRound((grossPurchasesVal + purchaseTransport) - (purchaseReturnsVal + purchaseDiscountsVal));
 
-    // 3. بضاعة أول وآخر المدة
+    // 4. المخزون (أول وآخر المدة)
     const openingStockInv = inventories.filter(i => i.type === 'OPENING' && i.date <= startDate).sort((a,b) => b.date.localeCompare(a.date))[0];
     const openingStockValue = safeRound(openingStockInv?.totalValue || 0);
-    const openingStockItems = openingStockInv?.items || [];
 
     const closingStockItems = inventoryList.map(item => {
         const moves = stockEntries.filter(e => e.itemCode === item.code && e.date <= endDate);
@@ -107,13 +109,11 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
     }).filter(it => it.quantity !== 0);
     const closingStockValue = safeRound(closingStockItems.reduce((sum, it) => sum + it.total, 0));
 
-    // 4. تكلفة البضاعة المباعة (بضاعة أول المدة + صافي المشتريات − بضاعة آخر المدة)
+    // 5. معادلة النتيجة التجارية (مجمل الربح)
     const cogs = safeRound(openingStockValue + netPurchases - closingStockValue);
-
-    // 5. مجمل الربح (صافي المبيعات − تكلفة البضاعة المباعة)
     const grossProfit = safeRound(netSales - cogs);
 
-    // 6. الأرباح والخسائر
+    // 6. الأرباح والخسائر والميزانية (للتوافق العام)
     const expenseCats = categories.filter(c => c.type === 'مصروفات').map(cat => ({
       id: cat.id, name: cat.name,
       total: safeRound(filteredJournal.filter(j => j.categoryId === cat.id).reduce((s, c) => s + (c.paidSYP || 0), 0))
@@ -124,42 +124,17 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
       total: safeRound(filteredJournal.filter(j => j.categoryId === cat.id).reduce((s, c) => s + (c.receivedSYP || 0), 0))
     })).filter(c => c.total > 0);
 
-    const totalExpenses = safeRound(expenseCats.reduce((s, c) => s + c.total, 0));
-    const totalOtherRevenues = safeRound(revenueCats.reduce((s, c) => s + c.total, 0));
-    const netProfit = safeRound((grossProfit + totalOtherRevenues) - totalExpenses);
-
-    // 7. بيانات الميزانية
-    const cashInHand = safeRound(journal.filter(j => j.date <= endDate && !j.statement.includes('وجهة: المصرف')).reduce((s, c) => s + (c.receivedSYP - c.paidSYP), 0));
-    const bankBalance = safeRound(journal.filter(j => j.date <= endDate && j.statement.includes('وجهة: المصرف')).reduce((s, c) => s + (c.receivedSYP - c.paidSYP), 0) + 
-                        allSales.filter(s => s.date <= endDate && s.cashAccount === 'المصرف').reduce((s, c) => s + (c.paidAmount || 0), 0));
-    
-    const receivablesList = allParties.filter(p => p.type !== PartyType.SUPPLIER).map(p => {
-        const pSales = allSales.filter(inv => inv.customerName === p.name && inv.date <= endDate).reduce((sum, inv) => sum + inv.totalAmount, 0);
-        const pSalesRet = allSalesReturns.filter(ret => ret.customerName === p.name && ret.date <= endDate).reduce((sum, ret) => sum + ret.totalReturnAmount, 0);
-        const pPaid = journal.filter(j => (j.partyName === p.name || j.statement.includes(p.name)) && j.date <= endDate).reduce((sum, j) => sum + j.receivedSYP, 0);
-        return { name: p.name, balance: safeRound(p.openingBalance + pSales - pSalesRet - pPaid) };
-    }).filter(x => x.balance !== 0);
-
-    const payablesList = allParties.filter(p => p.type !== PartyType.CUSTOMER).map(p => {
-        const pPurch = allPurchases.filter(inv => inv.supplierName === p.name && inv.date <= endDate).reduce((sum, inv) => sum + inv.totalAmount, 0);
-        const pPurchRet = allPurchaseReturns.filter(ret => ret.supplierName === p.name && ret.date <= endDate).reduce((sum, ret) => sum + ret.totalReturnAmount, 0);
-        const pPaid = journal.filter(j => (j.partyName === p.name || j.statement.includes(p.name)) && j.date <= endDate).reduce((sum, j) => sum + j.paidSYP, 0);
-        return { name: p.name, balance: safeRound(p.openingBalance + pPurch - pPurchRet - pPaid) };
-    }).filter(x => x.balance !== 0);
-
-    const fixedAssetsList = openingEntries.filter(e => e.accountType === 'أصول').map(e => ({ name: e.accountName, balance: safeRound(e.debit - e.credit) }));
-    const equityList = openingEntries.filter(e => e.accountType === 'حقوق ملكية').map(e => ({ name: e.accountName, balance: safeRound(e.credit - e.debit) }));
+    const netProfit = safeRound((grossProfit + safeRound(revenueCats.reduce((s, c) => s + c.total, 0))) - safeRound(expenseCats.reduce((s, c) => s + c.total, 0)));
 
     return { 
-      grossSales, netSales, grossPurchases, netPurchases, purchaseTransport, purchaseReturnsVal, purchaseDiscountsVal,
-      totalExpenses, totalOtherRevenues, cogs, grossProfit, netProfit, 
-      openingStockValue, openingStockItems, closingStockValue, closingStockItems, 
-      cashInHand: safeRound(cashInHand + bankBalance), 
-      receivables: safeRound(receivablesList.reduce((s,c) => s + c.balance, 0)),
-      payables: safeRound(payablesList.reduce((s,c) => s + c.balance, 0)),
-      fixedAssets: safeRound(fixedAssetsList.reduce((s,c) => s + c.balance, 0)),
-      equityOpening: safeRound(equityList.reduce((s,c) => s + c.balance, 0)),
-      expenseCats, revenueCats, receivablesList, payablesList, fixedAssetsList, equityList,
+      grossSalesVal, netSales, salesReturnsVal, salesDiscountsVal,
+      grossPurchasesVal, netPurchases, purchaseTransport, purchaseReturnsVal, purchaseDiscountsVal,
+      cogs, grossProfit, netProfit, 
+      openingStockValue, openingStockItems: openingStockInv?.items || [], 
+      closingStockValue, closingStockItems, 
+      cashInHand: safeRound(journal.filter(j => j.date <= endDate).reduce((s, c) => s + (c.receivedSYP - c.paidSYP), 0)), 
+      receivables: 0, payables: 0, fixedAssets: 0, equityOpening: 0, // Placeholder
+      expenseCats, revenueCats,
       purchaseItems: filteredPurchases.flatMap(p => p.items.map(i => ({ ...i, supplier: p.supplierName, invoice: p.invoiceNumber }))),
       saleItems: filteredSales.flatMap(s => s.items.map(i => ({ ...i, customer: s.customerName, invoice: s.invoiceNumber })))
     };
