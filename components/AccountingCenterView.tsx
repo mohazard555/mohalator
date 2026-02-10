@@ -71,26 +71,31 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
   const safeRound = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
   const calculateFinancials = () => {
+    // 1. تصفية البيانات المباشرة من السجلات لضمان عدم بقاء أرصدة محذوفة
     const filteredSales = allSales.filter(s => s.date >= startDate && s.date <= endDate);
     const filteredSalesReturns = allSalesReturns.filter(r => r.date >= startDate && r.date <= endDate);
     const filteredPurchases = allPurchases.filter(p => p.date >= startDate && p.date <= endDate);
     const filteredPurchaseReturns = allPurchaseReturns.filter(r => r.date >= startDate && r.date <= endDate);
     const filteredJournal = journal.filter(j => j.date >= startDate && j.date <= endDate);
 
-    // المبيعات: إجمالي - مرتجع - حسم
+    // 2. احتساب المبيعات بدقة (إجمالي المبيعات - مرتجع المبيعات - الحسم الممنوح)
+    // نستخدم الإجمالي قبل الخصم من فواتير المبيعات
     const grossSalesVal = safeRound(filteredSales.reduce((s, c) => s + (c.items.reduce((sum, it) => sum + it.total, 0)), 0));
     const salesReturnsVal = safeRound(filteredSalesReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
     const salesDiscountsVal = safeRound(filteredSales.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
+    
+    // صافي المبيعات النهائي
     const netSales = safeRound(grossSalesVal - (salesReturnsVal + salesDiscountsVal));
 
-    // المشتريات: (إجمالي + نقل) - (مرتجع + حسم مكتسب)
+    // 3. احتساب المشتريات بدقة (إجمالي + نقل - مرتجع - حسم مكتسب)
     const grossPurchasesVal = safeRound(filteredPurchases.reduce((s, c) => s + (c.items.reduce((sum, it) => sum + it.total, 0)), 0));
     const purchaseTransport = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.transportExpenses) || 0), 0));
     const purchaseReturnsVal = safeRound(filteredPurchaseReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
     const purchaseDiscountsVal = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
+    
     const netPurchases = safeRound((grossPurchasesVal + purchaseTransport) - (purchaseReturnsVal + purchaseDiscountsVal));
 
-    // المخزون
+    // 4. المخزون (أول وآخر المدة)
     const openingStockInv = inventories.filter(i => i.type === 'OPENING' && i.date <= startDate).sort((a,b) => b.date.localeCompare(a.date))[0];
     const openingStockValue = safeRound(openingStockInv?.totalValue || 0);
 
@@ -104,11 +109,11 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
     }).filter(it => it.quantity !== 0);
     const closingStockValue = safeRound(closingStockItems.reduce((sum, it) => sum + it.total, 0));
 
-    // المتاجرة
+    // 5. معادلة النتيجة التجارية (مجمل الربح)
     const cogs = safeRound(openingStockValue + netPurchases - closingStockValue);
     const grossProfit = safeRound(netSales - cogs);
 
-    // الأرباح والخسائر: تضمين الحسم كبنود تشغيلية في حال النقد
+    // 6. الأرباح والخسائر والميزانية (للتوافق العام)
     const expenseCats = categories.filter(c => c.type === 'مصروفات').map(cat => ({
       id: cat.id, name: cat.name,
       total: safeRound(filteredJournal.filter(j => j.categoryId === cat.id).reduce((s, c) => s + (c.paidSYP || 0), 0))
@@ -119,16 +124,7 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
       total: safeRound(filteredJournal.filter(j => j.categoryId === cat.id).reduce((s, c) => s + (c.receivedSYP || 0), 0))
     })).filter(c => c.total > 0);
 
-    // حساب الحسم المحقق نقداً
-    const cashSalesDiscount = safeRound(filteredSales.filter(s => s.paymentType === 'نقداً').reduce((s, c) => s + (c.discountAmount || 0), 0));
-    const cashPurchaseDiscount = safeRound(filteredPurchases.filter(p => p.paymentType === 'نقداً').reduce((s, c) => s + (c.discountAmount || 0), 0));
-
-    // إجمالي المصاريف تشمل الحسم الممنوح النقدي
-    const totalExpenses = safeRound(expenseCats.reduce((s, c) => s + c.total, 0) + cashSalesDiscount);
-    // إجمالي الإيرادات تشمل الحسم المكتسب النقدي
-    const totalOtherRevenues = safeRound(revenueCats.reduce((s, c) => s + c.total, 0) + cashPurchaseDiscount);
-    
-    const netProfit = safeRound((grossProfit + totalOtherRevenues) - totalExpenses);
+    const netProfit = safeRound((grossProfit + safeRound(revenueCats.reduce((s, c) => s + c.total, 0))) - safeRound(expenseCats.reduce((s, c) => s + c.total, 0)));
 
     return { 
       grossSalesVal, netSales, salesReturnsVal, salesDiscountsVal,
@@ -138,8 +134,7 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
       closingStockValue, closingStockItems, 
       cashInHand: safeRound(journal.filter(j => j.date <= endDate).reduce((s, c) => s + (c.receivedSYP - c.paidSYP), 0)), 
       receivables: 0, payables: 0, fixedAssets: 0, equityOpening: 0, // Placeholder
-      expenseCats, revenueCats, cashSalesDiscount, cashPurchaseDiscount,
-      totalExpenses, totalOtherRevenues,
+      expenseCats, revenueCats,
       purchaseItems: filteredPurchases.flatMap(p => p.items.map(i => ({ ...i, supplier: p.supplierName, invoice: p.invoiceNumber }))),
       saleItems: filteredSales.flatMap(s => s.items.map(i => ({ ...i, customer: s.customerName, invoice: s.invoiceNumber })))
     };
@@ -149,12 +144,72 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
 
   return (
     <div className="space-y-6 animate-in fade-in">
-       {/* UI Logic follows... */}
-       <div ref={reportRef} className="bg-white p-10 rounded-[2.5rem] shadow-2xl export-fix">
-          {reportType === 'INCOME_STATEMENT' && <IncomeStatementReport fin={fin} settings={settings} expandedSections={expandedSections} toggleSection={(id) => { const n = new Set(expandedSections); if(n.has(id)) n.delete(id); else n.add(id); setExpandedSections(n); }} />}
-          {reportType === 'TRADING' && <TradingAccountReport fin={fin} expandedSections={expandedSections} toggleSection={(id) => { const n = new Set(expandedSections); if(n.has(id)) n.delete(id); else n.add(id); setExpandedSections(n); }} />}
-          {reportType === 'BALANCE_SHEET' && <BalanceSheetReport fin={fin} expandedSections={expandedSections} toggleSection={(id) => { const n = new Set(expandedSections); if(n.has(id)) n.delete(id); else n.add(id); setExpandedSections(n); }} renderDetailTable={() => null} />}
-       </div>
+      <div className="flex flex-col md:flex-row items-center justify-between gap-6 no-print">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 rounded-xl transition-all"><ArrowRight className="w-6 h-6" /></button>
+          <div className="flex items-center gap-3">
+             <Landmark className="w-8 h-8 text-primary" />
+             <div>
+                <h2 className="text-2xl font-black text-readable">
+                   {activeTab === 'REPORTS' ? (reportType === 'BALANCE_SHEET' ? 'الميزانية العمومية' : reportType === 'TRADING' ? 'حساب المتاجرة' : 'الأرباح والخسائر') : 'المركز المالي'}
+                </h2>
+             </div>
+          </div>
+        </div>
+        <div className="flex gap-2">
+           {activeTab === 'REPORTS' && (
+             <button onClick={() => setShowDetailsInPrint(!showDetailsInPrint)} className={`px-4 py-2.5 rounded-2xl font-black flex items-center gap-2 transition-all shadow-md ${showDetailsInPrint ? 'bg-emerald-600 text-white' : 'bg-zinc-100 text-zinc-500 border'}`}>
+                  {showDetailsInPrint ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  <span className="hidden md:inline">التفاصيل في الطباعة</span>
+             </button>
+           )}
+           <button onClick={() => window.print()} className="bg-rose-900 text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110"><Printer className="w-5 h-5" /> طباعة</button>
+        </div>
+      </div>
+
+      <div className="flex bg-zinc-100 dark:bg-zinc-900 p-2 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 no-print">
+         <button onClick={() => setActiveTab('REPORTS')} className={`flex-1 py-4 rounded-3xl font-black text-sm transition-all ${activeTab === 'REPORTS' ? 'bg-primary text-white shadow-xl' : 'text-zinc-500 hover:text-zinc-700'}`}>التقارير الختامية</button>
+         <button onClick={() => setActiveTab('CHART_OF_ACCOUNTS')} className={`flex-1 py-4 rounded-3xl font-black text-sm transition-all ${activeTab === 'CHART_OF_ACCOUNTS' ? 'bg-primary text-white shadow-xl' : 'text-zinc-500 hover:text-zinc-700'}`}>دليل الحسابات</button>
+         <button onClick={() => setActiveTab('OPENING_ENTRY')} className={`flex-1 py-4 rounded-3xl font-black text-sm transition-all ${activeTab === 'OPENING_ENTRY' ? 'bg-primary text-white shadow-xl' : 'text-zinc-500 hover:text-zinc-700'}`}>القيد الافتتاحي</button>
+      </div>
+
+      {activeTab === 'REPORTS' && (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+           <div className="lg:col-span-1 space-y-3 no-print">
+              <button onClick={() => setReportType('BALANCE_SHEET')} className={`w-full text-right p-4 rounded-2xl font-black text-sm transition-all border ${reportType === 'BALANCE_SHEET' ? 'bg-primary/10 border-primary text-primary' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-500'}`}>الميزانية العمومية</button>
+              <button onClick={() => setReportType('TRADING')} className={`w-full text-right p-4 rounded-2xl font-black text-sm transition-all border ${reportType === 'TRADING' ? 'bg-primary/10 border-primary text-primary' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-500'}`}>حساب المتاجرة</button>
+              <button onClick={() => setReportType('INCOME_STATEMENT')} className={`w-full text-right p-4 rounded-2xl font-black text-sm transition-all border ${reportType === 'INCOME_STATEMENT' ? 'bg-primary/10 border-primary text-primary' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-500'}`}>قائمة الأرباح والخسائر</button>
+              <div className="pt-6 border-t dark:border-zinc-800 mt-4">
+                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2">تاريخ التقرير</span>
+                 <div className="flex flex-col gap-2 mt-2">
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-zinc-50 dark:bg-zinc-800 border p-3 rounded-xl text-xs outline-none" />
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-zinc-50 dark:bg-zinc-800 border p-3 rounded-xl text-xs outline-none" />
+                 </div>
+              </div>
+           </div>
+
+           <div className="lg:col-span-3">
+              <div ref={reportRef} className="bg-white dark:bg-zinc-950 p-6 md:p-10 rounded-[2.5rem] border shadow-2xl export-fix min-h-[500px] flex flex-col">
+                 <div className="flex justify-between items-start mb-10 border-b-2 border-primary pb-6 text-zinc-900 dark:text-white">
+                    <div className="flex items-center gap-4">
+                       {settings?.logoUrl ? <img src={settings.logoUrl} className="w-16 h-16 object-contain" /> : <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-white font-black text-3xl">SH</div>}
+                       <div><h1 className="text-xl font-black">{settings?.companyName}</h1><p className="text-[10px] text-zinc-400 font-black uppercase mt-1">{settings?.companyType}</p></div>
+                    </div>
+                    <div className="text-center">
+                       <h2 className="text-2xl font-black underline decoration-primary/20 underline-offset-8">{reportType === 'BALANCE_SHEET' ? 'الميزانية العمومية' : reportType === 'INCOME_STATEMENT' ? 'قائمة الأرباح والخسائر' : 'حساب المتاجرة'}</h2>
+                       <p className="text-[10px] mt-4 font-bold text-zinc-400">الفترة من: {startDate} إلى: {endDate}</p>
+                    </div>
+                    <div className="text-left text-[10px] font-black text-zinc-400"><p>{settings?.address}</p><p dir="ltr">{settings?.phone}</p></div>
+                 </div>
+
+                 {reportType === 'BALANCE_SHEET' && <BalanceSheetReport fin={fin} expandedSections={expandedSections} toggleSection={(id) => { const n = new Set(expandedSections); if(n.has(id)) n.delete(id); else n.add(id); setExpandedSections(n); }} renderDetailTable={(data) => <div className={`mt-3 border rounded-xl bg-white dark:bg-zinc-950 ${!showDetailsInPrint ? 'no-print' : ''}`}><table className="w-full text-[10px]"><thead className="bg-zinc-50 border-b"><tr><th className="p-2 text-right">البيان</th><th className="p-2 text-center">الرصيد</th></tr></thead><tbody>{data.map((it, i) => <tr key={i} className="border-b"><td className="p-2">{it.name}</td><td className="p-2 text-center font-mono font-black">{(it.balance || 0).toLocaleString()}</td></tr>)}</tbody></table></div>} />}
+                 {reportType === 'TRADING' && <TradingAccountReport fin={fin} expandedSections={expandedSections} toggleSection={(id) => { const n = new Set(expandedSections); if(n.has(id)) n.delete(id); else n.add(id); setExpandedSections(n); }} />}
+                 {reportType === 'INCOME_STATEMENT' && <IncomeStatementReport fin={fin} settings={settings} expandedSections={expandedSections} toggleSection={(id) => { const n = new Set(expandedSections); if(n.has(id)) n.delete(id); else n.add(id); setExpandedSections(n); }} />}
+              </div>
+           </div>
+        </div>
+      )}
+      {activeTab === 'CHART_OF_ACCOUNTS' && <ChartOfAccountsView />}
     </div>
   );
 };
