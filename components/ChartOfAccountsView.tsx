@@ -21,7 +21,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'ADD' | 'EDIT'>('ADD');
   
-  // حالة لعرض تفاصيل الحركة المحددة بشكل تفصيلي
   const [selectedMovement, setSelectedMovement] = useState<any | null>(null);
 
   const [journal, setJournal] = useState<CashEntry[]>([]);
@@ -120,20 +119,23 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     if (account.type === 'FOLDER') {
       const children = accounts.filter(a => a.parentId === account.id);
       
-      // تطبيق المعادلات الخاصة لصافي المبيعات والمشتريات
-      if (account.code === '3') { // صافي المشتريات
+      // صافي المشتريات (3): (إجمالي + نقل) - (مرتجع + حسم مكتسب)
+      if (account.code === '3') { 
          const b31 = calculateBalance(children.find(c => c.code === '31') || children[0]); // إجمالي المشتريات
-         const b33 = calculateBalance(children.find(c => c.code === '33') || children[0]); // مصاريف النقل
          const b32 = calculateBalance(children.find(c => c.code === '32') || children[0]); // مرتجع المشتريات
+         const b33 = calculateBalance(children.find(c => c.code === '33') || children[0]); // مصاريف نقل المشتريات
          const b34 = calculateBalance(children.find(c => c.code === '34') || children[0]); // الحسم المكتسب
-         return (b31 + b33) - (b32 + b34);
+         
+         return (Math.abs(b31) + Math.abs(b33)) - (Math.abs(b32) + Math.abs(b34));
       }
       
-      if (account.code === '4') { // صافي المبيعات
+      // صافي المبيعات (4): إجمالي - (مرتجع + حسم ممنوح)
+      if (account.code === '4') { 
          const b41 = calculateBalance(children.find(c => c.code === '41') || children[0]); // إجمالي المبيعات
          const b42 = calculateBalance(children.find(c => c.code === '42') || children[0]); // مرتجع المبيعات
          const b43 = calculateBalance(children.find(c => c.code === '43') || children[0]); // الحسم الممنوح
-         return b41 - (b42 + b43);
+         
+         return Math.abs(b41) - (Math.abs(b42) + Math.abs(b43));
       }
 
       return children.reduce((s, c) => s + Math.abs(calculateBalance(c)), 0);
@@ -149,9 +151,20 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     debitTotal += ops.reduce((s, c) => s + Number(c.debit), 0);
     creditTotal += ops.reduce((s, c) => s + Number(c.credit), 0);
 
-    // 2. حركات اليومية
+    // 2. حركات اليومية (استبعاد الحسم من حساب الزبون/المورد)
     const isBox = code === '131';
-    const journalMoves = journal.filter(j => isBox ? !j.statement.includes('وجهة: المصرف') : j.partyName === name);
+    // استبعاد الحركات من نوع 'حسم' إذا كان الحساب المستهدف هو جهة (زبون أو مورد)
+    const journalMoves = journal.filter(j => {
+       const isCurrentAccount = isBox ? !j.statement.includes('وجهة: المصرف') : j.partyName === name;
+       const isDiscountType = j.type === 'حسم';
+       const isNominalDiscountAccount = code === '43' || code === '34';
+       
+       // إذا كان حساباً اسمياً للخصم، اقبل حركات الحسم.
+       // إذا كان حساب جهة، ارفض حركات الحسم.
+       if (isNominalDiscountAccount) return isCurrentAccount;
+       if (isDiscountType) return false;
+       return isCurrentAccount;
+    });
     
     if (isBox) {
        debitTotal += journalMoves.reduce((s, c) => s + Number(c.receivedSYP + c.receivedUSD), 0);
@@ -170,23 +183,23 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     if (code === '33') debitTotal += purchases.reduce((s, c) => s + (Number(c.transportExpenses) || 0), 0); 
     if (code === '34') creditTotal += purchases.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0); 
 
-    // 4. منطق ذمم الزبائن والموردين (المبالغ قبل الخصم)
+    // 4. منطق ذمم الزبائن والموردين (قبل الخصومات)
     const party = parties.find(p => p.name === name);
     if (party) {
        if (party.type === 'عميل' || account.parentId === '121') {
           debitTotal += party.openingBalance;
-          // يُسجل على الزبون كامل قيمة البضاعة (Gross) دون خصم الحسم الممنوح
+          // تسجيل إجمالي الفاتورة (قبل الخصم) كمديونية
           debitTotal += sales.filter(s => s.customerName === name).reduce((sum, inv) => sum + inv.items.reduce((acc, it) => acc + it.total, 0), 0);
           creditTotal += salesReturns.filter(ret => ret.customerName === name).reduce((sum, ret) => sum + (ret.totalReturnAmount || 0), 0);
        } else if (party.type === 'مورد' || account.parentId === '221') {
           creditTotal += party.openingBalance;
-          // يُسجل للمورد (إجمالي البضاعة + مصاريف النقل) دون خصم الحسم المكتسب
+          // تسجيل إجمالي الفاتورة + النقل (قبل الخصم) كدائنية للمورد
           creditTotal += purchases.filter(p => p.supplierName === name).reduce((sum, inv) => sum + (inv.items.reduce((acc, it) => acc + it.total, 0) + (inv.transportExpenses || 0)), 0);
           debitTotal += purchaseReturns.filter(ret => ret.supplierName === name).reduce((sum, ret) => sum + (ret.totalReturnAmount || 0), 0);
        }
     }
 
-    const isDebitNature = code.startsWith('1') || code.startsWith('5') || code.startsWith('3') || code === '71' || code === '43';
+    const isDebitNature = code.startsWith('1') || code.startsWith('5') || code.startsWith('3') || code === '71' || code === '43' || code === '42';
     return isDebitNature ? (debitTotal - creditTotal) : (creditTotal - debitTotal);
   };
 
@@ -195,7 +208,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const name = account.name;
     const code = account.code;
 
-    // حجب بضاعة أول/آخر المدة من كشف الحركات (71، 72)
     if (code === '71' || code === '72') return [];
 
     openingEntries.filter(e => e.accountName === name).forEach(e => {
@@ -212,7 +224,15 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     });
 
     const isBox = code === '131';
-    journal.filter(j => isBox ? !j.statement.includes('وجهة: المصرف') : j.partyName === name).forEach(j => {
+    // تصفية حركات الحسم من كشوف حساب الزبائن والموردين
+    const isNominalDiscountAccount = code === '43' || code === '34';
+    
+    journal.filter(j => {
+       const isCurrentAccount = isBox ? !j.statement.includes('وجهة: المصرف') : j.partyName === name;
+       if (isNominalDiscountAccount) return isCurrentAccount;
+       if (j.type === 'حسم') return false;
+       return isCurrentAccount;
+    }).forEach(j => {
        moves.push({ 
           date: j.date, 
           statement: j.statement, 
@@ -225,7 +245,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        });
     });
 
-    // حركات الحسابات الاسمية مع تفاصيل الخصم
+    // حركات المبيعات (إجمالي، حسم، مرتجع)
     if (code === '41') sales.forEach(s => moves.push({ 
         date: s.date, statement: `إجمالي مبيعات فاتورة #${s.invoiceNumber}`, 
         debit: s.items.reduce((sum, it) => sum + it.total, 0), credit: 0, source: 'فاتورة مبيعات',
@@ -245,6 +265,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
         party: 'الحسم الممنوح', counterAccount: s.customerName
     }));
 
+    // حركات المشتريات (إجمالي، حسم، نقل)
     if (code === '31') purchases.forEach(p => moves.push({ 
         date: p.date, statement: `إجمالي مشتريات فاتورة #${p.invoiceNumber}`, 
         debit: p.items.reduce((sum, it) => sum + it.total, 0), credit: 0, source: 'فاتورة مشتريات',
@@ -270,14 +291,14 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
         party: 'الحسم المكتسب', counterAccount: p.supplierName
     }));
 
-    // حركات ذمم الزبائن والموردين
+    // حركات الجهات (زبون/مورد) - تسجيل الإجمالي فقط دون الخصم
     const isParty = account.parentId === '121' || account.parentId === '221';
     if (isParty) {
        sales.filter(s => s.customerName === name).forEach(s => moves.push({ 
           date: s.date, statement: `سحب بضاعة (إجمالي) فاتورة #${s.invoiceNumber}`, 
           debit: s.items.reduce((sum, it) => sum + it.total, 0), credit: 0, source: 'فاتورة مبيعات',
           party: name, counterAccount: 'المبيعات',
-          amountBefore: s.items.reduce((sum, it) => sum + it.total, 0), discount: s.discountAmount, netAmount: s.totalAmount
+          amountBefore: s.items.reduce((sum, it) => sum + it.total, 0), discount: 0, netAmount: s.items.reduce((sum, it) => sum + it.total, 0)
        }));
        salesReturns.filter(r => r.customerName === name).forEach(r => moves.push({ 
           date: r.date, statement: `مرتجع مبيعات #${r.invoiceNumber}`, 
@@ -288,7 +309,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
           date: p.date, statement: `توريد بضاعة (إجمالي) فاتورة #${p.invoiceNumber}`, 
           debit: 0, credit: (p.items.reduce((sum, it) => sum + it.total, 0) + (p.transportExpenses || 0)), source: 'فاتورة مشتريات',
           party: name, counterAccount: 'المشتريات',
-          amountBefore: p.items.reduce((sum, it) => sum + it.total, 0), transport: p.transportExpenses, discount: p.discountAmount, netAmount: p.totalAmount
+          amountBefore: p.items.reduce((sum, it) => sum + it.total, 0), transport: p.transportExpenses, discount: 0, netAmount: (p.items.reduce((sum, it) => sum + it.total, 0) + (p.transportExpenses || 0))
        }));
        purchaseReturns.filter(r => r.supplierName === name).forEach(r => moves.push({ 
           date: r.date, statement: `مرتجع مشتريات #${r.invoiceNumber}`, 
@@ -305,7 +326,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const newNode = { ...formData, id: modalMode === 'EDIT' ? selectedAccount!.id : crypto.randomUUID() } as AccountNode;
     const updated = modalMode === 'EDIT' ? accounts.map(a => a.id === selectedAccount!.id ? newNode : a) : [...accounts, newNode];
     
-    // المزامنة التلقائية مع سجل الجهات (زبائن وموردين)
     if (modalMode === 'ADD' && (newNode.parentId === '121' || newNode.parentId === '221')) {
       const savedParties = localStorage.getItem('sheno_parties');
       let currentParties: Party[] = savedParties ? JSON.parse(savedParties) : [];

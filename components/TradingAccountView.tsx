@@ -5,7 +5,7 @@ import { ImageExportService } from '../utils/ImageExportService';
 import TradingAccountReport from './TradingAccountReport';
 
 interface TradingAccountViewProps {
-  onBack: () => void;
+  onBack: void;
 }
 
 const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
@@ -52,20 +52,22 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
     const filteredPurchases = purchases.filter(p => p.date >= startDate && p.date <= endDate);
     const filteredPurchaseReturns = purchaseReturns.filter(r => r.date >= startDate && r.date <= endDate);
 
-    // 1. صافي المبيعات
+    // 1. صافي المبيعات: إجمالي - مرتجع - حسم
     const grossSales = safeRound(filteredSales.reduce((s, c) => s + c.totalAmount, 0));
     const salesReturnsVal = safeRound(filteredSalesReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
     const salesDiscountsVal = safeRound(filteredSales.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
     const netSales = safeRound(grossSales - salesReturnsVal - salesDiscountsVal);
 
-    // 2. صافي المشتريات خلال الفترة
+    // 2. صافي المشتريات المصحح: (إجمالي + نقل) - (مرتجع + حسم مكتسب)
     const grossPurchases = safeRound(filteredPurchases.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0));
     const purchaseTransport = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.transportExpenses) || 0), 0));
     const pReturnsVal = safeRound(filteredPurchaseReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
     const pDiscountsVal = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
-    const netPurchases = safeRound(grossPurchases + purchaseTransport - pReturnsVal - pDiscountsVal);
+    
+    // المعادلة الصحيحة المطلوبة
+    const netPurchases = safeRound((grossPurchases + purchaseTransport) - (pReturnsVal + pDiscountsVal));
 
-    // 3. حساب المخزون الزمني (بضاعة أول المدة هي الرصيد المتوفر قبل تاريخ البداية)
+    // 3. حساب المخزون الزمني
     const calculateStockAtDate = (targetDate: string) => {
       const items = inventoryList.map(item => {
         const moves = stockEntries.filter(e => e.itemCode === item.code && e.date < targetDate);
@@ -78,7 +80,6 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
       return { items: items.filter(i => i.quantity !== 0), total: items.reduce((s, i) => s + i.total, 0) };
     };
 
-    // حساب بضاعة آخر المدة (حتى تاريخ النهاية)
     const calculateClosingStock = (targetDate: string) => {
       const items = inventoryList.map(item => {
         const moves = stockEntries.filter(e => e.itemCode === item.code && e.date <= targetDate);
@@ -165,7 +166,7 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
              <div className="flex items-center gap-4">
                 {settings?.logoUrl ? <img src={settings.logoUrl} className="w-16 h-16 object-contain" /> : <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-white font-black text-3xl">SH</div>}
                 <div><h1 className="text-xl font-black">{settings?.companyName}</h1><p className="text-[10px] text-zinc-400 font-black uppercase mt-1">{settings?.companyType}</p></div>
-             </div>
+                    </div>
              <div className="text-center">
                 <h2 className="text-2xl font-black underline decoration-primary/20 underline-offset-8">حساب المتاجرة</h2>
                 <p className="text-[10px] mt-4 font-bold text-zinc-400 uppercase tracking-widest">الفترة من: {startDate} إلى: {endDate}</p>

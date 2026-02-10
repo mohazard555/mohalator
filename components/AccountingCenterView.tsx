@@ -77,19 +77,20 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
     const filteredPurchases = allPurchases.filter(p => p.date >= startDate && p.date <= endDate);
     const filteredPurchaseReturns = allPurchaseReturns.filter(r => r.date >= startDate && r.date <= endDate);
 
-    // 1. المبيعات
+    // 1. المبيعات (المعادلة: إجمالي - مرتجع - حسم)
     const grossSales = safeRound(filteredSales.reduce((s, c) => s + c.totalAmount, 0));
     const salesReturnsVal = safeRound(filteredSalesReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
     const salesDiscountsVal = safeRound(filteredSales.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
     const netSales = safeRound(grossSales - salesReturnsVal - salesDiscountsVal);
 
-    // 2. المشتريات (المعادلة: إجمالي + نقل - مرتجع - حسم)
+    // 2. المشتريات (المعادلة المطلوبة: إجمالي + نقل - مرتجع - حسم مكتسب)
     const grossPurchases = safeRound(filteredPurchases.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0));
     const purchaseTransport = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.transportExpenses) || 0), 0));
     const purchaseReturnsVal = safeRound(filteredPurchaseReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
     const purchaseDiscountsVal = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
     
-    const netPurchases = safeRound(grossPurchases + purchaseTransport - purchaseReturnsVal - purchaseDiscountsVal);
+    // المعادلة الصحيحة: (إجمالي + نقل) - (مرتجع + حسم مكتسب)
+    const netPurchases = safeRound((grossPurchases + purchaseTransport) - (purchaseReturnsVal + purchaseDiscountsVal));
 
     // 3. بضاعة أول وآخر المدة
     const openingStockInv = inventories.filter(i => i.type === 'OPENING' && i.date <= startDate).sort((a,b) => b.date.localeCompare(a.date))[0];
