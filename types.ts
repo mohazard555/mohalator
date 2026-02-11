@@ -78,6 +78,8 @@ export interface PeriodicInventory {
     quantity: number;
     price: number;
     total: number;
+    // Added unit property to fix type mismatch in ChartOfAccountsView and other reporting components
+    unit: string;
   }[];
   totalValue: number;
   notes: string;

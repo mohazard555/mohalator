@@ -14,7 +14,8 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
   const [stockEntries, setStockEntries] = useState<StockEntry[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [tempItems, setTempItems] = useState<any[]>([]);
-  const [itemForm, setItemForm] = useState({ itemCode: '', itemName: '', quantity: 0, price: 0 });
+  // Fix: Updated itemForm to include unit to match the updated PeriodicInventory interface
+  const [itemForm, setItemForm] = useState({ itemCode: '', itemName: '', quantity: 0, price: 0, unit: '' });
   
   // حالات البحث عن المواد
   const [itemSearch, setItemSearch] = useState('');
@@ -60,11 +61,13 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
   };
 
   const handleSelectItem = (item: InventoryItem) => {
+    // Fix: Ensure the unit is captured when an item is selected from results
     setItemForm({
       ...itemForm,
       itemCode: item.code,
       itemName: item.name,
-      price: item.price
+      price: item.price,
+      unit: item.unit
     });
     setItemSearch(item.name);
     setShowItemResults(false);
@@ -177,7 +180,8 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
                          onClick={() => {
                            if (!itemForm.itemCode || !itemForm.quantity) return;
                            setTempItems([...tempItems, { ...itemForm, total: itemForm.quantity * itemForm.price }]);
-                           setItemForm({ itemCode: '', itemName: '', quantity: 0, price: 0 });
+                           // Fix: Reset form with initial empty unit state
+                           setItemForm({ itemCode: '', itemName: '', quantity: 0, price: 0, unit: '' });
                            setItemSearch('');
                          }} 
                          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white p-3.5 rounded-xl font-black shadow-lg shadow-emerald-900/10 transition-all active:scale-95"
