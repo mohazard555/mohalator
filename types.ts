@@ -19,6 +19,7 @@ export enum AppView {
   SALES_RETURN = 'SALES_RETURN',
   PURCHASE_RETURN = 'PURCHASE_RETURN',
   DETAILED_SALES_REPORT = 'DETAILED_SALES_REPORT',
+  DETAILED_SUPPLIER_REPORT = 'DETAILED_SUPPLIER_REPORT',
   RECEIPT_VOUCHER = 'RECEIPT_VOUCHER',
   PAYMENT_VOUCHER = 'PAYMENT_VOUCHER',
   PURCHASE_INVOICE = 'PURCHASE_INVOICE',
@@ -78,7 +79,6 @@ export interface PeriodicInventory {
     quantity: number;
     price: number;
     total: number;
-    // Added unit property to fix type mismatch in ChartOfAccountsView and other reporting components
     unit: string;
   }[];
   totalValue: number;

@@ -54,6 +54,7 @@ export const MENU_GROUPS = [
       { label: 'فاتورة مشتريات', view: AppView.PURCHASE_INVOICE },
       { label: 'سجل المشتريات', view: AppView.PURCHASE_HISTORY },
       { label: 'سجل مرتجع المشتريات', view: AppView.PURCHASE_RETURN_HISTORY },
+      { label: 'كشف حساب مورد مفصل', view: AppView.DETAILED_SUPPLIER_REPORT },
       { label: 'قائمة المواد والجرد', view: AppView.INVENTORY },
       { label: 'إدارة حسابات (جهات)', view: AppView.PARTY_MANAGEMENT },
       { label: 'إدارة ملف المستودعات', view: AppView.WAREHOUSE_MANAGEMENT },

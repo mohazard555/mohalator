@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, LogOut, FileOutput, Heart, Phone, UserCheck } from 'lucide-react';
 import { AppView, AppSettings, SalesInvoice } from './types';
@@ -16,6 +17,7 @@ import DetailedItemMovementView from './components/DetailedItemMovementView';
 import SalesReturnView from './components/SalesReturnView';
 import PurchaseReturnView from './components/PurchaseReturnView';
 import DetailedSalesReportView from './components/DetailedSalesReportView';
+import DetailedSupplierReportView from './components/DetailedSupplierReportView';
 import VoucherListView from './components/VoucherListView';
 import PurchaseInvoiceView from './components/PurchaseInvoiceView';
 import PartyManagementView from './components/PartyManagementView';
@@ -38,6 +40,7 @@ import TradingAccountView from './components/TradingAccountView';
 import IncomeStatementView from './components/IncomeStatementView';
 import OpeningEntriesView from './components/OpeningEntriesView';
 import PeriodicInventoryView from './components/PeriodicInventoryView';
+import WelcomeSplash from './components/WelcomeSplash';
 
 const FinexaLogo = () => (
   <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-sm">
@@ -67,6 +70,7 @@ const PHRASES = [
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const [editingInvoice, setEditingInvoice] = useState<SalesInvoice | null>(null);
   const [editingReturn, setEditingReturn] = useState<any | null>(null);
 
@@ -115,6 +119,10 @@ const App: React.FC = () => {
     setIsAuthenticated(false);
     setCurrentView(AppView.DASHBOARD);
   };
+
+  if (showSplash) {
+    return <WelcomeSplash onComplete={() => setShowSplash(false)} />;
+  }
 
   if (settings.isLoginEnabled && !isAuthenticated) {
     return <LoginView settings={settings} onLogin={() => setIsAuthenticated(true)} />;
@@ -186,6 +194,7 @@ const App: React.FC = () => {
             case AppView.SALES_RETURN: return <SalesReturnView onBack={() => { setEditingReturn(null); setCurrentView(AppView.DASHBOARD); }} initialReturn={editingReturn || undefined} />;
             case AppView.PURCHASE_RETURN: return <PurchaseReturnView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.DETAILED_SALES_REPORT: return <DetailedSalesReportView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.DETAILED_SUPPLIER_REPORT: return <DetailedSupplierReportView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.RECEIPT_VOUCHER: return <VoucherListView onBack={() => setCurrentView(AppView.DASHBOARD)} type="قبض" />;
             case AppView.PAYMENT_VOUCHER: return <VoucherListView onBack={() => setCurrentView(AppView.DASHBOARD)} type="دفع" />;
             case AppView.PURCHASE_INVOICE: return <PurchaseInvoiceView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
