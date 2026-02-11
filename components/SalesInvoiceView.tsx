@@ -29,7 +29,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
   const [materialSearch, setMaterialSearch] = useState('');
   const [showMaterialResults, setShowMaterialResults] = useState(false);
 
-  // حالات تتبع تعديل البنود
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [editingMaterialIndex, setEditingMaterialIndex] = useState<number | null>(null);
 
@@ -156,7 +155,6 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     });
     setEditingItemIndex(idx);
     
-    // التمرير لمنطقة الإضافة بسلاسة
     const inputArea = document.getElementById('item-input-area');
     if (inputArea) {
       inputArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -262,11 +260,13 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     const savedCash = localStorage.getItem('sheno_cash_journal');
     let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
     if (editingId) {
-      cashEntries = cashEntries.filter(e => !e.statement.includes(`فاتورة مبيعات رقم ${invoice.invoiceNumber}`));
+      // تعديل شرط الحذف لضمان مسح الحركات القديمة المتعلقة بالفاتورة فقط
+      cashEntries = cashEntries.filter(e => !e.statement.includes(`رقم ${invoice.invoiceNumber}`) && e.type !== 'حسم');
     }
 
     const isPrimary = selectedCurrencyType === 'primary';
     
+    // تسجيل الدفعة النقدية الفعلية فقط (لا نسجل الحسم كحركة نقدية)
     if (invoice.paidAmount && invoice.paidAmount > 0) {
       const destination = invoice.paymentType === 'نقداً' ? (invoice.cashAccount || 'الصندوق') : 'آجل';
       cashEntries.unshift({
@@ -283,20 +283,8 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
       });
     }
 
-    if (discount > 0) {
-      cashEntries.unshift({
-        id: crypto.randomUUID(),
-        date: invoice.date,
-        statement: `حسم ممنوح للفاتورة رقم ${invoice.invoiceNumber}`,
-        receivedSYP: 0,
-        paidSYP: isPrimary ? discount : 0,
-        receivedUSD: 0,
-        paidUSD: !isPrimary ? discount : 0,
-        notes: `حسم للزبون: ${invoice.customerName}`,
-        partyName: invoice.customerName,
-        type: 'حسم'
-      });
-    }
+    // ملاحظة محاسبية: لا يتم تسجيل الحسم في دفتر اليومية (الصندوق) ليبقى كتسوية على ذمة العميل فقط
+    // سيتم معالجته برمجياً في كشوفات الحساب ودفتر الأستاذ
 
     localStorage.setItem('sheno_cash_journal', JSON.stringify(cashEntries));
 
@@ -317,7 +305,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     if (initialInvoice) onBack(); 
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: string, invoiceNumber: string) => {
     if (window.confirm('حذف الفاتورة نهائياً؟')) {
       const invToDelete = invoices.find(i => i.id === id);
       const updated = invoices.filter(i => i.id !== id);
@@ -481,7 +469,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">العملة</label>
                <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-950 p-1 rounded-2xl border border-zinc-200 dark:border-zinc-700 h-[52px]">
                   <button onClick={() => setSelectedCurrencyType('primary')} className={`flex-1 h-full rounded-xl text-[10px] font-black transition-all ${selectedCurrencyType === 'primary' ? 'bg-primary text-white shadow-lg' : 'text-zinc-500'}`}>{settings?.currencySymbol || '1'}</button>
-                  <button onClick={() => setSelectedCurrencyType('secondary')} className={`flex-1 h-full rounded-xl text-[10px] font-black transition-all ${selectedCurrencyType === 'secondary' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500'}`}>{settings?.secondaryCurrencySymbol || '2'}</button>
+                  <button onClick={() => setSelectedCurrencyType('secondary')} className={`flex-1 h-full rounded-xl text-[10px] font-black transition-all ${selectedCurrencyType === 'secondary' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500'}`}>{settings?.secondaryCurrencySymbol || '$'}</button>
                </div>
             </div>
             
@@ -652,18 +640,17 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                    {newInvoice.usedMaterials?.map((m, idx) => (
                       <div key={m.id} className={`border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm transition-all ${editingMaterialIndex === idx ? 'bg-amber-100 border-amber-500 ring-2 ring-amber-500/20' : 'bg-white dark:bg-zinc-900 border-rose-200 dark:border-rose-900/50'}`}>
                          <span className={`text-xs font-bold ${editingMaterialIndex === idx ? 'text-amber-700' : 'text-rose-700'}`}>{m.name} ({m.quantity} {m.unit})</span>
-                         <button onClick={() => startEditMaterial(idx)} className="text-amber-500 hover:text-amber-700 transition-colors"><Edit2 className="w-3 h-3"/></button>
+                         <button onClick={() => startEditMaterial(idx)} className="text-amber-500 hover:text-amber-700 transition-colors"><Edit2 className="w-3.5 h-3.5"/></button>
                          <button onClick={() => { 
                             setNewInvoice({...newInvoice, usedMaterials: newInvoice.usedMaterials?.filter(x => x.id !== m.id)});
                             if(editingMaterialIndex === idx) { setEditingMaterialIndex(null); setUsedMaterial({ code: '', name: '', quantity: 1 }); setMaterialSearch(''); }
-                         }} className="text-rose-300 hover:text-rose-600 transition-colors"><X className="w-3 h-3"/></button>
+                         }} className="text-rose-300 hover:text-rose-600 transition-colors"><X className="w-3.5 h-3.5"/></button>
                       </div>
                    ))}
                 </div>
              </div>
           </div>
 
-          {/* ملخص الحسابات قبل الحفظ */}
           <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
              <div className="flex gap-12">
                 <div className="flex flex-col">
@@ -823,7 +810,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                        {inv.discountAmount && inv.discountAmount > 0 && <span className="text-[8px] text-zinc-500 line-through">{(inv.totalAmount + inv.discountAmount).toLocaleString()}</span>}
                     </div>
                   </td>
-                  <td className="p-2 border-l border-zinc-900 text-[10px] font-black text-zinc-400 leading-tight print:text-zinc-900 print:border-zinc-200">
+                  <td className="p-2 border-l border-zinc-900 text-[10px] font-black text-zinc-600 leading-tight print:text-zinc-900 print:border-zinc-200">
                     {inv.totalAmountLiteral}
                   </td>
                   <td className="p-2 border-l border-zinc-900 text-zinc-400 font-bold italic truncate max-w-[100px] print:text-zinc-700 print:border-zinc-200">
@@ -832,7 +819,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
                   <td className="p-2 border-l border-zinc-900 text-center no-print">
                     <div className="flex items-center justify-center gap-1">
                       <button onClick={() => handleEdit(inv)} className="p-1.5 bg-zinc-900 rounded-lg text-zinc-500 hover:text-amber-500 transition-all"><Edit2 className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => handleDelete(inv.id)} className="p-1.5 bg-zinc-900 rounded-lg text-zinc-500 hover:text-rose-500 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => handleDelete(inv.id, inv.invoiceNumber)} className="p-1.5 bg-zinc-900 rounded-lg text-zinc-500 hover:text-rose-500 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   </td>
                   <td className="p-2 text-center text-emerald-500 font-mono text-xs font-black print:text-emerald-700">

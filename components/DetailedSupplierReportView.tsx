@@ -49,20 +49,22 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
       const matchDate = (!startDate || p.date >= startDate) && (!endDate || p.date <= endDate);
       return matchName && matchDate;
     }).forEach(inv => {
+      const itemsGross = inv.items.reduce((s, i) => s + i.total, 0) + (inv.transportExpenses || 0);
+
       movements.push({
         date: inv.date,
         type: 'شراء',
         number: inv.invoiceNumber,
         statement: `فاتورة شراء رقم ${inv.invoiceNumber}`,
         items: inv.items,
-        purchases: inv.totalAmount + (inv.discountAmount || 0), // القيمة الإجمالية قبل الحسم
+        purchases: itemsGross, // القيمة الإجمالية قبل الحسم
         returns: 0,
         paid: 0,
         discount: 0,
         ref: inv.id
       });
 
-      // 2. الحسم المكتسب من الفاتورة (بند مستقل يقلل الرصيد)
+      // 2. الحسم المكتسب من الفاتورة كبند تسوية مستقل (يقلل المديونية)
       if (inv.discountAmount && inv.discountAmount > 0) {
         movements.push({
           date: inv.date,
@@ -99,7 +101,7 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
       });
     });
 
-    // 4. سندات الصرف / الدفعات النقدية (تقلل مديونية المورد)
+    // 4. سندات الصرف / الدفعات النقدية الفعلية (تقلل مديونية المورد)
     cashEntries.filter(e => {
       const matchName = e.partyName === supplierFilter || e.statement.includes(supplierFilter);
       const matchType = e.type === 'دفع' || e.type === 'شراء';
@@ -134,7 +136,8 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
   }, { purchases: 0, returns: 0, paid: 0, discount: 0 });
 
   const openingBalance = supplierFilter ? (parties.find(p => p.name === supplierFilter)?.openingBalance || 0) : 0;
-  // المعادلة: الرصيد = (الافتتاحي + المشتريات) - (المرتجع + المدفوع + الحسم)
+  
+  // الرصيد = (الافتتاحي + المشتريات) - (المرتجع + المدفوع + الحسم المكتسب)
   const finalBalance = openingBalance + totals.purchases - (totals.returns + totals.paid + totals.discount);
 
   const handleExportPDF = () => {
@@ -153,7 +156,6 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
   return (
     <div className="space-y-4 text-right bg-zinc-50 dark:bg-zinc-950 p-4 md:p-8 rounded-3xl shadow-2xl min-h-screen text-readable border border-zinc-200 dark:border-zinc-800 print:bg-white print:border-none print:shadow-none" dir="rtl">
       
-      {/* Header UI */}
       <div className="flex flex-col md:flex-row items-center justify-between border-b-2 border-zinc-200 dark:border-zinc-800 pb-4 mb-4 no-print gap-4">
          <div className="flex items-center gap-4">
             <button onClick={onBack} className="p-2 bg-white dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl border border-zinc-200 dark:border-zinc-700 transition-all">
@@ -175,7 +177,7 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
               disabled={isExportingImage}
               className="bg-zinc-800 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-black shadow-lg hover:bg-zinc-700 transition-all"
             >
-               <ImageIcon className="w-5 h-5" /> حفظ كصورة
+               {isExportingImage ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <ImageIcon className="w-5 h-5" />} حفظ كصورة
             </button>
             <button onClick={() => window.print()} className="bg-amber-600 text-white px-6 py-2 rounded-xl flex items-center gap-2 font-black shadow-lg hover:brightness-110 transition-all">
                <Printer className="w-5 h-5" /> طباعة
@@ -183,7 +185,6 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
          </div>
       </div>
 
-      {/* Filter Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden rounded-2xl no-print">
          <div className="col-span-1 border-l-2 border-zinc-200 dark:border-zinc-800 flex flex-col">
             <div className="flex border-b-2 border-zinc-200 dark:border-zinc-800 flex-1">
@@ -222,7 +223,7 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
          </div>
 
          <div className="col-span-1 flex flex-col items-center justify-center p-4 gap-3 bg-zinc-100/50 dark:bg-zinc-800/30">
-            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">تخصيص العرض</span>
+            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">إعدادات العرض</span>
             <button onClick={() => setShowItems(!showItems)} className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl font-black text-xs transition-all w-full justify-center ${showItems ? 'bg-emerald-600 text-white shadow-lg' : 'bg-rose-600 text-white shadow-lg'}`}>
                {showItems ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                {showItems ? 'إخفاء عمود المواد' : 'إظهار عمود المواد'}
@@ -230,10 +231,8 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
          </div>
       </div>
 
-      {/* Report Section (Print Ref) */}
       <div ref={reportRef} className="bg-white border-2 border-amber-800 shadow-xl rounded-2xl overflow-hidden p-4 md:p-8 export-fix">
         
-        {/* Print Header */}
         <div className="flex justify-between items-center border-b-4 border-amber-800 pb-6 mb-8 bg-white text-zinc-900">
           <div className="flex items-center gap-4">
             {settings?.logoUrl && <img src={settings.logoUrl} className="w-20 h-20 object-contain bg-white" />}
@@ -260,7 +259,6 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
           </div>
         </div>
 
-        {/* Movements Table */}
         <table className="w-full text-right border-collapse text-[10px]">
           <thead>
             <tr className="bg-zinc-100 text-zinc-900 font-black border-y-2 border-amber-800 h-10">
@@ -273,7 +271,6 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
             </tr>
           </thead>
           <tbody className="text-zinc-800">
-            {/* عرض الرصيد الافتتاحي */}
             {supplierFilter && openingBalance !== 0 && (
               <tr className="h-10 bg-zinc-50/50 font-black border-b italic">
                 <td className="p-1 border text-center text-zinc-400">{startDate || '---'}</td>
@@ -328,7 +325,6 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
           </tbody>
         </table>
 
-        {/* Bottom Totals Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
            <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-200 flex flex-col items-center">
               <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">إجمالي المشتريات</span>
@@ -348,7 +344,6 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
            </div>
         </div>
 
-        {/* Final Balance and Literal Text */}
         <div className="mt-6 flex flex-col md:flex-row gap-6">
            <div className="flex-1 bg-zinc-900 text-white p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 blur-[100px] rounded-full"></div>

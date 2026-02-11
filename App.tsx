@@ -70,7 +70,8 @@ const PHRASES = [
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
+  // تم تغيير الحالة الافتراضية إلى false لتعطيل الواجهة التعريفية
+  const [showSplash, setShowSplash] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<SalesInvoice | null>(null);
   const [editingReturn, setEditingReturn] = useState<any | null>(null);
 

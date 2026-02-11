@@ -207,6 +207,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
     let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
     const isPrimary = selectedCurrencyType === 'primary';
 
+    // تسجيل الدفعة النقدية الفعلية فقط
     if (invoice.paidAmount > 0) {
       const source = invoice.paymentType === 'نقداً' ? (invoice.cashAccount || 'الصندوق') : 'آجل';
       cashEntries.unshift({
@@ -222,6 +223,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
       });
     }
 
+    // تسجيل مصاريف النقل كحركة صرف سيولة
     if (transport > 0) {
       cashEntries.unshift({
         id: crypto.randomUUID(), date: invoice.date,
@@ -233,6 +235,8 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
         notes: 'مصاريف نقل بضاعة', type: 'دفع'
       });
     }
+
+    // ملاحظة محاسبية: لا يتم تسجيل الحسم المكتسب في الصندوق ليبقى كتسوية على ذمة المورد فقط
 
     localStorage.setItem('sheno_cash_journal', JSON.stringify(cashEntries));
 
@@ -346,7 +350,6 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                <h4 className="text-sm font-black text-amber-600 flex items-center gap-2 border-b pb-2 uppercase tracking-widest"><ShoppingBag className="w-4 h-4" /> إضافة بنود الفاتورة</h4>
                
                <div id="purchase-item-input-area" className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-2 rounded-2xl transition-all ${editingItemIndex !== null ? 'bg-amber-500/10 ring-2 ring-amber-500/20' : ''}`}>
-                  {/* Item Name */}
                   <div className="md:col-span-3 relative">
                      <label className="text-[9px] font-black text-zinc-400 mb-1 block">اسم المادة (جديدة أو من المخزن)</label>
                      <div className="relative">
@@ -384,13 +387,11 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                      </div>
                   </div>
 
-                  {/* Quantity */}
                   <div className="md:col-span-1">
                      <label className="text-[9px] font-black text-zinc-400 mb-1 block">الكمية</label>
                      <input type="number" placeholder="10" className="bg-white dark:bg-zinc-950 p-3 rounded-xl border-2 dark:border-zinc-700 text-center font-black text-emerald-500 w-full" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: Number(e.target.value)})} />
                   </div>
 
-                  {/* Unit Type */}
                   <div className="md:col-span-2">
                      <label className="text-[9px] font-black text-zinc-400 mb-1 block">نوع الوحدة</label>
                      <div className="flex gap-1">
@@ -414,13 +415,11 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                      </div>
                   </div>
 
-                  {/* Price */}
                   <div className="md:col-span-2">
                      <label className="text-[9px] font-black text-zinc-400 mb-1 block">سعر الوحدة</label>
                      <input type="number" placeholder="0" className="bg-white dark:bg-zinc-950 p-3 rounded-xl border-2 dark:border-zinc-700 text-center font-black text-amber-500 w-full" value={newItem.price} onChange={e => setNewItem({...newItem, price: Number(e.target.value)})} />
                   </div>
 
-                  {/* Item Notes */}
                   <div className="md:col-span-3">
                      <label className="text-[9px] font-black text-zinc-400 mb-1 block">ملاحظات البند</label>
                      <div className="relative">
@@ -429,7 +428,6 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                      </div>
                   </div>
 
-                  {/* Add/Update Button */}
                   <div className="md:col-span-1">
                      <button 
                        onClick={handleAddOrUpdateItem} 
@@ -512,7 +510,6 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                </div>
             </div>
 
-            {/* ملخص الحسابات قبل الحفظ */}
             <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
                <div className="flex gap-10">
                   <div className="flex flex-col">
@@ -527,7 +524,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                      <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">الحسم</span>
                      <span className="text-2xl font-mono font-black text-rose-500">-{ (newInvoice.discountAmount || 0).toLocaleString() }</span>
                   </div>
-                  <div className="w-px h-12 bg-zinc-800"></div>
+                  <div className="w-px h-12 bg-zinc-800 hidden md:block"></div>
                   <div className="flex flex-col">
                      <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">الصافي النهائي</span>
                      <span className="text-4xl font-mono font-black text-amber-500">{ (subTotal + (newInvoice.transportExpenses || 0) - (newInvoice.discountAmount || 0)).toLocaleString() }</span>
@@ -576,7 +573,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
                          </td>
                          <td className="p-4 border-l border-zinc-900 text-center">
                             <div className="flex flex-col gap-0.5">
-                               <span className={`px-2 py-0.5 rounded text-[8px] font-black ${p.paymentType === 'نقداً' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-amber-500/20 text-amber-500'}`}>{p.paymentType || 'نقداً'}</span>
+                               <span className={`px-2 py-0.5 rounded text-[8px] font-black ${p.paymentType === 'نقداً' ? 'bg-emerald-500/20 text-emerald-600' : 'bg-amber-500/20 text-amber-600'}`}>{p.paymentType || 'نقداً'}</span>
                                {p.cashAccount && <span className="text-[7px] text-zinc-500 uppercase">{p.cashAccount}</span>}
                             </div>
                          </td>
