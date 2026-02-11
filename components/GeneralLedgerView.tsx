@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowRight, Search, Printer, FileDown, Calendar, 
   Users, BookOpen, Filter, ImageIcon, ArrowUpRight, 
-  ArrowDownLeft, RefreshCcw, Building2, Tag, LayoutList, X, ChevronDown
+  ArrowDownLeft, RefreshCcw, Building2, Tag, LayoutList, X, ChevronDown, Folder, Calculator
 } from 'lucide-react';
 import { 
   CashEntry, SalesInvoice, PurchaseInvoice, 
@@ -30,14 +30,15 @@ interface LedgerTransaction {
 const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
   const reportRef = useRef<HTMLDivElement>(null);
   const [transactions, setTransactions] = useState<LedgerTransaction[]>([]);
-  const [categories, setCategories] = useState<AccountingCategory[]>([]);
   const [chartAccounts, setChartAccounts] = useState<AccountNode[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
   const [accountFilter, setAccountFilter] = useState('الكل');
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [accountSearchTerm, setAccountSearchTerm] = useState('');
   const [showAccountResults, setShowAccountResults] = useState(false);
   
@@ -46,7 +47,9 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
   useEffect(() => {
     loadLedger();
     const savedSett = localStorage.getItem('sheno_settings');
+    const savedChart = localStorage.getItem('sheno_chart_accounts');
     if (savedSett) setSettings(JSON.parse(savedSett));
+    if (savedChart) setChartAccounts(JSON.parse(savedChart));
   }, []);
 
   const loadLedger = () => {
@@ -76,15 +79,13 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
       });
     });
 
-    // 2. معالجة حركات المبيعات (الاستحقاق + الحسم)
+    // 2. المبيعات
     salesInvoices.forEach(inv => {
        const gross = inv.items.reduce((s,i) => s + i.total, 0);
-       // حركة الاستحقاق للزبون
        ledger.push({
          id: inv.id, date: inv.date, statement: `فاتورة مبيعات رقم ${inv.invoiceNumber}`,
          debit: gross, credit: 0, type: 'مبيع', ref: inv.invoiceNumber, account: inv.customerName
        });
-       // حركة الحسم الممنوح (تسوية)
        if (inv.discountAmount > 0) {
           ledger.push({
             id: inv.id + '-disc', date: inv.date, statement: `حسم ممنوح للفاتورة #${inv.invoiceNumber}`,
@@ -93,7 +94,7 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
        }
     });
 
-    // 3. معالجة حركات المشتريات (الاستحقاق + الحسم)
+    // 3. المشتريات
     purchaseInvoices.forEach(inv => {
        const gross = inv.items.reduce((s,i) => s + i.total, 0) + (inv.transportExpenses || 0);
        ledger.push({
@@ -108,7 +109,7 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
        }
     });
 
-    // 4. معالجة المرتجعات
+    // 4. المرتجعات
     salesReturns.forEach(ret => {
        ledger.push({
          id: ret.id, date: ret.date, statement: `مرتجع مبيع فاتورة #${ret.invoiceNumber}`,
@@ -122,7 +123,7 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
        });
     });
 
-    // 5. حركات اليومية (المقبوضات والمدفوعات النقدية فقط)
+    // 5. حركات اليومية
     journal.filter(j => j.type !== 'حسم').forEach(j => {
       let accountName = j.partyName || 'الصندوق العام';
       if (j.categoryId) {
@@ -141,11 +142,36 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
     setTransactions(ledger.sort((a, b) => a.date.localeCompare(b.date)));
   };
 
+  // وظيفة للحصول على جميع الحسابات الفرعية لمجلد معين بشكل متكرر
+  const getAllChildNames = (parentId: string): string[] => {
+    const children = chartAccounts.filter(a => a.parentId === parentId);
+    let names = children.filter(a => a.type === 'ACCOUNT').map(a => a.name);
+    children.filter(a => a.type === 'FOLDER').forEach(folder => {
+      names = [...names, ...getAllChildNames(folder.id)];
+    });
+    return names;
+  };
+
   const filteredTransactions = transactions.filter(t => {
     const matchSearch = t.statement.toLowerCase().includes(searchTerm.toLowerCase()) || 
                        t.account.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        t.ref.includes(searchTerm);
-    const matchAccount = accountFilter === 'الكل' || t.account === accountFilter;
+    
+    let matchAccount = accountFilter === 'الكل';
+    if (!matchAccount) {
+      if (selectedAccountId) {
+        const selectedNode = chartAccounts.find(a => a.id === selectedAccountId);
+        if (selectedNode?.type === 'FOLDER') {
+          const childNames = getAllChildNames(selectedNode.id);
+          matchAccount = childNames.includes(t.account) || t.account === selectedNode.name;
+        } else {
+          matchAccount = t.account === accountFilter;
+        }
+      } else {
+        matchAccount = t.account === accountFilter;
+      }
+    }
+
     const matchDate = (!startDate || t.date >= startDate) && (!endDate || t.date <= endDate);
     return matchSearch && matchAccount && matchDate;
   });
@@ -155,9 +181,6 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
     currentBalance += (t.debit - t.credit);
     return { ...t, runningBalance: currentBalance };
   });
-
-  const totalDebit = filteredTransactions.reduce((s, c) => s + c.debit, 0);
-  const totalCredit = filteredTransactions.reduce((s, c) => s + c.credit, 0);
 
   const handleExportExcel = () => {
     const data = ledgerWithBalance.map(t => ({
@@ -180,10 +203,9 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
     setIsExportingImage(false);
   };
 
-  const uniqueAccountNamesFromTransactions = Array.from(new Set(transactions.map(t => t.account)));
-  
-  const filteredAccountSearch = uniqueAccountNamesFromTransactions.filter(name => 
-    name.toLowerCase().includes(accountSearchTerm.toLowerCase())
+  const filteredAccountSearch = chartAccounts.filter(acc => 
+    acc.name.toLowerCase().includes(accountSearchTerm.toLowerCase()) ||
+    acc.code.toLowerCase().includes(accountSearchTerm.toLowerCase())
   );
 
   return (
@@ -197,7 +219,7 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
              <BookOpen className="w-8 h-8 text-primary" />
              <div>
                 <h2 className="text-2xl font-black text-readable tracking-tight">دفتر الأستاذ العام الشامل</h2>
-                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">تحليل كامل للاستحقاقات والخصومات والسيولة</p>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">تتبع تفصيلي لحركات الحسابات من الشجرة</p>
              </div>
           </div>
         </div>
@@ -216,45 +238,67 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
 
       <div className="bg-zinc-100 dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl flex flex-wrap items-end gap-6 no-print relative">
         <div className="flex-1 min-w-[250px] space-y-1 relative z-10">
-           <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">بحث في العمليات</label>
-           <div className="relative">
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
-              <input 
-                type="text" 
-                placeholder="ابحث بالبيان أو رقم السند..." 
-                className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-3.5 pr-12 pl-4 outline-none font-bold text-readable focus:border-primary transition-all shadow-inner"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
-           </div>
-        </div>
-
-        <div className="flex-1 min-w-[250px] space-y-1 relative z-10">
-           <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">تحديد الحساب المفلتر</label>
+           <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">1. تحديد الحساب / القسم للفلترة</label>
            <div className="relative">
               <input 
                 type="text" 
-                className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-3.5 px-6 outline-none font-black text-readable focus:border-primary transition-all shadow-lg text-sm"
+                className="w-full bg-white dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-700 rounded-2xl py-3.5 px-6 outline-none font-black text-readable focus:border-primary transition-all shadow-lg text-sm"
                 value={accountSearchTerm}
                 onChange={(e) => {
                   setAccountSearchTerm(e.target.value);
                   setShowAccountResults(true);
                 }}
                 onFocus={() => setShowAccountResults(true)}
-                placeholder="اختر حساباً..."
+                placeholder="ابحث باسم الحساب أو القسم الرئيسي..."
               />
+              <ChevronDown className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none" />
+              
               {showAccountResults && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-2xl shadow-2xl z-[200] max-h-64 overflow-y-auto">
-                   <div onClick={() => { setAccountFilter('الكل'); setAccountSearchTerm(''); setShowAccountResults(false); }} className="p-4 border-b hover:bg-zinc-50 cursor-pointer font-black text-primary">عرض الكل</div>
-                   {filteredAccountSearch.map((name, i) => (
-                     <div key={i} onClick={() => { setAccountFilter(name); setAccountSearchTerm(name); setShowAccountResults(false); }} className="p-4 border-b hover:bg-zinc-50 cursor-pointer font-bold">{name}</div>
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-2xl shadow-2xl z-[200] max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                   <div onClick={() => { setAccountFilter('الكل'); setSelectedAccountId(null); setAccountSearchTerm('عرض كافة الحسابات'); setShowAccountResults(false); }} className="p-4 border-b hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer font-black text-primary flex items-center gap-2">
+                     <LayoutList className="w-4 h-4"/> عرض الكل
+                   </div>
+                   {filteredAccountSearch.map((acc, i) => (
+                     <div 
+                        key={i} 
+                        onClick={() => { 
+                           setAccountFilter(acc.name); 
+                           setSelectedAccountId(acc.id);
+                           setAccountSearchTerm(acc.name); 
+                           setShowAccountResults(false); 
+                        }} 
+                        className="p-4 border-b hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer group flex items-center justify-between"
+                     >
+                        <div className="flex items-center gap-3">
+                           {acc.type === 'FOLDER' ? <Folder className="w-4 h-4 text-amber-500"/> : <Calculator className="w-4 h-4 text-zinc-400"/>}
+                           <div>
+                              <p className="font-black text-sm group-hover:text-primary transition-colors">{acc.name}</p>
+                              <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">{acc.type === 'FOLDER' ? 'قسم رئيسي' : 'حساب فرعي'}</span>
+                           </div>
+                        </div>
+                        <span className="font-mono text-[10px] bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded">#{acc.code}</span>
+                     </div>
                    ))}
                 </div>
               )}
            </div>
         </div>
 
-        <div className="flex items-center gap-3 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 px-6 py-2.5 rounded-2xl h-[58px] z-10 shadow-sm">
+        <div className="flex-1 min-w-[250px] space-y-1 relative z-10">
+           <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mr-1">2. بحث نصي في البيانات</label>
+           <div className="relative">
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
+              <input 
+                type="text" 
+                placeholder="ابحث بالبيان أو رقم السند..." 
+                className="w-full bg-white dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-700 rounded-2xl py-3.5 pr-12 pl-4 outline-none font-bold text-readable focus:border-primary transition-all shadow-lg"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+           </div>
+        </div>
+
+        <div className="flex items-center gap-3 bg-white dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-700 px-6 py-2.5 rounded-2xl h-[58px] z-10 shadow-lg">
            <Calendar className="w-4 h-4 text-zinc-400" />
            <div className="flex items-center gap-3">
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono text-readable outline-none" />
@@ -275,7 +319,9 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
             </div>
             <div className="text-center">
                <h2 className="text-3xl font-black border-b-2 border-zinc-100 inline-block px-10 pb-2 mb-4 tracking-tighter">كشف حساب الأستاذ العام</h2>
-               <div className="bg-zinc-900 text-white px-8 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg">{accountFilter}</div>
+               <div className="bg-zinc-900 text-white px-8 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg flex items-center gap-2">
+                  <Calculator className="w-3 h-3 text-primary"/> {accountFilter}
+               </div>
             </div>
             <div className="text-left text-[10px] font-black text-zinc-400">
                <p>{settings?.address}</p><p dir="ltr">{settings?.phone}</p>
@@ -288,7 +334,7 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
                <thead>
                   <tr className="bg-zinc-900 text-white font-black text-[10px] uppercase h-16">
                      <th className="p-4 border-l border-zinc-800 w-32 text-center">التاريخ</th>
-                     <th className="p-4 border-l border-zinc-800">الحساب الرسمي / البند</th>
+                     <th className="p-4 border-l border-zinc-800">الحساب المحاسبي</th>
                      <th className="p-4 border-l border-zinc-800 w-64">البيان الرسمي للعملية</th>
                      <th className="p-4 border-l border-zinc-800 text-center w-32 bg-emerald-900/20">مدين (+)</th>
                      <th className="p-4 border-l border-zinc-800 text-center w-32 bg-rose-900/20">دائن (-)</th>
