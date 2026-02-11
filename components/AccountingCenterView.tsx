@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowRight, Landmark, PieChart, Printer, ImageIcon, Plus, Save, X, ChevronDown, Scale, ListTree, Calendar, Tag, List, Package, Eye, EyeOff, AlertCircle
@@ -14,7 +15,6 @@ import BalanceSheetReport from './BalanceSheetReport';
 import TradingAccountReport from './TradingAccountReport';
 import IncomeStatementReport from './IncomeStatementReport';
 import OpeningEntriesManager from './OpeningEntriesManager';
-import PeriodicInventoryManager from './PeriodicInventoryManager';
 
 const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReportType, isSingleView = false }) => {
   const reportRef = useRef<HTMLDivElement>(null);
@@ -71,34 +71,36 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
   const safeRound = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
   const calculateFinancials = () => {
-    // 1. تصفية البيانات المباشرة من السجلات لضمان عدم بقاء أرصدة محذوفة
     const filteredSales = allSales.filter(s => s.date >= startDate && s.date <= endDate);
     const filteredSalesReturns = allSalesReturns.filter(r => r.date >= startDate && r.date <= endDate);
     const filteredPurchases = allPurchases.filter(p => p.date >= startDate && p.date <= endDate);
     const filteredPurchaseReturns = allPurchaseReturns.filter(r => r.date >= startDate && r.date <= endDate);
     const filteredJournal = journal.filter(j => j.date >= startDate && j.date <= endDate);
 
-    // 2. احتساب المبيعات بدقة (إجمالي المبيعات - مرتجع المبيعات - الحسم الممنوح)
-    // نستخدم الإجمالي قبل الخصم من فواتير المبيعات
+    // 1. صافي المبيعات = إجمالي المبيعات - المرتجع - الحسم الممنوح (المعدل)
     const grossSalesVal = safeRound(filteredSales.reduce((s, c) => s + (c.items.reduce((sum, it) => sum + it.total, 0)), 0));
     const salesReturnsVal = safeRound(filteredSalesReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
-    const salesDiscountsVal = safeRound(filteredSales.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
     
-    // صافي المبيعات النهائي
+    // احتساب الحسم الممنوح بدقة (نستخدم الحسم المعدل من المرتجع إذا وجد)
+    const salesDiscountsVal = safeRound(filteredSales.reduce((s, c) => {
+        const retMatch = filteredSalesReturns.find(r => r.invoiceNumber === c.invoiceNumber);
+        return s + (retMatch ? (retMatch.discountAmount || 0) : (c.discountAmount || 0));
+    }, 0));
+    
     const netSales = safeRound(grossSalesVal - (salesReturnsVal + salesDiscountsVal));
 
-    // 3. احتساب المشتريات بدقة (إجمالي + نقل - مرتجع - حسم مكتسب)
+    // 2. صافي المشتريات
     const grossPurchasesVal = safeRound(filteredPurchases.reduce((s, c) => s + (c.items.reduce((sum, it) => sum + it.total, 0)), 0));
     const purchaseTransport = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.transportExpenses) || 0), 0));
     const purchaseReturnsVal = safeRound(filteredPurchaseReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0));
     const purchaseDiscountsVal = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
-    
     const netPurchases = safeRound((grossPurchasesVal + purchaseTransport) - (purchaseReturnsVal + purchaseDiscountsVal));
 
-    // 4. المخزون (أول وآخر المدة)
+    // 3. بضاعة أول وآخر المدة
     const openingStockInv = inventories.filter(i => i.type === 'OPENING' && i.date <= startDate).sort((a,b) => b.date.localeCompare(a.date))[0];
     const openingStockValue = safeRound(openingStockInv?.totalValue || 0);
 
+    // بضاعة آخر المدة (تتأثر آلياً بمرتجع مواد التصنيع عبر StockEntries)
     const closingStockItems = inventoryList.map(item => {
         const moves = stockEntries.filter(e => e.itemCode === item.code && e.date <= endDate);
         const bal = safeRound((item.openingStock || 0) + 
@@ -109,11 +111,11 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
     }).filter(it => it.quantity !== 0);
     const closingStockValue = safeRound(closingStockItems.reduce((sum, it) => sum + it.total, 0));
 
-    // 5. معادلة النتيجة التجارية (مجمل الربح)
+    // 4. تكلفة البضاعة المباعة والنتائج
     const cogs = safeRound(openingStockValue + netPurchases - closingStockValue);
     const grossProfit = safeRound(netSales - cogs);
 
-    // 6. الأرباح والخسائر والميزانية (للتوافق العام)
+    // 5. المصاريف والإيرادات التشغيلية
     const expenseCats = categories.filter(c => c.type === 'مصروفات').map(cat => ({
       id: cat.id, name: cat.name,
       total: safeRound(filteredJournal.filter(j => j.categoryId === cat.id).reduce((s, c) => s + (c.paidSYP || 0), 0))
@@ -133,10 +135,8 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
       openingStockValue, openingStockItems: openingStockInv?.items || [], 
       closingStockValue, closingStockItems, 
       cashInHand: safeRound(journal.filter(j => j.date <= endDate).reduce((s, c) => s + (c.receivedSYP - c.paidSYP), 0)), 
-      receivables: 0, payables: 0, fixedAssets: 0, equityOpening: 0, // Placeholder
-      expenseCats, revenueCats,
-      purchaseItems: filteredPurchases.flatMap(p => p.items.map(i => ({ ...i, supplier: p.supplierName, invoice: p.invoiceNumber }))),
-      saleItems: filteredSales.flatMap(s => s.items.map(i => ({ ...i, customer: s.customerName, invoice: s.invoiceNumber })))
+      fixedAssets: 0, receivables: 0, payables: 0, equityOpening: 0,
+      expenseCats, revenueCats
     };
   };
 
