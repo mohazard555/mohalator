@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Search, FileDown, Clock, Calendar, Edit2, Trash2, Filter, Package, ChevronDown, Check, X, HardDrive, Printer, FileText, Upload, Calculator, Layers, ImageIcon } from 'lucide-react';
-import { SalesInvoice, AppSettings, InvoiceItem } from '../types';
+import { SalesInvoice, AppSettings, InvoiceItem, InventoryItem } from '../types';
 import { exportToCSV } from '../utils/export';
 import { PdfExportService } from '../utils/PdfExportService';
 import { ImageExportService } from '../utils/ImageExportService';
@@ -17,6 +17,7 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
   const reportRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -34,6 +35,10 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
     loadInvoices();
     const savedSettings = localStorage.getItem('sheno_settings');
     if (savedSettings) setSettings(JSON.parse(savedSettings));
+    
+    // جلب قائمة المخزن للحصول على الوحدات الصحيحة
+    const savedInventory = localStorage.getItem('sheno_inventory_list');
+    if (savedInventory) setInventory(JSON.parse(savedInventory));
   }, []);
 
   const loadInvoices = () => {
@@ -48,6 +53,12 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
       });
       setUniqueItems(Array.from(itemsSet).sort());
     }
+  };
+
+  // مساعد للحصول على وحدة قياس المادة من المستودع
+  const getItemUnit = (name: string): string => {
+    const match = inventory.find(i => i.name === name);
+    return match ? match.unit : 'قطعة';
   };
 
   const filteredInvoices = invoices.filter(inv => {
@@ -77,7 +88,8 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
 
   const usedMaterialUnitTotals = filteredInvoices.reduce((acc: Record<string, number>, inv) => {
     inv.usedMaterials?.forEach(m => {
-      const unit = m.unit || 'قطعة';
+      // جلب الوحدة الحقيقية من المستودع بدلاً من م.يونيت
+      const unit = getItemUnit(m.name);
       acc[unit] = (acc[unit] || 0) + m.quantity;
     });
     return acc;
@@ -112,7 +124,7 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
       'تاريخ العملية': inv.date,
       'اسم الزبون': inv.customerName,
       'الأصناف المباعة': inv.items.map(it => `${it.name} (${it.quantity})`).join(' | '),
-      'المواد المستخدمة': (inv.usedMaterials || []).map((m: any) => `${m.name} (${m.quantity})`).join(' | '),
+      'المواد المستخدمة': (inv.usedMaterials || []).map((m: any) => `${m.name} (${m.quantity} ${getItemUnit(m.name)})`).join(' | '),
       'إجمالي المبلغ': inv.totalAmount,
       'المبلغ المدفوع': inv.paidAmount || 0,
       'نوع الدفع': inv.paymentType,
@@ -448,7 +460,7 @@ const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onBack, onEdit }) =
                   </td>
                   <td className="p-2 border-l border-zinc-100">
                     <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
-                       {inv.usedMaterials?.map((m, i) => ( <span key={i} className="bg-rose-50 text-rose-700 px-1 py-0.5 rounded-sm text-[8px] font-black border border-rose-100">{m.name} ({m.quantity} {m.unit})</span> ))}
+                       {inv.usedMaterials?.map((m, i) => ( <span key={i} className="bg-rose-50 text-rose-700 px-1 py-0.5 rounded-sm text-[8px] font-black border border-rose-100">{m.name} ({m.quantity} {getItemUnit(m.name)})</span> ))}
                     </div>
                   </td>
                   <td className="p-2 border-l border-zinc-100 text-center font-mono text-zinc-700">{inv.items.reduce((s,i) => s + i.quantity, 0)}</td>
