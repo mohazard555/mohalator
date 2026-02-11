@@ -4,7 +4,7 @@ import {
   ArrowRight, Search, Printer, FileDown, Calendar, 
   CheckCircle, History, Save, Info, ArrowUpRight, 
   ArrowDownLeft, FileSpreadsheet, ImageIcon, X, Filter,
-  Users, Building, Calculator, RefreshCcw, Landmark, List, Trash2
+  Users, Building, Calculator, RefreshCcw, Landmark, List, Trash2, MapPin, Phone
 } from 'lucide-react';
 import { 
   Party, SalesInvoice, PurchaseInvoice, CashEntry, 
@@ -184,6 +184,16 @@ const ReconciliationView: React.FC<ReconciliationViewProps> = ({ onBack }) => {
     }
   };
 
+  const handleExportImage = async () => {
+    if (!reportRef.current || isExporting) return;
+    setIsExporting(true);
+    try {
+      await ImageExportService.exportAsPng(reportRef.current, `مطابقة_${selectedPartyName}_${endDate}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 no-print">
@@ -198,7 +208,7 @@ const ReconciliationView: React.FC<ReconciliationViewProps> = ({ onBack }) => {
         </div>
         <div className="flex gap-2">
            <button onClick={() => window.print()} className="bg-zinc-900 text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:bg-zinc-800 transition-all">
-              <Printer className="w-5 h-5" /> طباعة
+              <Printer className="w-5 h-5" /> طباعة تقرير المطابقة
            </button>
         </div>
       </div>
@@ -266,9 +276,40 @@ const ReconciliationView: React.FC<ReconciliationViewProps> = ({ onBack }) => {
       </div>
 
       {results && (
-        <div ref={reportRef} className="space-y-8 animate-in slide-in-from-bottom-4 export-fix">
+        <div ref={reportRef} className="space-y-8 animate-in slide-in-from-bottom-4 export-fix bg-white p-4 md:p-10 rounded-[3rem] print:rounded-none print:border-none print:shadow-none">
+           
+           {/* الترويسة الاحترافية للطباعة والصورة */}
+           <div className="hidden print:flex flex-row justify-between items-start mb-6 border-b-4 border-primary pb-6 bg-white text-zinc-900">
+              <div className="flex items-center gap-4">
+                 {settings?.logoUrl ? (
+                    <img src={settings.logoUrl} className="w-20 h-20 object-contain bg-white rounded-xl p-1 shadow-sm border" alt="Logo" />
+                 ) : (
+                    <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg">FIN</div>
+                 )}
+                 <div>
+                    <h1 className="text-3xl font-black text-primary leading-none">{settings?.companyName || 'FINEXA SYSTEM'}</h1>
+                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">{settings?.companyType}</p>
+                 </div>
+              </div>
+              <div className="text-center pt-2">
+                 <h2 className="text-3xl font-black text-zinc-900 underline decoration-primary/20 underline-offset-8">تقرير مطابقة رصيد حساب</h2>
+                 <p className="text-lg mt-4 font-bold text-primary">{selectedPartyName}</p>
+              </div>
+              <div className="text-left space-y-1 pt-2">
+                 <div className="flex items-center justify-end gap-2 text-zinc-500 text-xs font-bold">
+                    <span>تاريخ التقرير: {new Date().toLocaleDateString('ar-SA')}</span>
+                 </div>
+                 <div className="flex items-center justify-end gap-2 text-zinc-500 text-xs font-bold">
+                    <span>الفترة: {startDate} ← {endDate}</span>
+                 </div>
+                 <div className="text-[9px] font-black text-zinc-400 uppercase pt-2 flex items-center justify-end gap-2">
+                    <span>SAMLATOR SECURED SYSTEM</span>
+                 </div>
+              </div>
+           </div>
+
            {/* Summary Cards */}
-           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 no-print-visible">
+           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
               <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-lg flex flex-col items-center text-center">
                  <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">إجمالي الفواتير</span>
                  <span className="text-2xl font-mono font-black text-readable">{(results.summary.totalInvoices || results.summary.totalPurchases).toLocaleString()}</span>
@@ -285,25 +326,27 @@ const ReconciliationView: React.FC<ReconciliationViewProps> = ({ onBack }) => {
                  <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">الخصومات / الحسم</span>
                  <span className="text-2xl font-mono font-black text-amber-600">{results.summary.totalDiscounts.toLocaleString()}</span>
               </div>
-              <div className="bg-zinc-900 p-6 rounded-3xl shadow-xl flex flex-col items-center text-center border-b-4 border-primary">
-                 <span className="text-[10px] font-black text-primary uppercase tracking-widest mb-2">صافي رصيد المطابقة</span>
-                 <span className="text-3xl font-mono font-black text-white">{results.finalBalance.toLocaleString()}</span>
+              <div className="bg-zinc-900 p-6 rounded-3xl shadow-xl flex flex-col items-center text-center border-b-4 border-primary print:bg-zinc-100 print:text-zinc-900 print:border-zinc-900">
+                 <span className="text-[10px] font-black text-primary uppercase tracking-widest mb-2 print:text-zinc-500">صافي رصيد المطابقة</span>
+                 <span className="text-3xl font-mono font-black text-white print:text-zinc-900">{results.finalBalance.toLocaleString()}</span>
               </div>
            </div>
 
            {/* Details Table */}
-           <div className="bg-white dark:bg-zinc-950 rounded-[3rem] border-2 border-zinc-100 dark:border-zinc-800 shadow-2xl overflow-hidden">
+           <div className="bg-white dark:bg-zinc-950 rounded-[3rem] border-2 border-zinc-100 dark:border-zinc-800 shadow-2xl overflow-hidden print:rounded-none print:border-zinc-200">
               <div className="p-8 border-b dark:border-zinc-800 flex flex-col md:flex-row justify-between items-center gap-4">
                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary/10 rounded-2xl text-primary"><List className="w-6 h-6"/></div>
+                    <div className="p-3 bg-primary/10 rounded-2xl text-primary no-print"><List className="w-6 h-6"/></div>
                     <div>
                        <h3 className="text-xl font-black text-readable tracking-tight">سجل حركات المطابقة التحليلي</h3>
                        <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-[0.2em]">{selectedPartyName} | {startDate} ← {endDate}</p>
                     </div>
                  </div>
                  <div className="flex gap-2 no-print">
-                    <button onClick={() => exportToCSV(results.items, 'reconciliation_details')} className="p-3 bg-emerald-500/10 text-emerald-600 rounded-xl hover:bg-emerald-500 hover:text-white transition-all"><FileSpreadsheet className="w-5 h-5"/></button>
-                    <button onClick={() => ImageExportService.exportAsPng(reportRef.current!, 'Reconciliation')} className="p-3 bg-amber-500/10 text-amber-600 rounded-xl hover:bg-amber-500 hover:text-white transition-all"><ImageIcon className="w-5 h-5"/></button>
+                    <button onClick={() => exportToCSV(results.items, 'reconciliation_details')} className="p-3 bg-emerald-500/10 text-emerald-600 rounded-xl hover:bg-emerald-500 hover:text-white transition-all" title="تصدير Excel"><FileSpreadsheet className="w-5 h-5"/></button>
+                    <button onClick={handleExportImage} disabled={isExporting} className="p-3 bg-amber-500/10 text-amber-600 rounded-xl hover:bg-amber-500 hover:text-white transition-all disabled:opacity-50" title="حفظ كصورة">
+                       {isExporting ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
+                    </button>
                     <button onClick={handleSaveReconciliation} className="bg-primary text-white px-8 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg hover:scale-105 transition-all"><Save className="w-5 h-5"/> حفظ المطابقة</button>
                  </div>
               </div>
@@ -311,33 +354,50 @@ const ReconciliationView: React.FC<ReconciliationViewProps> = ({ onBack }) => {
               <div className="overflow-x-auto">
                  <table className="w-full text-right border-collapse">
                     <thead>
-                       <tr className="bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest h-14">
-                          <th className="p-4 border-l border-zinc-800 text-center w-32">التاريخ</th>
-                          <th className="p-4 border-l border-zinc-800 text-center">نوع الحركة</th>
-                          <th className="p-4 border-l border-zinc-800">البيان الرسمي</th>
-                          <th className="p-4 border-l border-zinc-800 text-center w-32 bg-emerald-900/20">مدين (+)</th>
-                          <th className="p-4 border-l border-zinc-800 text-center w-32 bg-rose-900/20">دائن (-)</th>
-                          <th className="p-4 text-center w-48 font-black text-base bg-zinc-800">الرصيد التراكمي</th>
+                       <tr className="bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest h-14 print:bg-zinc-100 print:text-zinc-900">
+                          <th className="p-4 border-l border-zinc-800 text-center w-32 print:border-zinc-200">التاريخ</th>
+                          <th className="p-4 border-l border-zinc-800 text-center print:border-zinc-200">نوع الحركة</th>
+                          <th className="p-4 border-l border-zinc-800 print:border-zinc-200">البيان الرسمي</th>
+                          <th className="p-4 border-l border-zinc-800 text-center w-32 bg-emerald-900/20 print:bg-transparent print:border-zinc-200">مدين (+)</th>
+                          <th className="p-4 border-l border-zinc-800 text-center w-32 bg-rose-900/20 print:bg-transparent print:border-zinc-200">دائن (-)</th>
+                          <th className="p-4 text-center w-48 font-black text-base bg-zinc-800 print:bg-zinc-50">الرصيد التراكمي</th>
                        </tr>
                     </thead>
                     <tbody className="divide-y font-bold dark:divide-zinc-800">
                        {results.items.map((m, i) => {
                          const isMatchDay = m.date === endDate;
                          return (
-                           <tr key={i} className={`h-14 transition-colors ${isMatchDay ? 'bg-amber-50 dark:bg-amber-900/10' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/30'}`}>
-                              <td className="p-4 font-mono text-zinc-400 border-l dark:border-zinc-800 text-center">{m.date}</td>
-                              <td className="p-4 text-center border-l dark:border-zinc-800">
-                                 <span className="text-[10px] px-3 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-black">{m.type}</span>
+                           <tr key={i} className={`h-14 transition-colors ${isMatchDay ? 'bg-amber-50 dark:bg-amber-900/10 print:bg-amber-50' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/30'}`}>
+                              <td className="p-4 font-mono text-zinc-400 border-l dark:border-zinc-800 text-center print:border-zinc-200">{m.date}</td>
+                              <td className="p-4 text-center border-l dark:border-zinc-800 print:border-zinc-200">
+                                 <span className="text-[10px] px-3 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-black print:border print:border-zinc-200">{m.type}</span>
                               </td>
-                              <td className="p-4 border-l dark:border-zinc-800 text-readable">{m.statement}</td>
-                              <td className="p-4 text-center font-mono text-emerald-600 border-l dark:border-zinc-800">{m.debit > 0 ? m.debit.toLocaleString() : '-'}</td>
-                              <td className="p-4 text-center font-mono text-rose-600 border-l dark:border-zinc-800">{m.credit > 0 ? m.credit.toLocaleString() : '-'}</td>
-                              <td className={`p-4 text-center font-mono font-black text-lg ${m.runningBalance >= 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-rose-500 animate-pulse'}`}>{m.runningBalance.toLocaleString()}</td>
+                              <td className="p-4 border-l dark:border-zinc-800 text-readable print:border-zinc-200">{m.statement}</td>
+                              <td className="p-4 text-center font-mono text-emerald-600 border-l dark:border-zinc-800 print:border-zinc-200">{m.debit > 0 ? m.debit.toLocaleString() : '-'}</td>
+                              <td className="p-4 text-center font-mono text-rose-600 border-l dark:border-zinc-800 print:border-zinc-200">{m.credit > 0 ? m.credit.toLocaleString() : '-'}</td>
+                              <td className={`p-4 text-center font-mono font-black text-lg ${m.runningBalance >= 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-rose-500 animate-pulse print:text-rose-700'}`}>{m.runningBalance.toLocaleString()}</td>
                            </tr>
                          );
                        })}
                     </tbody>
                  </table>
+              </div>
+           </div>
+
+           {/* تذييل رسمي للطباعة */}
+           <div className="hidden print:flex flex-row justify-between items-end mt-12 pt-8 border-t-2 border-zinc-100 text-[10px] font-black text-zinc-400">
+              <div className="flex flex-col gap-1">
+                 <span>صحة البيانات مسؤولية الموقع أدناه</span>
+                 <div className="w-48 border-b-2 border-zinc-200 mt-8"></div>
+                 <span>توقيع الزبون / المورد</span>
+              </div>
+              <div className="text-center">
+                 <span>اعتماد الإدارة المالية</span>
+                 <div className="w-48 border-b-2 border-zinc-200 mt-8"></div>
+                 <span>ختم وتوقيع المحاسب</span>
+              </div>
+              <div className="text-left italic opacity-50">
+                 {settings?.companyName} Accounting Terminal v4.2
               </div>
            </div>
         </div>
