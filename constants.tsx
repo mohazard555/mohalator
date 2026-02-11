@@ -4,9 +4,13 @@ import {
   ShoppingCart, Warehouse, Wallet, Settings, TrendingUp, 
   Landmark, BookOpen, Scale, Box, PieChart, Activity, 
   BarChart3, ListTree, History, FileOutput, Users, 
-  ClipboardList, Receipt, Layers, Coins, ImageIcon, ArrowUpRight, ArrowDownLeft, FileSignature
+  ClipboardList, Receipt, Layers, Coins, ImageIcon, ArrowUpRight, ArrowDownLeft, FileSignature, CheckCircle
 } from 'lucide-react';
 import { AppView } from './types';
+
+// Helper constant for detailed supplier report mapping fix
+// Moved above MENU_GROUPS to avoid usage before declaration error
+const AppSupplier_Report = AppView.DETAILED_SUPPLIER_REPORT;
 
 export const MENU_GROUPS = [
   {
@@ -39,6 +43,7 @@ export const MENU_GROUPS = [
     title: 'المبيعات والعملاء',
     icon: <ShoppingCart className="w-5 h-5" />,
     items: [
+      { label: 'مطابقات الزبائن والموردين', view: AppView.RECONCILIATION },
       { label: 'فاتورة مبيعات ذكية', view: AppView.SALES_INVOICE },
       { label: 'سجل المبيعات العام', view: AppView.SALES_HISTORY },
       { label: 'مرتجع مبيعات', view: AppView.SALES_RETURN },
@@ -54,7 +59,7 @@ export const MENU_GROUPS = [
       { label: 'فاتورة مشتريات', view: AppView.PURCHASE_INVOICE },
       { label: 'سجل المشتريات', view: AppView.PURCHASE_HISTORY },
       { label: 'سجل مرتجع المشتريات', view: AppView.PURCHASE_RETURN_HISTORY },
-      { label: 'كشف حساب مورد مفصل', view: AppView.DETAILED_SUPPLIER_REPORT },
+      { label: 'كشف حساب مورد مفصل', view: AppSupplier_Report },
       { label: 'قائمة المواد والجرد', view: AppView.INVENTORY },
       { label: 'إدارة حسابات (جهات)', view: AppView.PARTY_MANAGEMENT },
       { label: 'إدارة ملف المستودعات', view: AppView.WAREHOUSE_MANAGEMENT },

@@ -41,6 +41,7 @@ import IncomeStatementView from './components/IncomeStatementView';
 import OpeningEntriesView from './components/OpeningEntriesView';
 import PeriodicInventoryView from './components/PeriodicInventoryView';
 import WelcomeSplash from './components/WelcomeSplash';
+import ReconciliationView from './components/ReconciliationView';
 
 const FinexaLogo = () => (
   <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-sm">
@@ -216,6 +217,7 @@ const App: React.FC = () => {
             case AppView.INCOME_STATEMENT: return <IncomeStatementView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.OPENING_ENTRIES: return <OpeningEntriesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.PERIODIC_INVENTORY: return <PeriodicInventoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.RECONCILIATION: return <ReconciliationView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             default: return <Dashboard setView={setCurrentView} />;
           }
         })()}

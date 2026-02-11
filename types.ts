@@ -41,7 +41,20 @@ export enum AppView {
   PERIODIC_INVENTORY = 'PERIODIC_INVENTORY',
   DOLLAR_BALANCES = 'DOLLAR_BALANCES',
   INVOICE_GALLERY = 'INVOICE_GALLERY',
-  JOURNAL_ENTRY = 'JOURNAL_ENTRY'
+  JOURNAL_ENTRY = 'JOURNAL_ENTRY',
+  RECONCILIATION = 'RECONCILIATION'
+}
+
+export interface ReconciliationEntry {
+  id: string;
+  partyName: string;
+  partyType: 'زبون' | 'مورد' | 'كلاهما';
+  periodStart: string;
+  periodEnd: string;
+  balanceAtReconciliation: number;
+  reconciliationDate: string;
+  user: string;
+  notes: string;
 }
 
 export interface AccountNode {
