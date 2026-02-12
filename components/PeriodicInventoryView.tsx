@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowRight, Plus, Package, X, Save, Search, Check, 
   ChevronRight, ChevronLeft, Printer, Eye, Trash2, Edit2, 
-  RotateCcw, FileText, LayoutList, Calendar, Warehouse, Coins, Hash, ChevronDown
+  RotateCcw, LayoutList, Calendar, Warehouse, Coins, Hash, ChevronDown, Info, FileText, AlertCircle
 } from 'lucide-react';
 import { PeriodicInventory, InventoryItem, StockEntry, AppSettings, WarehouseEntity } from '../types';
 import PeriodicInventoryManager from './PeriodicInventoryManager';
@@ -29,16 +29,16 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
   const [warehouses, setWarehouses] = useState<WarehouseEntity[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   
-  const [viewMode, setViewMode] = useState<'LIST' | 'ENTRY'>('LIST');
-  const [showWarehouseSearch, setShowWarehouseSearch] = useState(false);
+  const [viewMode, setViewMode] = useState<'LIST' | 'ENTRY' | 'PREVIEW'>('LIST');
+  const [previewData, setPreviewData] = useState<PeriodicInventory | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // بيانات الترويسة (Header)
   const [headerData, setHeaderData] = useState({
     date: new Date().toISOString().split('T')[0],
-    warehouse: 'المستودع الرئيسي',
-    statement: '',
+    warehouse: '',
+    statement: 'جرد بضاعة أول المدة',
     currency: 'ليرة سورية',
-    exchangeRate: '1.00000',
     details: ''
   });
 
@@ -55,7 +55,6 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
     }))
   );
 
-  // حالات البحث داخل الخلايا
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [itemSearch, setItemSearch] = useState('');
 
@@ -70,9 +69,22 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
     const sSett = localStorage.getItem('sheno_settings');
     const sStock = localStorage.getItem('sheno_stock_entries');
     
+    // التأكد من وجود المستودع الرئيسي
+    let loadedWarehouses: WarehouseEntity[] = sWh ? JSON.parse(sWh) : [];
+    if (loadedWarehouses.length === 0) {
+      loadedWarehouses = [{ id: '1', name: 'المستودع الرئيسي', location: 'المركز', isMain: true }];
+      localStorage.setItem('sheno_warehouses', JSON.stringify(loadedWarehouses));
+    }
+    setWarehouses(loadedWarehouses);
+
+    // ضبط المستودع الافتراضي في الترويسة
+    if (!headerData.warehouse) {
+      const mainWh = loadedWarehouses.find(w => w.isMain) || loadedWarehouses[0];
+      setHeaderData(prev => ({ ...prev, warehouse: mainWh.name }));
+    }
+
     if (sInv) setInventories(JSON.parse(sInv));
     if (sList) setInventoryList(JSON.parse(sList));
-    if (sWh) setWarehouses(JSON.parse(sWh));
     if (sSett) setSettings(JSON.parse(sSett));
     if (sStock) setStockEntries(JSON.parse(sStock));
   };
@@ -108,8 +120,11 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
       return;
     }
 
+    const returnId = editingId || crypto.randomUUID();
+
+    // 1. كائن الجرد للتقارير الختامية
     const newJard: PeriodicInventory = {
-      id: crypto.randomUUID(),
+      id: returnId,
       date: headerData.date,
       type: 'OPENING',
       items: validItems.map(r => ({
@@ -124,202 +139,272 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
       notes: headerData.statement || 'بضاعة أول المدة'
     };
 
-    const updated = [newJard, ...inventories];
-    setInventories(updated);
-    localStorage.setItem('sheno_periodic_inventories', JSON.stringify(updated));
+    // 2. تحديث قائمة الجرد الدوري
+    let updatedInventories;
+    if (editingId) {
+      updatedInventories = inventories.map(inv => inv.id === editingId ? newJard : inv);
+    } else {
+      updatedInventories = [newJard, ...inventories];
+    }
+    localStorage.setItem('sheno_periodic_inventories', JSON.stringify(updatedInventories));
+
+    // 3. ترحيل الحركات المخزنية (لتحديث أرصدة المواد)
+    const savedStock = localStorage.getItem('sheno_stock_entries');
+    let currentStockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
     
-    alert('تم حفظ وتثبيت جرد أول المدة بنجاح');
+    // حذف الحركات القديمة المرتبطة بهذا الجرد إذا كنا في وضع التعديل
+    if (editingId) {
+      currentStockEntries = currentStockEntries.filter(e => e.movementCode !== editingId);
+    }
+
+    const openingStockMovements: StockEntry[] = validItems.map(item => ({
+      id: crypto.randomUUID(),
+      date: headerData.date,
+      day: new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(new Date(headerData.date)),
+      department: 'جرد بضاعة أول مدة',
+      itemCode: item.itemCode,
+      itemName: item.itemName,
+      unit: item.unit,
+      price: item.price,
+      warehouse: headerData.warehouse,
+      movementType: 'إدخال',
+      quantity: item.quantity,
+      invoiceNumber: 'JARD-OPEN',
+      statement: `قيد افتتاح مخزني - ${headerData.warehouse}`,
+      movementCode: returnId // ربط الحركة بمعرف الجرد لسهولة التعديل/الحذف
+    }));
+
+    localStorage.setItem('sheno_stock_entries', JSON.stringify([...openingStockMovements, ...currentStockEntries]));
+    
+    alert('تم حفظ الجرد وتحديث أرصدة المخازن بنجاح');
+    handleNew();
     setViewMode('LIST');
     loadData();
   };
 
-  const calculateClosingStock = (targetDate: string) => {
-    const items = inventoryList.map(item => {
-      const moves = stockEntries.filter(e => e.itemCode === item.code && e.date <= targetDate);
-      const added = moves.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
-      const issued = moves.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
-      const returned = moves.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
-      const balance = (item.openingStock || 0) + added - issued + returned;
-      return { code: item.code, name: item.name, quantity: balance, unit: item.unit, price: item.price, total: balance * item.price };
+  const handleNew = () => {
+    setRows(Array.from({ length: 15 }, () => ({
+      id: crypto.randomUUID(),
+      itemCode: '',
+      itemName: '',
+      quantity: 0,
+      price: 0,
+      total: 0,
+      unit: ''
+    })));
+    setEditingId(null);
+    const mainWh = warehouses.find(w => w.isMain) || warehouses[0];
+    setHeaderData({
+      date: new Date().toISOString().split('T')[0],
+      warehouse: mainWh?.name || '',
+      statement: 'جرد بضاعة أول المدة',
+      currency: 'ليرة سورية',
+      details: ''
     });
-    return { items: items.filter(i => i.quantity !== 0), total: items.reduce((s, i) => s + i.total, 0) };
+    setViewMode('ENTRY');
   };
 
-  const closing = calculateClosingStock(new Date().toISOString().split('T')[0]);
+  const handleEdit = (inv: PeriodicInventory) => {
+    setEditingId(inv.id);
+    setHeaderData({
+      date: inv.date,
+      warehouse: headerData.warehouse, // الاحتفاظ بالمستودع الحالي المختار
+      statement: inv.notes,
+      currency: 'ليرة سورية',
+      details: ''
+    });
+    const mappedRows = inv.items.map(item => ({
+      id: crypto.randomUUID(),
+      itemCode: item.itemCode,
+      itemName: item.itemName,
+      quantity: item.quantity,
+      price: item.price,
+      total: item.total,
+      unit: item.unit
+    }));
+    const emptyRows = Array.from({ length: Math.max(0, 15 - mappedRows.length) }, () => ({
+      id: crypto.randomUUID(),
+      itemCode: '',
+      itemName: '',
+      quantity: 0,
+      price: 0,
+      total: 0,
+      unit: ''
+    }));
+    setRows([...mappedRows, ...emptyRows]);
+    setViewMode('ENTRY');
+  };
+
+  const handlePreview = (inv: PeriodicInventory) => {
+    setPreviewData(inv);
+    setViewMode('PREVIEW');
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('هل أنت متأكد من حذف هذا الجرد؟ سيتم إلغاء كافة أرصدة بضاعة أول المدة المرتبطة به.')) {
+      const updatedInventories = inventories.filter(x => x.id !== id);
+      setInventories(updatedInventories);
+      localStorage.setItem('sheno_periodic_inventories', JSON.stringify(updatedInventories));
+
+      // حذف الحركات المخزنية المرتبطة
+      const savedStock = localStorage.getItem('sheno_stock_entries');
+      if (savedStock) {
+        const currentStock = JSON.parse(savedStock);
+        localStorage.setItem('sheno_stock_entries', JSON.stringify(currentStock.filter((e: any) => e.movementCode !== id)));
+      }
+
+      loadData();
+    }
+  };
+
+  const calculateCurrentBalance = (itemCode: string) => {
+     const moves = stockEntries.filter(e => e.itemCode === itemCode);
+     const added = moves.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0);
+     const issued = moves.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
+     const returned = moves.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
+     const baseItem = inventoryList.find(i => i.code === itemCode);
+     return (baseItem?.openingStock || 0) + added - issued + returned;
+  };
+
   const filteredItems = inventoryList.filter(i => 
-    i.name.includes(itemSearch) || i.code.includes(itemSearch)
+    i.name.toLowerCase().includes(itemSearch.toLowerCase()) || i.code.toLowerCase().includes(itemSearch.toLowerCase())
   );
 
   if (viewMode === 'ENTRY') {
     return (
-      <div className="min-h-screen bg-[#e9ecef] text-[#212529] p-4 flex flex-col gap-4 animate-in fade-in zoom-in-95" dir="rtl">
+      <div className="min-h-screen bg-[#f4f4f5] text-zinc-900 p-4 flex flex-col gap-4 animate-in fade-in" dir="rtl">
         {/* Title Bar */}
-        <div className="flex items-center justify-between border-b-2 border-zinc-400 pb-2">
+        <div className="flex items-center justify-between border-b-2 border-zinc-300 pb-2 no-print">
           <h1 className="text-xl font-black text-zinc-800 flex items-center gap-2">
-            <Package className="w-6 h-6 text-primary" /> بضاعة أول المدة
+            <Package className="w-6 h-6 text-primary" /> {editingId ? 'تعديل جرد بضاعة أول المدة' : 'تسجيل بضاعة أول المدة'}
           </h1>
-          <div className="flex gap-1 no-print items-center">
-            <button className="p-1 hover:bg-zinc-300 rounded transition-colors"><ChevronRight className="w-5 h-5 text-zinc-600" /></button>
-            <button className="p-1 hover:bg-zinc-300 rounded transition-colors"><ChevronLeft className="w-5 h-5 text-zinc-600" /></button>
-            <div className="px-6 py-1.5 bg-white border-2 border-zinc-400 font-mono font-black text-sm shadow-inner rounded-md ml-2 mr-2">* 1</div>
-            <button className="p-1 hover:bg-zinc-300 rounded transition-colors"><ChevronRight className="w-5 h-5 rotate-180 text-zinc-600" /></button>
-            <button className="p-1 hover:bg-zinc-300 rounded transition-colors"><ChevronLeft className="w-5 h-5 rotate-180 text-zinc-600" /></button>
-          </div>
+          <button onClick={() => setViewMode('LIST')} className="p-2 hover:bg-zinc-200 rounded-xl transition-colors">
+            <ArrowRight className="w-6 h-6 text-zinc-500" />
+          </button>
         </div>
 
         {/* Top Header Form */}
-        <div className="grid grid-cols-12 gap-6 bg-zinc-200/50 p-5 rounded-xl border border-zinc-300 shadow-sm">
-          {/* Left Side Header */}
-          <div className="col-span-5 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm no-print">
+          <div className="md:col-span-4 space-y-4">
             <div className="flex items-center gap-2">
-              <Check className="w-5 h-5 text-emerald-700" />
-              <span className="font-black text-sm text-emerald-900 uppercase tracking-tighter">درجة السرية المحاسبية</span>
+              <Check className="w-5 h-5 text-emerald-600" />
+              <span className="font-black text-xs text-zinc-500 uppercase tracking-widest">توثيق جرد مخزني معتمد</span>
             </div>
             <div className="flex gap-2 items-start">
-               <div className="p-2 bg-zinc-300 rounded-lg border border-zinc-400"><Search className="w-5 h-5 text-zinc-700"/></div>
+               <div className="p-2 bg-zinc-100 rounded-lg border border-zinc-200"><FileText className="w-5 h-5 text-zinc-400"/></div>
                <div className="flex-1">
                  <textarea 
-                   className="w-full border-2 border-zinc-300 p-3 rounded-xl h-24 outline-none focus:border-primary font-black text-sm bg-white shadow-inner resize-none"
-                   placeholder="تفصيل إضافي..."
+                   className="w-full border border-zinc-200 p-3 rounded-xl h-24 outline-none focus:border-primary font-bold text-sm bg-zinc-50 shadow-inner resize-none"
+                   placeholder="ملاحظات تفصيلية حول هذا الجرد..."
                    value={headerData.details}
                    onChange={e => setHeaderData({...headerData, details: e.target.value})}
                  />
-                 <div className="text-[10px] font-black text-zinc-500 mt-1 mr-1 uppercase">حساب المواد والبنود</div>
                </div>
             </div>
           </div>
 
-          {/* Right Side Header */}
-          <div className="col-span-7 grid grid-cols-2 gap-x-8 gap-y-4">
-             <div className="flex items-center gap-2">
-                <span className="text-xs font-black w-16 text-zinc-600">التاريخ:</span>
-                <input type="date" value={headerData.date} onChange={e => setHeaderData({...headerData, date: e.target.value})} className="flex-1 border-2 border-zinc-300 p-2 rounded-xl text-xs font-mono font-black bg-white focus:border-primary transition-all" />
+          <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+             <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-1">تاريخ الجرد</label>
+                <input type="date" value={headerData.date} onChange={e => setHeaderData({...headerData, date: e.target.value})} className="w-full border border-zinc-200 p-3 rounded-xl text-sm font-mono font-black bg-zinc-50 focus:border-primary transition-all" />
              </div>
-             <div className="flex items-center gap-2">
-                <span className="text-xs font-black w-16 text-zinc-600">العملة:</span>
-                <select value={headerData.currency} onChange={e => setHeaderData({...headerData, currency: e.target.value})} className="flex-1 border-2 border-zinc-300 p-2 rounded-xl text-xs font-black bg-white appearance-none cursor-pointer focus:border-primary">
-                   <option>{settings?.currency || 'ليرة سورية'}</option>
-                   <option>{settings?.secondaryCurrency || 'دولار أمريكي'}</option>
-                </select>
-             </div>
-             <div className="flex items-center gap-2 relative">
-                <span className="text-xs font-black w-16 text-zinc-600">المستودع:</span>
-                <div className="flex-1 flex gap-1 items-center">
-                   <select value={headerData.warehouse} onChange={e => setHeaderData({...headerData, warehouse: e.target.value})} className="flex-1 border-2 border-zinc-300 p-2 rounded-xl text-xs font-black bg-white appearance-none focus:border-primary">
-                      {warehouses.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
-                   </select>
-                   <div 
-                     onClick={() => setShowWarehouseSearch(!showWarehouseSearch)}
-                     className="p-2 bg-zinc-300 rounded-lg border border-zinc-400 cursor-pointer hover:bg-primary hover:text-white transition-all shadow-sm"
+             <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-1">المستودع الفعلي</label>
+                <div className="relative">
+                   <Warehouse className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                   <select 
+                     value={headerData.warehouse} 
+                     onChange={e => setHeaderData({...headerData, warehouse: e.target.value})} 
+                     className="w-full border border-zinc-200 p-3 pr-10 rounded-xl text-sm font-black bg-zinc-50 focus:border-primary appearance-none cursor-pointer"
                    >
-                     <Search className="w-4 h-4"/>
-                   </div>
-                   {showWarehouseSearch && (
-                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-primary rounded-xl shadow-2xl z-50 p-2 animate-in fade-in slide-in-from-top-1">
-                        <div className="text-[10px] font-black text-zinc-400 mb-2 border-b pb-1">اختر المستودع للمطابقة</div>
-                        {warehouses.map(w => (
-                          <div 
-                            key={w.id} 
-                            onClick={() => { setHeaderData({...headerData, warehouse: w.name}); setShowWarehouseSearch(false); }}
-                            className="p-2 hover:bg-primary hover:text-white cursor-pointer rounded-lg text-xs font-black flex items-center justify-between"
-                          >
-                             <span>{w.name}</span>
-                             <span className="text-[9px] opacity-60 font-mono">{w.location}</span>
-                          </div>
-                        ))}
-                     </div>
-                   )}
+                      <option value="">-- اختر المستودع --</option>
+                      {warehouses.map(w => <option key={w.id} value={w.name}>{w.name} {w.isMain ? '(الرئيسي)' : ''}</option>)}
+                   </select>
+                   <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
                 </div>
              </div>
-             <div className="flex items-center gap-2">
-                <span className="text-xs font-black w-16 text-zinc-600">التعادل:</span>
-                <div className="flex-1 flex gap-2">
-                   <input type="text" readOnly value={headerData.exchangeRate} className="w-full border-2 border-zinc-300 p-2 rounded-xl text-xs font-mono font-black bg-zinc-100 text-center text-zinc-500" />
-                   <input type="text" readOnly value={headerData.exchangeRate} className="w-full border-2 border-zinc-300 p-2 rounded-xl text-xs font-mono font-black bg-zinc-100 text-center text-zinc-500" />
-                </div>
-             </div>
-             <div className="col-span-2 flex items-center gap-2">
-                <span className="text-xs font-black w-16 text-zinc-600">البيان:</span>
-                <input type="text" value={headerData.statement} onChange={e => setHeaderData({...headerData, statement: e.target.value})} className="flex-1 border-2 border-zinc-300 p-2 rounded-xl text-xs font-black bg-white focus:border-primary transition-all shadow-sm" placeholder="وصف عملية الجرد الافتتاحي..." />
+             <div className="flex flex-col gap-1 sm:col-span-2">
+                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-1">البيان (يظهر في المتاجرة)</label>
+                <input type="text" value={headerData.statement} onChange={e => setHeaderData({...headerData, statement: e.target.value})} className="w-full border border-zinc-200 p-3 rounded-xl text-sm font-black bg-zinc-50 focus:border-primary" placeholder="وصف عملية الجرد..." />
              </div>
           </div>
         </div>
 
         {/* Main Grid Table */}
-        <div className="flex-1 bg-white border-2 border-zinc-400 overflow-hidden flex flex-col shadow-xl rounded-xl">
+        <div className="flex-1 bg-white border border-zinc-200 overflow-hidden flex flex-col shadow-sm rounded-2xl">
            <div className="overflow-auto custom-scrollbar flex-1">
               <table className="w-full text-right border-collapse table-fixed">
-                 <thead className="sticky top-0 z-20 bg-zinc-800 shadow-lg">
-                    <tr className="text-[11px] font-black text-white uppercase tracking-widest h-12 border-b border-zinc-700">
-                       <th className="w-12 text-center border-l border-zinc-700"></th>
-                       <th className="border-l border-zinc-700 pr-6">المادة / الصنف</th>
-                       <th className="w-28 text-center border-l border-zinc-700">الكمية</th>
-                       <th className="w-32 text-center border-l border-zinc-700">الإفرادي</th>
-                       <th className="w-40 text-center bg-zinc-900">إجمالي السطر</th>
+                 <thead className="sticky top-0 z-20 bg-zinc-900 shadow-md">
+                    <tr className="text-[11px] font-black text-white uppercase tracking-widest h-12">
+                       <th className="w-12 text-center border-l border-zinc-800">#</th>
+                       <th className="border-l border-zinc-800 pr-6">المادة / الصنف</th>
+                       <th className="w-28 text-center border-l border-zinc-800">الكمية</th>
+                       <th className="w-32 text-center border-l border-zinc-800">سعر الوحدة</th>
+                       <th className="w-40 text-center bg-black">إجمالي السطر</th>
                     </tr>
                  </thead>
                  <tbody>
                     {rows.map((row, index) => (
-                       <tr key={row.id} className={`h-10 border-b border-zinc-300 text-sm font-black transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-zinc-100'}`}>
-                          <td className="text-center border-l border-zinc-200 text-zinc-400 font-mono text-xs">{index + 1}</td>
-                          <td className="relative border-l border-zinc-200 px-4 group">
+                       <tr key={row.id} className={`h-11 border-b border-zinc-100 text-sm font-bold transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-zinc-50/50'}`}>
+                          <td className="text-center border-l border-zinc-100 text-zinc-300 font-mono text-xs">{index + 1}</td>
+                          <td className="relative border-l border-zinc-100 px-4">
                              <div 
-                               className={`w-full h-full cursor-pointer min-h-[40px] flex items-center group-hover:text-primary transition-all ${row.itemName ? 'text-zinc-900' : 'text-zinc-300 italic font-normal'}`}
+                               className={`w-full h-full cursor-pointer min-h-[44px] flex items-center ${row.itemName ? 'text-zinc-900 font-black' : 'text-zinc-300 italic font-normal'}`}
                                onClick={() => { setActiveRowId(row.id); setItemSearch(row.itemName); }}
                              >
-                                {row.itemName || "انقر لإدراج مادة..."}
+                                {row.itemName || "اختر صنفاً..."}
                              </div>
                              {activeRowId === row.id && (
-                               <div className="absolute top-0 right-0 left-0 z-50 bg-white border-4 border-primary shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-2xl p-3 animate-in fade-in slide-in-from-top-2">
-                                  <div className="flex items-center gap-3 border-b-2 border-zinc-100 pb-3 mb-3">
-                                     <Search className="w-5 h-5 text-primary" />
+                               <div className="absolute top-0 right-0 left-0 z-50 bg-white border-2 border-primary shadow-2xl rounded-xl p-2 animate-in zoom-in-95">
+                                  <div className="flex items-center gap-2 border-b pb-2 mb-2 no-print">
+                                     <Search className="w-4 h-4 text-zinc-400" />
                                      <input 
                                        type="text" 
                                        autoFocus
-                                       className="flex-1 outline-none text-sm font-black text-readable placeholder:font-normal placeholder:italic" 
-                                       placeholder="بحث سريع باسم المادة أو الكود..."
+                                       className="flex-1 outline-none text-sm font-black" 
+                                       placeholder="بحث سريع..."
                                        value={itemSearch}
                                        onChange={e => setItemSearch(e.target.value)}
                                      />
-                                     <button onClick={() => setActiveRowId(null)} className="p-1 hover:bg-zinc-100 rounded-full transition-all"><X className="w-5 h-5 text-zinc-400"/></button>
+                                     <button onClick={() => setActiveRowId(null)}><X className="w-4 h-4 text-zinc-400"/></button>
                                   </div>
-                                  <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                                  <div className="max-h-56 overflow-y-auto custom-scrollbar">
                                      {filteredItems.map(item => (
                                        <div 
                                          key={item.id} 
                                          onClick={() => handleSelectItem(row.id, item)}
-                                         className="p-3 hover:bg-primary hover:text-white cursor-pointer rounded-xl text-xs font-black flex justify-between items-center transition-all mb-1 border border-transparent hover:border-white/20"
+                                         className="p-3 hover:bg-zinc-100 cursor-pointer rounded-lg text-xs font-black flex justify-between items-center group transition-colors"
                                        >
-                                          <div className="flex items-center gap-3">
-                                             <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-white/20 transition-all text-primary group-hover:text-white">#{item.code.slice(-3)}</div>
-                                             <span>{item.name}</span>
+                                          <div className="flex flex-col">
+                                            <span className="group-hover:text-primary">{item.name}</span>
+                                            <span className="text-[9px] text-zinc-400 font-mono">#{item.code}</span>
                                           </div>
-                                          <span className="font-mono opacity-50 text-[9px] uppercase">BAL: {item.currentBalance}</span>
+                                          <span className="text-[10px] font-bold text-zinc-400">{item.unit}</span>
                                        </div>
                                      ))}
-                                     {filteredItems.length === 0 && <div className="p-8 text-center text-zinc-400 italic text-xs">لم يتم العثور على مادة بهذا الاسم في المخزن</div>}
+                                     {filteredItems.length === 0 && <div className="p-4 text-center text-xs text-zinc-400 italic">لا توجد مواد تطابق البحث</div>}
                                   </div>
                                </div>
                              )}
                           </td>
-                          <td className="border-l border-zinc-200">
+                          <td className="border-l border-zinc-100">
                              <input 
                                type="number" 
-                               className="w-full h-full bg-transparent text-center font-mono font-black text-zinc-800 outline-none focus:bg-white focus:text-primary transition-all" 
+                               className="w-full h-full bg-transparent text-center font-mono font-black text-primary outline-none focus:bg-primary/5" 
                                value={row.quantity || ''} 
                                onChange={e => updateRow(row.id, 'quantity', Number(e.target.value))} 
                              />
                           </td>
-                          <td className="border-l border-zinc-200">
+                          <td className="border-l border-zinc-100">
                              <input 
                                type="number" 
-                               className="w-full h-full bg-transparent text-center font-mono font-black text-zinc-800 outline-none focus:bg-white focus:text-primary transition-all" 
+                               className="w-full h-full bg-transparent text-center font-mono font-black text-zinc-700 outline-none focus:bg-zinc-100" 
                                value={row.price || ''} 
                                onChange={e => updateRow(row.id, 'price', Number(e.target.value))} 
                              />
                           </td>
                           <td className="text-center font-mono font-black text-zinc-900 bg-zinc-50">
-                             {row.total > 0 ? row.total.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                             {row.total > 0 ? row.total.toLocaleString() : '-'}
                           </td>
                        </tr>
                     ))}
@@ -329,40 +414,26 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
         </div>
 
         {/* Footer Totals and Actions */}
-        <div className="flex flex-col md:flex-row items-end justify-between gap-6 pb-6">
-           {/* Total Box */}
-           <div className="bg-zinc-800 p-2 min-w-[340px] shadow-2xl rounded-2xl border-2 border-zinc-600">
-              <div className="bg-black text-white flex flex-col items-center justify-center h-28 border-2 border-zinc-700 rounded-xl">
-                 <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em] mb-2">Total Amount | إجمالي الجرد</span>
-                 <span className="text-5xl font-mono font-black tracking-tighter text-white">
-                   {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        <div className="flex flex-col md:flex-row items-end justify-between gap-6 pb-6 no-print">
+           <div className="bg-zinc-900 p-1 min-w-[320px] shadow-2xl rounded-2xl">
+              <div className="bg-black text-white flex flex-col items-center justify-center h-24 border border-zinc-800 rounded-xl">
+                 <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">TOTAL OPENING VALUE | إجمالي قيمة الجرد</span>
+                 <span className="text-4xl font-mono font-black tracking-tighter text-white">
+                   {grandTotal.toLocaleString()}
                  </span>
-                 <span className="text-[10px] font-black text-zinc-600 mt-2">SYRIAN POUNDS | ليرة سورية</span>
+                 <span className="text-[9px] font-bold text-zinc-600 mt-1 uppercase">{settings?.currencySymbol || 'ل.س'}</span>
               </div>
            </div>
 
-           {/* Classic Buttons Row */}
-           <div className="flex flex-wrap gap-2 no-print bg-zinc-300 p-3 rounded-[2rem] border border-zinc-400 shadow-inner">
-              <button onClick={onBack} className="bg-white hover:bg-rose-50 border-2 border-zinc-400 px-8 py-2.5 rounded-2xl flex items-center gap-2 font-black text-sm shadow-sm transition-all hover:border-rose-300">
-                <X className="w-5 h-5 text-rose-600" /> إغلاق
+           <div className="flex flex-wrap gap-2 bg-zinc-200 p-2 rounded-2xl border border-zinc-300">
+              <button onClick={() => setViewMode('LIST')} className="bg-white hover:bg-zinc-50 px-6 py-2.5 rounded-xl flex items-center gap-2 font-black text-xs shadow-sm transition-all border border-zinc-300">
+                <X className="w-4 h-4 text-rose-600" /> إغلاق
               </button>
-              <button className="bg-white hover:bg-zinc-50 border-2 border-zinc-400 px-8 py-2.5 rounded-2xl flex items-center gap-2 font-black text-sm shadow-sm transition-all">
-                <Eye className="w-5 h-5 text-blue-600" /> معاينة
+              <button onClick={handleNew} className="bg-white hover:bg-zinc-50 px-6 py-2.5 rounded-xl flex items-center gap-2 font-black text-xs shadow-sm transition-all border border-zinc-300">
+                <RotateCcw className="w-4 h-4 text-amber-500" /> تصفير
               </button>
-              <button onClick={() => window.print()} className="bg-white hover:bg-zinc-50 border-2 border-zinc-400 px-8 py-2.5 rounded-2xl flex items-center gap-2 font-black text-sm shadow-sm transition-all">
-                <Printer className="w-5 h-5 text-zinc-800" /> طباعة
-              </button>
-              <button className="bg-white hover:bg-rose-50 border-2 border-zinc-400 px-8 py-2.5 rounded-2xl flex items-center gap-2 font-black text-sm shadow-sm transition-all hover:border-rose-400">
-                <Trash2 className="w-5 h-5 text-rose-800" /> حذف
-              </button>
-              <button className="bg-white hover:bg-emerald-50 border-2 border-zinc-400 px-8 py-2.5 rounded-2xl flex items-center gap-2 font-black text-sm shadow-sm transition-all hover:border-emerald-300">
-                <Edit2 className="w-5 h-5 text-emerald-700" /> تعديل
-              </button>
-              <button onClick={() => setRows(Array.from({ length: 15 }, () => ({ id: crypto.randomUUID(), itemCode: '', itemName: '', quantity: 0, price: 0, total: 0, unit: '' })))} className="bg-white hover:bg-amber-50 border-2 border-zinc-400 px-8 py-2.5 rounded-2xl flex items-center gap-2 font-black text-sm shadow-sm transition-all hover:border-amber-300">
-                <RotateCcw className="w-5 h-5 text-amber-500" /> جديد
-              </button>
-              <button onClick={handleSaveJard} className="bg-primary text-white border-2 border-primary/50 px-12 py-2.5 rounded-2xl flex items-center gap-3 font-black text-lg shadow-xl hover:scale-105 active:scale-95 transition-all">
-                <Plus className="w-6 h-6" /> إضافة
+              <button onClick={handleSaveJard} className="bg-primary text-white px-12 py-2.5 rounded-xl flex items-center gap-3 font-black text-sm shadow-xl hover:brightness-110 active:scale-95 transition-all">
+                <Save className="w-5 h-5" /> {editingId ? 'تحديث الجرد' : 'حفظ وتثبيت الجرد الافتتاحي'}
               </button>
            </div>
         </div>
@@ -370,36 +441,140 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
     );
   }
 
+  if (viewMode === 'PREVIEW' && previewData) {
+    return (
+      <div className="min-h-screen bg-zinc-100 p-8" dir="rtl">
+         <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-zinc-200 animate-in zoom-in-95">
+            <div className="bg-zinc-900 p-6 text-white flex justify-between items-center">
+               <div className="flex items-center gap-3">
+                  <Package className="w-8 h-8 text-primary" />
+                  <div>
+                     <h2 className="text-xl font-black">معاينة تفاصيل الجرد</h2>
+                     <p className="text-[10px] text-zinc-400 font-bold uppercase">{previewData.notes}</p>
+                  </div>
+               </div>
+               <button onClick={() => setViewMode('LIST')} className="p-2 hover:bg-white/10 rounded-xl transition-all"><X className="w-6 h-6" /></button>
+            </div>
+            
+            <div className="p-8 space-y-8">
+               <div className="grid grid-cols-3 gap-8 border-b pb-6">
+                  <div><span className="text-[10px] font-black text-zinc-400 uppercase block mb-1">التاريخ</span><p className="font-mono font-black text-lg">{previewData.date}</p></div>
+                  <div><span className="text-[10px] font-black text-zinc-400 uppercase block mb-1">البيان</span><p className="font-black text-lg">{previewData.notes}</p></div>
+                  <div className="text-left"><span className="text-[10px] font-black text-zinc-400 uppercase block mb-1">إجمالي القيمة</span><p className="font-mono font-black text-2xl text-primary">{previewData.totalValue.toLocaleString()}</p></div>
+               </div>
+
+               <table className="w-full text-right border-collapse">
+                  <thead>
+                     <tr className="bg-zinc-50 border-b-2 border-zinc-200 h-10 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                        <th className="p-2 w-12 text-center">#</th>
+                        <th className="p-2">الصنف</th>
+                        <th className="p-2 text-center">الكمية</th>
+                        <th className="p-2 text-center">السعر</th>
+                        <th className="p-2 text-center">الإجمالي</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y text-sm">
+                     {previewData.items.map((it, idx) => (
+                        <tr key={idx} className="h-12 hover:bg-zinc-50 transition-colors">
+                           <td className="p-2 text-center font-mono text-zinc-400">{idx + 1}</td>
+                           <td className="p-2 font-black">{it.itemName}</td>
+                           <td className="p-2 text-center font-mono font-bold">{it.quantity} <span className="text-[9px] text-zinc-400">{it.unit}</span></td>
+                           <td className="p-2 text-center font-mono text-zinc-500">{it.price.toLocaleString()}</td>
+                           <td className="p-2 text-center font-mono font-black text-primary">{it.total.toLocaleString()}</td>
+                        </tr>
+                     ))}
+                  </tbody>
+               </table>
+            </div>
+            <div className="p-6 bg-zinc-50 border-t flex justify-end gap-3 no-print">
+               <button onClick={() => window.print()} className="bg-zinc-900 text-white px-8 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg"><Printer className="w-5 h-5"/> طباعة الكشف</button>
+               <button onClick={() => handleEdit(previewData)} className="bg-amber-600 text-white px-8 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg"><Edit2 className="w-5 h-5"/> تعديل البيانات</button>
+            </div>
+         </div>
+      </div>
+    );
+  }
+
   // Default List View
   return (
     <div className="space-y-6 animate-in fade-in">
-      <div className="flex items-center justify-between no-print">
+      <div className="flex flex-col md:flex-row items-center justify-between no-print gap-4">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 rounded-xl shadow-sm">
+          <button onClick={onBack} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 rounded-xl shadow-sm transition-all">
             <ArrowRight className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-3">
-             <Package className="w-8 h-8 text-primary" />
-             <h2 className="text-2xl font-black text-readable">إدارة الجرد الدوري</h2>
+             <div className="p-3 bg-primary/10 rounded-2xl text-primary"><Package className="w-8 h-8" /></div>
+             <div>
+                <h2 className="text-2xl font-black text-readable tracking-tight leading-none mb-1">إدارة وتقييم الجرد الدوري</h2>
+                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest italic">بضاعة أول وآخر المدة</p>
+             </div>
           </div>
         </div>
-        <button onClick={() => setViewMode('ENTRY')} className="bg-emerald-600 text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110">
-          <Plus className="w-5 h-5" /> تسجيل جرد أول مدة جديد
+        <button onClick={handleNew} className="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-black flex items-center gap-3 shadow-xl hover:brightness-110 active:scale-95 transition-all text-sm md:text-base">
+          <Plus className="w-6 h-6" /> تسجيل جرد أول مدة جديد
         </button>
       </div>
 
-      <PeriodicInventoryManager 
-        inventories={inventories} 
-        closingStockValue={closing.total} 
-        closingStockItems={closing.items}
-        onDelete={(id) => {
-          if(window.confirm('حذف هذا الجرد؟')) {
-            const updated = inventories.filter(x => x.id !== id);
-            localStorage.setItem('sheno_periodic_inventories', JSON.stringify(updated));
-            loadData();
-          }
-        }} 
-      />
+      <div className="bg-white dark:bg-zinc-950 p-6 md:p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl space-y-8">
+         <div className="flex items-center justify-between border-b dark:border-zinc-800 pb-5">
+            <h3 className="text-xl font-black flex items-center gap-3 text-readable"><LayoutList className="w-6 h-6 text-primary" /> سجل عمليات الجرد الموثقة</h3>
+            <div className="flex items-center gap-4">
+               <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-6 py-2 rounded-2xl flex flex-col items-center">
+                  <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">إجمالي قيمة المخزون الحالي</span>
+                  <span className="text-xl font-mono font-black text-emerald-600">
+                     {inventoryList.reduce((sum, item) => sum + (calculateCurrentBalance(item.code) * item.price), 0).toLocaleString()}
+                  </span>
+               </div>
+            </div>
+         </div>
+
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {inventories.map(inv => (
+               <div key={inv.id} className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-[2rem] space-y-4 hover:shadow-2xl transition-all relative overflow-hidden group border-b-4 border-b-primary/40">
+                  <div className="flex justify-between items-start relative z-10">
+                     <div className="p-3 bg-white dark:bg-zinc-800 rounded-2xl shadow-sm"><Calendar className="w-6 h-6 text-primary" /></div>
+                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                        <button onClick={() => handlePreview(inv)} className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-blue-500 shadow-sm hover:bg-blue-50 transition-colors"><Eye className="w-4 h-4"/></button>
+                        <button onClick={() => handleEdit(inv)} className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-amber-500 shadow-sm hover:bg-amber-50 transition-colors"><Edit2 className="w-4 h-4"/></button>
+                        <button onClick={() => handleDelete(inv.id)} className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-rose-500 shadow-sm hover:bg-rose-50 transition-colors"><Trash2 className="w-4 h-4"/></button>
+                     </div>
+                  </div>
+                  <div>
+                     <h4 className="font-black text-lg text-readable leading-tight mb-1">{inv.notes}</h4>
+                     <p className="text-xs font-mono font-bold text-zinc-400">{inv.date}</p>
+                  </div>
+                  <div className="flex justify-between items-center pt-4 border-t dark:border-zinc-800">
+                     <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-zinc-400 uppercase">قيمة المواد</span>
+                        <span className="text-2xl font-mono font-black text-primary">{inv.totalValue.toLocaleString()}</span>
+                     </div>
+                     <div className="text-left">
+                        <span className="text-[9px] font-black text-zinc-400 uppercase">عدد الأصناف</span>
+                        <p className="font-black text-zinc-700 dark:text-zinc-300">{inv.items.length}</p>
+                     </div>
+                  </div>
+               </div>
+            ))}
+            {inventories.length === 0 && (
+               <div className="col-span-full py-20 text-center border-4 border-dashed border-zinc-100 dark:border-zinc-900 rounded-[3rem]">
+                  <Package className="w-16 h-16 text-zinc-200 mx-auto mb-4" />
+                  <p className="text-zinc-500 font-black text-lg">لا يوجد سجلات جرد أول مدة مسجلة حالياً</p>
+                  <button onClick={handleNew} className="mt-4 text-primary font-black underline hover:text-blue-700 transition-colors">اضغط هنا للبدء بتسجيل أول جرد</button>
+               </div>
+            )}
+         </div>
+         
+         <div className="p-5 bg-amber-50 dark:bg-amber-950/20 rounded-[2rem] border-2 border-dashed border-amber-200 dark:border-amber-900 flex gap-4">
+            <div className="p-3 bg-amber-500 rounded-2xl text-white shadow-lg h-fit"><AlertCircle className="w-6 h-6" /></div>
+            <div>
+               <h4 className="font-black text-amber-800 dark:text-amber-400 mb-1">ملاحظة محاسبية هامة:</h4>
+               <p className="text-xs font-bold text-amber-700 dark:text-amber-500 leading-relaxed">
+                  يتم سحب قيمة "بضاعة أول المدة" وتغذية رصيد المخزن الفعلي من السجلات المسجلة هنا بشكل تلقائي. يرجى التأكد من اختيار المستودع الصحيح لكل عملية جرد لضمان عزل الأرصدة بدقة.
+               </p>
+            </div>
+         </div>
+      </div>
     </div>
   );
 };
