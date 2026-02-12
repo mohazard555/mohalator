@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { MENU_GROUPS } from '../constants';
 import { AppView, AppSettings, SalesInvoice, PurchaseInvoice, CashEntry, InventoryItem, StockEntry, PeriodicInventory } from '../types';
@@ -18,16 +19,19 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
   });
 
   useEffect(() => {
-    const savedSettings = localStorage.getItem('sheno_settings');
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+
+    const savedSettings = localStorage.getItem(`${prefix}_settings`);
     if (savedSettings) setSettings(JSON.parse(savedSettings));
 
-    const sSales = localStorage.getItem('sheno_sales_invoices');
-    const sReturns = localStorage.getItem('sheno_sales_returns');
-    const sPurchases = localStorage.getItem('sheno_purchases');
-    const sJournal = localStorage.getItem('sheno_cash_journal');
-    const sInventoryList = localStorage.getItem('sheno_inventory_list');
-    const sStockMoves = localStorage.getItem('sheno_stock_entries');
-    const sPeriodic = localStorage.getItem('sheno_periodic_inventories');
+    const sSales = localStorage.getItem(`${prefix}_sales_invoices`);
+    const sReturns = localStorage.getItem(`${prefix}_sales_returns`);
+    const sPurchases = localStorage.getItem(`${prefix}_purchases`);
+    const sJournal = localStorage.getItem(`${prefix}_cash_journal`);
+    const sInventoryList = localStorage.getItem(`${prefix}_inventory_list`);
+    const sStockMoves = localStorage.getItem(`${prefix}_stock_entries`);
+    const sPeriodic = localStorage.getItem(`${prefix}_periodic_inventories`);
 
     const sales: SalesInvoice[] = sSales ? JSON.parse(sSales) : [];
     const returns: any[] = sReturns ? JSON.parse(sReturns) : [];

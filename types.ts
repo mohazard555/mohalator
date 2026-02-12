@@ -42,7 +42,24 @@ export enum AppView {
   DOLLAR_BALANCES = 'DOLLAR_BALANCES',
   INVOICE_GALLERY = 'INVOICE_GALLERY',
   JOURNAL_ENTRY = 'JOURNAL_ENTRY',
-  RECONCILIATION = 'RECONCILIATION'
+  RECONCILIATION = 'RECONCILIATION',
+  COMPANY_MANAGEMENT = 'COMPANY_MANAGEMENT'
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  type: string;
+  address: string;
+  phone: string;
+  email: string;
+  logo?: string;
+  fiscalYear: string;
+  currency: string;
+  currencySymbol: string;
+  adminUsername: string;
+  adminPassword?: string;
+  createdAt: string;
 }
 
 export interface ReconciliationEntry {

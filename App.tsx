@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, LogOut, FileOutput, Heart, Phone, UserCheck } from 'lucide-react';
-import { AppView, AppSettings, SalesInvoice } from './types';
+import { Settings as SettingsIcon, LogOut, FileOutput, Heart, Phone, UserCheck, Building2, ChevronDown, Repeat } from 'lucide-react';
+import { AppView, AppSettings, SalesInvoice, Company } from './types';
 import Dashboard from './components/Dashboard';
 import SalesInvoiceView from './components/SalesInvoiceView';
 import SalesHistoryView from './components/SalesHistoryView';
@@ -42,6 +42,7 @@ import OpeningEntriesView from './components/OpeningEntriesView';
 import PeriodicInventoryView from './components/PeriodicInventoryView';
 import WelcomeSplash from './components/WelcomeSplash';
 import ReconciliationView from './components/ReconciliationView';
+import CompanyManagementView from './components/CompanyManagementView';
 
 const FinexaLogo = () => (
   <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-sm">
@@ -71,10 +72,14 @@ const PHRASES = [
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  // تم تغيير الحالة الافتراضية إلى false لتعطيل الواجهة التعريفية
   const [showSplash, setShowSplash] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<SalesInvoice | null>(null);
   const [editingReturn, setEditingReturn] = useState<any | null>(null);
+
+  // نظام الشركات
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [activeCompanyId, setActiveCompanyId] = useState<string>('default');
+  const [showCompanySwitch, setShowCompanySwitch] = useState(false);
 
   const [settings, setSettings] = useState<AppSettings>({
     companyName: 'شركة فينيسكا للحلول الذكية',
@@ -100,15 +105,53 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    const saved = localStorage.getItem('sheno_settings');
+    // تحميل قائمة الشركات
+    const savedCompanies = localStorage.getItem('sheno_companies');
+    if (savedCompanies) {
+      const parsed = JSON.parse(savedCompanies);
+      setCompanies(parsed);
+      const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+      setActiveCompanyId(activeId);
+    } else {
+      // إنشاء شركة افتراضية إذا لم يوجد
+      const defaultCompany: Company = {
+        id: 'default',
+        name: settings.companyName,
+        type: settings.companyType,
+        address: settings.address,
+        phone: settings.phone,
+        email: 'info@finexa.pro',
+        fiscalYear: new Date().getFullYear().toString(),
+        currency: settings.currency,
+        currencySymbol: settings.currencySymbol,
+        adminUsername: settings.username,
+        adminPassword: settings.password,
+        createdAt: new Date().toISOString()
+      };
+      setCompanies([defaultCompany]);
+      localStorage.setItem('sheno_companies', JSON.stringify([defaultCompany]));
+      localStorage.setItem('sheno_active_company_id', 'default');
+      setActiveCompanyId('default');
+    }
+  }, []);
+
+  useEffect(() => {
+    // تحميل إعدادات الشركة النشطة
+    const prefix = activeCompanyId === 'default' ? 'sheno' : `sheno_${activeCompanyId}`;
+    const saved = localStorage.getItem(`${prefix}_settings`);
     if (saved) {
       const parsed = JSON.parse(saved);
       setSettings(parsed);
       if (!parsed.isLoginEnabled) setIsAuthenticated(true);
+      else setIsAuthenticated(false); // إجبار تسجيل الدخول عند تبديل الشركة
     } else {
+      // إذا لم توجد إعدادات للشركة الجديدة، استخدم الافتراضية واحفظها
+      localStorage.setItem(`${prefix}_settings`, JSON.stringify(settings));
       if (!settings.isLoginEnabled) setIsAuthenticated(true);
+      else setIsAuthenticated(false);
     }
-  }, []);
+    setCurrentView(AppView.DASHBOARD);
+  }, [activeCompanyId]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', settings.darkMode);
@@ -120,6 +163,12 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setCurrentView(AppView.DASHBOARD);
+  };
+
+  const switchCompany = (id: string) => {
+    localStorage.setItem('sheno_active_company_id', id);
+    setActiveCompanyId(id);
+    setShowCompanySwitch(false);
   };
 
   if (showSplash) {
@@ -154,18 +203,56 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800 hidden md:block"></div>
-          <div className="hidden lg:flex flex-col">
-            <span className="text-xs font-black opacity-30 uppercase tracking-widest leading-none mb-1">المؤسسة النشطة</span>
-            <div className="flex items-center gap-2">
-              {settings.logoUrl && <img src={settings.logoUrl} className="w-5 h-5 object-contain" alt="Entity" />}
-              <span className="font-black text-sm text-readable opacity-90">{settings.companyName}</span>
-            </div>
+          
+          {/* مبدل الشركات الاحترافي */}
+          <div className="relative">
+             <button 
+               onClick={() => setShowCompanySwitch(!showCompanySwitch)}
+               className="flex items-center gap-3 bg-zinc-100 dark:bg-zinc-800 px-4 py-2 rounded-2xl hover:ring-2 ring-primary/20 transition-all border border-zinc-200 dark:border-zinc-700 group"
+             >
+                <div className="p-1.5 bg-primary/10 text-primary rounded-lg">
+                   <Building2 className="w-5 h-5" />
+                </div>
+                <div className="flex flex-col text-right">
+                   <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">الشركة النشطة</span>
+                   <span className="font-black text-sm text-readable flex items-center gap-2">
+                      {settings.companyName}
+                      <ChevronDown className={`w-3 h-3 text-zinc-400 transition-transform ${showCompanySwitch ? 'rotate-180' : ''}`} />
+                   </span>
+                </div>
+             </button>
+
+             {showCompanySwitch && (
+               <div className="absolute top-full right-0 mt-3 w-72 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl z-[100] p-3 animate-in zoom-in-95">
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-3 mb-2">تبديل بيئة العمل</p>
+                  <div className="space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
+                     {companies.map(c => (
+                        <button 
+                           key={c.id}
+                           onClick={() => switchCompany(c.id)}
+                           className={`w-full text-right p-3 rounded-xl flex items-center justify-between transition-all ${activeCompanyId === c.id ? 'bg-primary/10 text-primary' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+                        >
+                           <span className="font-bold text-sm">{c.name}</span>
+                           {activeCompanyId === c.id && <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_primary]"></div>}
+                        </button>
+                     ))}
+                  </div>
+                  <div className="mt-3 pt-3 border-t dark:border-zinc-800">
+                     <button 
+                       onClick={() => { setCurrentView(AppView.COMPANY_MANAGEMENT); setShowCompanySwitch(false); }}
+                       className="w-full flex items-center justify-center gap-2 py-3 bg-zinc-900 text-white rounded-xl font-black text-xs hover:bg-black transition-all"
+                     >
+                        <Repeat className="w-4 h-4" /> إدارة الشركات
+                     </button>
+                  </div>
+               </div>
+             )}
           </div>
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
           <div className="flex items-center gap-1 border-l dark:border-zinc-800 pl-4 ml-2">
-            <button onClick={() => setCurrentView(AppView.PROFESSIONAL_INVOICE)} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-primary p-2.5 rounded-xl transition-all shadow-inner" title="تصدير فاتورة احترافية"><FileOutput className="w-6 h-6" /></button>
+            <button onClick={() => setCurrentView(AppView.PROFESSIONAL_INVOICE)} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-primary p-2.5 rounded-xl transition-all shadow-sm" title="تصدير فاتورة احترافية"><FileOutput className="w-6 h-6" /></button>
             <button onClick={() => setCurrentView(AppView.SETTINGS)} className="p-2.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all" title="إعدادات النظام"><SettingsIcon className="w-6 h-6" /></button>
           </div>
           <div className="flex items-center gap-3">
@@ -218,6 +305,7 @@ const App: React.FC = () => {
             case AppView.OPENING_ENTRIES: return <OpeningEntriesView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.PERIODIC_INVENTORY: return <PeriodicInventoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.RECONCILIATION: return <ReconciliationView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.COMPANY_MANAGEMENT: return <CompanyManagementView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             default: return <Dashboard setView={setCurrentView} />;
           }
         })()}

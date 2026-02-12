@@ -3,9 +3,9 @@ import React, { useState } from 'react';
 import { 
   ArrowRight, Save, Image as ImageIcon, Palette, Building, 
   ShieldCheck, Database, Download, Upload, Trash2, AlertTriangle, Eye, EyeOff, Lock, User, KeyRound, Coins, Globe, Users, Briefcase, CreditCard, RotateCcw,
-  AlertCircle, Moon, Sun
+  AlertCircle, Moon, Sun, Repeat
 } from 'lucide-react';
-import { AppSettings } from '../types';
+import { AppSettings, AppView } from '../types';
 
 interface SettingsViewProps {
   onBack: () => void;
@@ -19,7 +19,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
 
   const handleSave = () => {
     setSettings(localSettings);
-    localStorage.setItem('sheno_settings', JSON.stringify(localSettings));
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+    localStorage.setItem(`${prefix}_settings`, JSON.stringify(localSettings));
     alert('تم حفظ كافة الإعدادات بنجاح.');
   };
 
@@ -41,15 +43,17 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
   };
 
   const handleResetColor = () => {
-    setLocalSettings({ ...localSettings, primaryColor: '#e11d48' });
+    setLocalSettings({ ...localSettings, primaryColor: '#1e40af' });
   };
 
   // --- Data Management Functions ---
   const handleExportData = () => {
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
     const data: Record<string, any> = {};
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.startsWith('sheno_')) {
+      if (key && (key.startsWith(`${prefix}_`) || key === prefix)) {
         data[key] = JSON.parse(localStorage.getItem(key) || '{}');
       }
     }
@@ -57,7 +61,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `backup_${settings.companyName}_${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `backup_current_company_${new Date().toISOString().split('T')[0]}.json`;
     link.click();
   };
 
@@ -68,11 +72,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
       reader.onload = (event) => {
         try {
           const data = JSON.parse(event.target?.result as string);
-          if (window.confirm('سيؤدي الاستيراد لاستبدال كافة البيانات الحالية. هل أنت متأكد؟')) {
+          if (window.confirm('سيؤدي الاستيراد لاستبدال كافة بيانات الشركة الحالية. هل أنت متأكد؟')) {
             Object.keys(data).forEach(key => {
-              if (key.startsWith('sheno_')) {
-                localStorage.setItem(key, JSON.stringify(data[key]));
-              }
+               localStorage.setItem(key, JSON.stringify(data[key]));
             });
             alert('تم استيراد البيانات بنجاح، سيتم إعادة تحميل النظام.');
             window.location.reload();
@@ -86,15 +88,17 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
   };
 
   const handleResetData = () => {
-    if (window.confirm('تحذير نهائي: سيتم مسح كافة الفواتير، المواد، والعمليات المالية تماماً. هل تريد المتابعة؟')) {
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+    if (window.confirm('تحذير نهائي: سيتم مسح كافة الفواتير، المواد، والعمليات المالية للشركة الحالية فقط تماماً. هل تريد المتابعة؟')) {
       if (window.confirm('هل أنت متأكد حقاً؟ لا يمكن التراجع عن هذا الإجراء.')) {
         for (let i = localStorage.length - 1; i >= 0; i--) {
           const key = localStorage.key(i);
-          if (key && key.startsWith('sheno_') && key !== 'sheno_settings') {
+          if (key && key.startsWith(`${prefix}_`) && key !== `${prefix}_settings`) {
             localStorage.removeItem(key);
           }
         }
-        alert('تم تصفير كافة قواعد البيانات.');
+        alert('تم تصفير قاعدة بيانات الشركة النشطة.');
         window.location.reload();
       }
     }
@@ -102,11 +106,27 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
-      <div className="flex items-center gap-4">
-        <button onClick={onBack} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all">
-          <ArrowRight className="w-6 h-6" />
-        </button>
-        <h2 className="text-2xl font-black text-readable">إعدادات النظام المتقدمة</h2>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all">
+            <ArrowRight className="w-6 h-6" />
+          </button>
+          <h2 className="text-2xl font-black text-readable">إعدادات الشركة والنظام</h2>
+        </div>
+        
+        {/* رابط نظام الشركات */}
+        <div className="bg-primary/5 p-2 rounded-2xl border border-primary/20 flex items-center gap-4">
+           <div className="flex flex-col text-right">
+              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none">إدارة الكيانات</span>
+              <span className="font-bold text-xs">تعدد الشركات</span>
+           </div>
+           <button 
+             onClick={() => window.location.reload()} 
+             className="bg-primary text-white px-6 py-2.5 rounded-xl font-black text-xs shadow-lg hover:brightness-110 flex items-center gap-2"
+           >
+              <Repeat className="w-4 h-4" /> فتح مبدل الشركات
+           </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -358,7 +378,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
         {/* Database & Backup Management */}
         <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl space-y-6 md:col-span-2">
           <h3 className="text-lg font-black flex items-center gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4 text-readable">
-            <Database className="w-5 h-5 text-amber-500" /> إدارة قواعد البيانات والنسخ الاحتياطي
+            <Database className="w-5 h-5 text-amber-500" /> إدارة قواعد البيانات والنسخ الاحتياطي (للشركة الحالية)
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
              <button 
@@ -366,15 +386,15 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
                className="bg-zinc-50 dark:bg-zinc-800 p-6 rounded-3xl border-2 border-zinc-100 dark:border-zinc-700 hover:border-emerald-500 transition-all group text-right"
              >
                 <Download className="w-8 h-8 text-emerald-500 mb-4 group-hover:scale-110 transition-transform" />
-                <h4 className="font-black text-readable">تصدير نسخة احتياطية</h4>
-                <p className="text-[10px] text-zinc-500 font-bold mt-1">حفظ كافة بيانات النظام في ملف خارجي آمن</p>
+                <h4 className="font-black text-readable">تصدير نسخة الشركة</h4>
+                <p className="text-[10px] text-zinc-500 font-bold mt-1">حفظ كافة بيانات الشركة النشطة في ملف خارجي</p>
              </button>
 
              <label className="bg-zinc-50 dark:bg-zinc-800 p-6 rounded-3xl border-2 border-zinc-100 dark:border-zinc-700 hover:border-primary transition-all group text-right cursor-pointer relative">
                 <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImportData} accept=".json" />
                 <Upload className="w-8 h-8 text-primary mb-4 group-hover:scale-110 transition-transform" />
                 <h4 className="font-black text-readable">استيراد بيانات</h4>
-                <p className="text-[10px] text-zinc-500 font-bold mt-1">استعادة سجلات النظام من ملف تم تصديره مسبقاً</p>
+                <p className="text-[10px] text-zinc-500 font-bold mt-1">استعادة سجلات الشركة من ملف تم تصديره مسبقاً</p>
              </label>
 
              <button 
@@ -382,16 +402,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack, settings, setSettin
                className="bg-zinc-50 dark:bg-zinc-800 p-6 rounded-3xl border-2 border-zinc-100 dark:border-zinc-700 hover:border-rose-500 transition-all group text-right"
              >
                 <Trash2 className="w-8 h-8 text-rose-500 mb-4 group-hover:scale-110 transition-transform" />
-                <h4 className="font-black text-readable">تصفير النظام</h4>
-                <p className="text-[10px] text-zinc-500 font-bold mt-1">مسح كافة السجلات والفواتير (لا يمكن التراجع)</p>
+                <h4 className="font-black text-readable">تصفير الشركة</h4>
+                <p className="text-[10px] text-zinc-500 font-bold mt-1">مسح سجلات الفواتير والمواد لهذه الشركة فقط</p>
              </button>
-          </div>
-          
-          <div className="bg-amber-500/5 p-4 rounded-2xl border border-amber-500/20 flex gap-3">
-             <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
-             <p className="text-[10px] text-amber-600 font-bold leading-relaxed">
-               تنبيه: نوصي بتصدير نسخة احتياطية من بياناتك بشكل أسبوعي لضمان عدم فقدان السجلات في حال تغيير المتصفح أو مسح ذاكرة التخزين المؤقت.
-             </p>
           </div>
         </div>
       </div>
