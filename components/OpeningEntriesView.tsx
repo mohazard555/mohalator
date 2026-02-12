@@ -1,22 +1,56 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Plus, Save, X, Search, Scale, Check } from 'lucide-react';
-import { OpeningEntry, AccountNode, AppSettings } from '../types';
-import OpeningEntriesManager from './OpeningEntriesManager';
+import { 
+  ArrowRight, Plus, Save, X, Search, Scale, Check, 
+  Trash2, Edit2, Printer, ChevronRight, ChevronLeft, 
+  LayoutList, Calculator, Hash, MessageSquare, Folder, ArrowUpRight, ArrowDownLeft,
+  ChevronDown, RotateCcw, Info, PlusCircle
+} from 'lucide-react';
+import { OpeningEntry, AccountNode, AppSettings, CashEntry, Party, AccountingCategory } from '../types';
+
+interface JournalRow {
+  id: string;
+  accountId: string;
+  accountName: string;
+  accountCode: string;
+  debit: number;
+  credit: number;
+  statement: string;
+}
 
 interface OpeningEntriesViewProps {
   onBack: () => void;
 }
 
 const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
-  const [openingEntries, setOpeningEntries] = useState<OpeningEntry[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [chartAccounts, setChartAccounts] = useState<AccountNode[]>([]);
-  const [isAdding, setIsAdding] = useState(false);
-  const [accountSearch, setAccountSearch] = useState('');
-  const [showResults, setShowResults] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  
+  const [rows, setRows] = useState<JournalRow[]>(
+    Array.from({ length: 8 }, () => ({
+      id: crypto.randomUUID(),
+      accountId: '',
+      accountName: '',
+      accountCode: '',
+      debit: 0,
+      credit: 0,
+      statement: ''
+    }))
+  );
 
-  const [form, setForm] = useState<Partial<OpeningEntry>>({
-    accountName: '', accountType: 'أصول', debit: 0, credit: 0, date: new Date().toISOString().split('T')[0], notes: ''
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isPosting, setIsPosting] = useState(false);
+  
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [accountSearch, setAccountSearch] = useState('');
+
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [quickAddForm, setQuickAddForm] = useState({
+    name: '',
+    code: '',
+    parentId: ''
   });
 
   useEffect(() => {
@@ -24,148 +58,461 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
   }, []);
 
   const loadData = () => {
-    const sOp = localStorage.getItem('sheno_opening_entries');
+    const sSett = localStorage.getItem('sheno_settings');
     const sChart = localStorage.getItem('sheno_chart_accounts');
-    if (sOp) setOpeningEntries(JSON.parse(sOp));
-    if (sChart) setChartAccounts(JSON.parse(sChart));
+    
+    if (sSett) setSettings(JSON.parse(sSett));
+    if (sChart) {
+      const parsedChart = JSON.parse(sChart);
+      setChartAccounts(parsedChart);
+      // توسيع الجذور تلقائياً لتسهيل الرؤية
+      const roots = parsedChart.filter((a: any) => !a.parentId).map((a: any) => a.id);
+      setExpandedNodes(new Set(roots));
+    }
   };
 
-  const handleSave = () => {
-    if (!form.accountName) { alert('يرجى اختيار الحساب'); return; }
-    const newEntry = { ...form, id: crypto.randomUUID() } as OpeningEntry;
-    const updated = [newEntry, ...openingEntries];
-    localStorage.setItem('sheno_opening_entries', JSON.stringify(updated));
-    setIsAdding(false);
-    setForm({ accountName: '', accountType: 'أصول', debit: 0, credit: 0, date: new Date().toISOString().split('T')[0], notes: '' });
+  const toggleNode = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newSet = new Set(expandedNodes);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setExpandedNodes(newSet);
+  };
+
+  const handleOpenSearch = (rowId: string) => {
+    setActiveRowId(rowId);
     setAccountSearch('');
-    loadData();
+    setIsSearchOpen(true);
+    setIsQuickAddOpen(false);
+    loadData(); // إعادة التحميل لضمان مزامنة أي حسابات مضافة حديثاً
   };
 
-  // تحسين منطق البحث ليكون أكثر مرونة
-  const filteredAccounts = chartAccounts.filter(a => 
-    a.type === 'ACCOUNT' && (
-      (a.name || '').toLowerCase().includes(accountSearch.toLowerCase()) || 
-      (a.code || '').toLowerCase().includes(accountSearch.toLowerCase())
+  const handleSelectAccount = (acc: AccountNode) => {
+    if (acc.type === 'FOLDER') return; // لا يسمح باختيار المجلدات كأطراف قيد
+
+    setRows(prev => prev.map(r => 
+      r.id === activeRowId ? { ...r, accountId: acc.id, accountName: acc.name, accountCode: acc.code } : r
+    ));
+    setIsSearchOpen(false);
+    setActiveRowId(null);
+  };
+
+  const updateRowValue = (id: string, field: 'debit' | 'credit' | 'statement', value: any) => {
+    setRows(prev => prev.map(r => {
+      if (r.id === id) {
+        const updated = { ...r, [field]: value };
+        if (field === 'debit' && Number(value) > 0) updated.credit = 0;
+        if (field === 'credit' && Number(value) > 0) updated.debit = 0;
+        return updated;
+      }
+      return r;
+    }));
+  };
+
+  const addNewRow = () => {
+    setRows([...rows, {
+      id: crypto.randomUUID(),
+      accountId: '',
+      accountName: '',
+      accountCode: '',
+      debit: 0,
+      credit: 0,
+      statement: ''
+    }]);
+  };
+
+  const totalDebit = rows.reduce((s, r) => s + (Number(r.debit) || 0), 0);
+  const totalCredit = rows.reduce((s, r) => s + (Number(r.credit) || 0), 0);
+  const difference = Number((totalDebit - totalCredit).toFixed(2));
+  const isBalanced = Math.abs(difference) === 0 && (totalDebit > 0);
+
+  const handleQuickAddAccount = () => {
+    if (!quickAddForm.name || !quickAddForm.code || !quickAddForm.parentId) {
+      alert('يرجى ملء كافة حقول الحساب الجديد');
+      return;
+    }
+
+    const newNode: AccountNode = {
+      id: crypto.randomUUID(),
+      code: quickAddForm.code,
+      name: quickAddForm.name,
+      parentId: quickAddForm.parentId,
+      type: 'ACCOUNT',
+      reportType: chartAccounts.find(a => a.id === quickAddForm.parentId)?.reportType || 'الميزانية'
+    };
+
+    const updatedChart = [...chartAccounts, newNode];
+    localStorage.setItem('sheno_chart_accounts', JSON.stringify(updatedChart));
+    setChartAccounts(updatedChart);
+
+    handleSelectAccount(newNode);
+    setIsQuickAddOpen(false);
+  };
+
+  const handleSaveOpeningEntry = () => {
+    if (!isBalanced) {
+      alert('لا يمكن حفظ القيد الافتتاحي لأنه غير متوازن.');
+      return;
+    }
+
+    const validRows = rows.filter(r => r.accountId && (r.debit > 0 || r.credit > 0));
+    if (validRows.length < 2) {
+      alert('يجب إدخال حسابين على الأقل لتسجيل القيد.');
+      return;
+    }
+
+    setIsPosting(true);
+    
+    const savedJou = localStorage.getItem('sheno_cash_journal');
+    let jou: CashEntry[] = savedJou ? JSON.parse(savedJou) : [];
+
+    const journalEntries: CashEntry[] = validRows.map(r => ({
+      id: crypto.randomUUID(),
+      date,
+      statement: r.statement || 'قيد افتتاح السنة المالية',
+      receivedSYP: r.debit, 
+      paidSYP: r.credit,    
+      receivedUSD: 0,
+      paidUSD: 0,
+      notes: 'قيد افتتاحي معتمد',
+      type: 'افتتاحي',
+      voucherNumber: 'OP-' + new Date().getFullYear(),
+      partyName: r.accountName
+    }));
+
+    localStorage.setItem('sheno_cash_journal', JSON.stringify([...journalEntries, ...jou]));
+
+    const savedOp = localStorage.getItem('sheno_opening_entries');
+    let opEntries: OpeningEntry[] = savedOp ? JSON.parse(savedOp) : [];
+    
+    const newOpeningEntries: OpeningEntry[] = validRows.map(r => ({
+      id: crypto.randomUUID(),
+      accountName: r.accountName,
+      accountType: chartAccounts.find(a => a.id === r.accountId)?.reportType === 'الميزانية' ? 'أصول' : 'حقوق ملكية',
+      debit: r.debit,
+      credit: r.credit,
+      date,
+      notes: r.statement || 'قيد افتتاحي'
+    }));
+
+    localStorage.setItem('sheno_opening_entries', JSON.stringify([...newOpeningEntries, ...opEntries]));
+
+    alert('تم حفظ وترحيل القيد بنجاح.');
+    setIsPosting(false);
+    onBack();
+  };
+
+  // وظيفة رندر الشجرة داخل المودال
+  const renderSearchTree = (parentId: string | null = null, level: number = 0) => {
+    const nodes = chartAccounts.filter(a => a.parentId === parentId).sort((a, b) => a.code.localeCompare(b.code));
+    
+    return nodes.map(node => {
+      const isExpanded = expandedNodes.has(node.id);
+      const children = chartAccounts.filter(a => a.parentId === node.id);
+      const hasChildren = children.length > 0;
+      const isSelectable = node.type === 'ACCOUNT';
+
+      return (
+        <div key={node.id} className="select-none">
+          <div 
+            onClick={() => isSelectable ? handleSelectAccount(node) : null}
+            className={`flex items-center gap-2 py-2 px-3 rounded-xl transition-all ${isSelectable ? 'cursor-pointer hover:bg-primary/10' : 'cursor-default opacity-80'} group`}
+          >
+            <div style={{ width: `${level * 20}px` }}></div>
+            
+            {hasChildren ? (
+              <button 
+                onClick={(e) => toggleNode(node.id, e)}
+                className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-md text-zinc-500"
+              >
+                {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+              </button>
+            ) : (
+              <div className="w-5"></div>
+            )}
+
+            <div className="flex items-center gap-3 flex-1 overflow-hidden">
+              {node.type === 'FOLDER' ? (
+                <Folder className="w-4 h-4 text-amber-500 fill-amber-500/10" />
+              ) : (
+                <Calculator className="w-4 h-4 text-primary opacity-40 group-hover:opacity-100" />
+              )}
+              <div className="flex flex-col truncate">
+                <span className={`text-xs ${isSelectable ? 'font-black text-zinc-800' : 'font-bold text-zinc-400'}`}>{node.name}</span>
+                <span className="text-[8px] font-mono text-zinc-400">#{node.code}</span>
+              </div>
+            </div>
+
+            {isSelectable && (
+              <button className="opacity-0 group-hover:opacity-100 text-[9px] font-black text-primary uppercase bg-primary/5 px-2 py-0.5 rounded">اختيار</button>
+            )}
+          </div>
+          
+          {isExpanded && (
+            <div className="mr-4 border-r border-zinc-100 dark:border-zinc-800">
+              {renderSearchTree(node.id, level + 1)}
+            </div>
+          )}
+        </div>
+      );
+    });
+  };
+
+  const filteredFlatResults = chartAccounts.filter(acc => 
+    acc.type === 'ACCOUNT' && (
+      acc.name.toLowerCase().includes(accountSearch.toLowerCase()) || 
+      acc.code.toLowerCase().includes(accountSearch.toLowerCase())
     )
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in">
-      <div className="flex items-center justify-between no-print">
-        <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 rounded-xl shadow-sm transition-all">
-            <ArrowRight className="w-6 h-6" />
+    <div className="min-h-screen bg-[#f8fafc] text-zinc-900 p-3 flex flex-col gap-3 animate-in fade-in" dir="rtl">
+      {/* Title Bar */}
+      <div className="flex items-center justify-between border-b border-zinc-200 pb-2 no-print">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="p-1.5 bg-white hover:bg-zinc-100 rounded-lg border shadow-sm transition-all">
+            <ArrowRight className="w-5 h-5 text-zinc-500" />
           </button>
-          <div className="flex items-center gap-3">
-             <Scale className="w-8 h-8 text-primary" />
-             <h2 className="text-2xl font-black text-readable">إدارة القيود الافتتاحية</h2>
+          <div>
+            <h1 className="text-lg font-black text-zinc-800 flex items-center gap-2">
+              <Scale className="w-5 h-5 text-primary" /> القيد الافتتاحي العام
+            </h1>
           </div>
         </div>
-        <button onClick={() => { setIsAdding(true); setAccountSearch(''); }} className="bg-primary text-white px-8 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:brightness-110 transition-all">
-          <Plus className="w-5 h-5" /> إضافة قيد ميزانية
-        </button>
+        
+        <div className="flex items-center gap-2">
+           <div className="bg-white border rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-sm">
+              <span className="text-[9px] font-black text-zinc-400 uppercase">تاريخ القيد</span>
+              <input type="date" value={date} onChange={e => setDate(e.target.value)} className="font-mono font-black text-xs outline-none text-primary bg-transparent" />
+           </div>
+           <div className="px-4 py-1.5 bg-zinc-900 text-white border border-zinc-700 font-mono font-black text-xs shadow-lg rounded-lg">
+             DOC: OPEN-001
+           </div>
+        </div>
       </div>
 
-      <OpeningEntriesManager 
-        openingEntries={openingEntries} 
-        onDelete={(id) => {
-          if(window.confirm('حذف القيد؟')) {
-            const updated = openingEntries.filter(x => x.id !== id);
-            localStorage.setItem('sheno_opening_entries', JSON.stringify(updated));
-            loadData();
-          }
-        }} 
-      />
-
-      {isAdding && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[250] flex items-center justify-center p-4">
-           <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-[3rem] border border-zinc-200 shadow-2xl overflow-hidden animate-in zoom-in-95">
-              <div className="p-8 space-y-6 text-right" dir="rtl">
-                 <div className="flex items-center justify-between border-b pb-5 dark:border-zinc-800">
-                    <h3 className="text-2xl font-black">تسجيل قيد افتتاحي جديد</h3>
-                    <button onClick={() => setIsAdding(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all"><X className="w-6 h-6 text-zinc-400" /></button>
-                 </div>
-
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex flex-col gap-2 relative">
-                       <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2 flex items-center gap-1">
-                          <Search className="w-3 h-3" /> البحث عن الحساب (كود أو اسم)
-                       </label>
-                       <div className="relative">
+      {/* Main Grid */}
+      <div className="flex-1 bg-white border border-zinc-200 rounded-2xl shadow-xl overflow-hidden flex flex-col relative">
+         <div className="overflow-auto flex-1 custom-scrollbar">
+            <table className="w-full text-right border-collapse table-fixed">
+               <thead className="sticky top-0 z-30">
+                  <tr className="bg-zinc-900 text-white font-black text-[9px] uppercase tracking-widest h-10 shadow-md">
+                     <th className="w-12 text-center border-l border-zinc-800">#</th>
+                     <th className="border-l border-zinc-800 pr-6">الحساب المحاسبي الرسمي</th>
+                     <th className="w-32 text-center border-l border-zinc-800 bg-emerald-900/10">مدين (+)</th>
+                     <th className="w-32 text-center border-l border-zinc-800 bg-rose-900/10">دائن (-)</th>
+                     <th className="w-64 border-l border-zinc-800 pr-4">البيان الرسمي</th>
+                     <th className="w-10 text-center no-print">---</th>
+                  </tr>
+               </thead>
+               <tbody className="text-zinc-800 font-bold">
+                  {rows.map((row, idx) => (
+                    <tr key={row.id} className={`h-9 border-b border-zinc-100 transition-colors group ${idx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/30'} hover:bg-primary/5`}>
+                       <td className="text-center font-mono text-[10px] text-zinc-300 border-l border-zinc-50">{idx + 1}</td>
+                       <td className="relative border-l border-zinc-50 px-3">
+                          <div 
+                            onClick={() => handleOpenSearch(row.id)}
+                            className={`w-full h-full flex items-center cursor-pointer min-h-[36px] transition-all text-sm ${row.accountName ? 'text-zinc-900 font-black' : 'text-zinc-300 italic font-normal text-xs'}`}
+                          >
+                             {row.accountName || "اختر حساباً من الدليل..."}
+                             <ChevronDown className="w-3 h-3 mr-auto text-zinc-300 opacity-0 group-hover:opacity-100" />
+                          </div>
+                       </td>
+                       <td className="border-l border-zinc-50 bg-emerald-50/10">
+                          <input 
+                            type="number" 
+                            className={`w-full h-full bg-transparent text-center font-mono font-black text-sm outline-none ${row.credit > 0 ? 'opacity-20 pointer-events-none' : 'text-emerald-600'}`}
+                            value={row.debit || ''}
+                            onChange={e => updateRowValue(row.id, 'debit', Number(e.target.value))}
+                            placeholder="0"
+                          />
+                       </td>
+                       <td className="border-l border-zinc-50 bg-rose-50/10">
+                          <input 
+                            type="number" 
+                            className={`w-full h-full bg-transparent text-center font-mono font-black text-sm outline-none ${row.debit > 0 ? 'opacity-20 pointer-events-none' : 'text-rose-600'}`}
+                            value={row.credit || ''}
+                            onChange={e => updateRowValue(row.id, 'credit', Number(e.target.value))}
+                            placeholder="0"
+                          />
+                       </td>
+                       <td className="border-l border-zinc-50 px-3">
                           <input 
                             type="text" 
-                            className="w-full bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-black outline-none focus:border-primary transition-all text-sm"
-                            placeholder="اكتب كود أو اسم الحساب..."
-                            value={accountSearch}
-                            onChange={(e) => { setAccountSearch(e.target.value); setShowResults(true); }}
-                            onFocus={() => setShowResults(true)}
+                            className="w-full h-full bg-transparent outline-none font-normal italic text-xs text-zinc-500 focus:text-zinc-900"
+                            value={row.statement}
+                            onChange={e => updateRowValue(row.id, 'statement', e.target.value)}
+                            placeholder="تفاصيل القيد..."
                           />
-                          {showResults && (
-                            <div className="absolute top-full right-0 left-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-2xl shadow-2xl z-[300] max-h-60 overflow-y-auto animate-in fade-in">
-                               {filteredAccounts.length === 0 ? (
-                                 <div className="p-6 text-center text-xs text-zinc-400 italic">لا توجد نتائج تطابق بحثك</div>
-                               ) : (
-                                 filteredAccounts.map(acc => (
-                                   <div 
-                                      key={acc.id} 
-                                      onClick={() => { 
-                                         setForm({...form, accountName: acc.name}); 
-                                         setAccountSearch(acc.name); 
-                                         setShowResults(false); 
-                                      }} 
-                                      className="p-4 border-b dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer flex justify-between items-center transition-colors group"
-                                   >
-                                      <div className="flex flex-col text-right">
-                                         <span className="font-black text-sm text-readable group-hover:text-primary transition-colors">{acc.name}</span>
-                                         <span className="text-[8px] text-zinc-400 font-bold uppercase">{acc.reportType}</span>
-                                      </div>
-                                      <span className="text-[10px] font-mono font-black text-primary bg-primary/5 px-2 py-1 rounded">#{acc.code}</span>
-                                   </div>
-                                 ))
-                               )}
-                            </div>
-                          )}
-                       </div>
-                    </div>
+                       </td>
+                       <td className="text-center no-print">
+                          <button 
+                            onClick={() => setRows(rows.filter(r => r.id !== row.id))}
+                            className="p-1 text-zinc-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                             <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                       </td>
+                    </tr>
+                  ))}
+               </tbody>
+            </table>
+         </div>
 
-                    <div className="flex flex-col gap-2">
-                       <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2">التصنيف المحاسبي</label>
-                       <select className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-black outline-none appearance-none cursor-pointer text-sm" value={form.accountType} onChange={e => setForm({...form, accountType: e.target.value as any})}>
-                          <option value="أصول">أصول (موجودات)</option>
-                          <option value="خصوم">خصوم (مطاليب)</option>
-                          <option value="حقوق ملكية">حقوق ملكية</option>
-                       </select>
-                    </div>
+         <div className="bg-zinc-50 border-t p-2 px-4 flex items-center justify-between no-print">
+            <button onClick={addNewRow} className="flex items-center gap-1.5 px-4 py-1.5 bg-white border-2 border-dashed border-zinc-300 rounded-lg font-black text-[10px] text-zinc-500 hover:border-primary hover:text-primary transition-all shadow-sm">
+               <Plus className="w-3.5 h-3.5" /> إضافة سطر
+            </button>
+            <div className="flex items-center gap-2 text-[8px] font-black text-zinc-400 uppercase tracking-widest italic">
+               <Info className="w-3 h-3" /> النظام يغذي دليل الحسابات وأرصدة الأطراف آلياً
+            </div>
+         </div>
+      </div>
 
-                    <div className="flex flex-col gap-2">
-                       <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mr-2">مدين (+)</label>
-                       <input type="number" className="bg-emerald-50/50 border-2 border-emerald-100 p-4 rounded-2xl font-mono font-black text-2xl text-emerald-600 text-center outline-none focus:border-emerald-500" value={form.debit} onChange={e => setForm({...form, debit: Number(e.target.value)})} />
-                    </div>
+      {/* Summary Bar */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pb-3 no-print">
+         <div className="md:col-span-8 bg-zinc-900 p-1 rounded-2xl shadow-lg flex items-center">
+            <div className="grid grid-cols-3 w-full divide-x divide-x-reverse divide-zinc-800">
+               <div className="p-2 flex flex-col items-center border-l border-zinc-800">
+                  <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-0.5">إجمالي المدين (+)</span>
+                  <span className="text-lg font-mono font-black text-white">{totalDebit.toLocaleString()}</span>
+               </div>
+               <div className="p-2 flex flex-col items-center border-l border-zinc-800">
+                  <span className="text-[8px] font-black text-rose-500 uppercase tracking-widest mb-0.5">إجمالي الدائن (-)</span>
+                  <span className="text-lg font-mono font-black text-white">{totalCredit.toLocaleString()}</span>
+               </div>
+               <div className={`p-2 flex flex-col items-center transition-colors ${difference === 0 ? 'bg-emerald-600/10' : 'bg-rose-600/10'}`}>
+                  <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mb-0.5">الفرق</span>
+                  <span className={`text-xl font-mono font-black ${difference === 0 ? 'text-emerald-400' : 'text-rose-500 animate-pulse'}`}>
+                     {Math.abs(difference).toLocaleString()}
+                  </span>
+               </div>
+            </div>
+         </div>
 
-                    <div className="flex flex-col gap-2">
-                       <label className="text-[10px] font-black text-rose-600 uppercase tracking-widest mr-2">دائن (-)</label>
-                       <input type="number" className="bg-rose-50/50 border-2 border-rose-100 p-4 rounded-2xl font-mono font-black text-2xl text-rose-600 text-center outline-none focus:border-rose-500" value={form.credit} onChange={e => setForm({...form, credit: Number(e.target.value)})} />
-                    </div>
+         <div className="md:col-span-4 flex flex-wrap gap-2 justify-end items-center h-full">
+            <button onClick={() => window.print()} className="bg-white hover:bg-zinc-50 px-4 py-2 rounded-xl flex items-center gap-1.5 font-black text-[11px] shadow-sm border border-zinc-200"><Printer className="w-4 h-4" /> طباعة</button>
+            <button 
+              onClick={handleSaveOpeningEntry}
+              disabled={!isBalanced || isPosting}
+              className={`px-8 py-3 rounded-xl font-black text-sm flex items-center gap-2 shadow-xl transition-all ${isBalanced ? 'bg-primary text-white hover:scale-105 active:scale-95' : 'bg-zinc-200 text-zinc-400 cursor-not-allowed grayscale'}`}
+            >
+               <Save className="w-4 h-4" /> {isPosting ? 'جاري الحفظ...' : 'ترحيل القيد'}
+            </button>
+         </div>
+      </div>
 
-                    <div className="md:col-span-2 flex flex-col gap-2">
-                       <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2">ملاحظات السند</label>
-                       <textarea 
-                         value={form.notes} 
-                         onChange={e => setForm({...form, notes: e.target.value})} 
-                         placeholder="اكتب ملاحظات إضافية هنا لتظهر في الدفاتر..." 
-                         className="bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-bold outline-none h-24 resize-none focus:border-primary transition-all text-sm text-readable shadow-inner"
-                       />
+      {/* Account Selector Modal (Dynamic Tree) */}
+      {isSearchOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
+           <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+              <div className="p-5 bg-zinc-900 text-white flex justify-between items-center">
+                 <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary rounded-lg shadow-lg shadow-primary/20"><Search className="w-5 h-5"/></div>
+                    <div>
+                       <h3 className="text-lg font-black tracking-tight">محرك دليل الحسابات</h3>
+                       <p className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest">Chart of Accounts Linker</p>
                     </div>
                  </div>
+                 <button onClick={() => setIsSearchOpen(false)} className="p-1.5 hover:bg-white/10 rounded-lg transition-all text-zinc-400"><X className="w-6 h-6" /></button>
               </div>
-              <div className="bg-zinc-50 dark:bg-zinc-800/50 p-6 flex justify-end gap-3 border-t dark:border-zinc-800">
-                 <button onClick={handleSave} className="bg-primary text-white px-16 py-4 rounded-2xl font-black shadow-xl text-lg flex items-center gap-3 hover:scale-105 active:scale-95 transition-all">
-                    <Save className="w-6 h-6" /> تثبيت القيد الافتتاحي
-                 </button>
+
+              <div className="p-4">
+                 {isQuickAddOpen ? (
+                    <div className="space-y-4 p-5 border-2 border-emerald-500/20 rounded-2xl bg-emerald-500/5 animate-in slide-in-from-bottom-2">
+                       <h4 className="font-black text-emerald-600 flex items-center gap-2 text-sm"><PlusCircle className="w-5 h-5" /> تعريف حساب جديد فورياً</h4>
+                       <div className="grid grid-cols-2 gap-3">
+                          <div className="flex flex-col gap-1">
+                             <label className="text-[9px] font-black text-zinc-400 uppercase">اسم الحساب</label>
+                             <input type="text" value={quickAddForm.name} onChange={e=>setQuickAddForm({...quickAddForm, name: e.target.value})} className="bg-white border rounded-xl p-2.5 font-bold text-xs outline-none focus:border-emerald-500 shadow-sm" placeholder="الاسم..." />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                             <label className="text-[9px] font-black text-zinc-400 uppercase">كود الحساب</label>
+                             <input type="text" value={quickAddForm.code} onChange={e=>setQuickAddForm({...quickAddForm, code: e.target.value})} className="bg-white border rounded-xl p-2.5 font-mono font-bold text-xs outline-none focus:border-emerald-500 shadow-sm" placeholder="131001" />
+                          </div>
+                          <div className="col-span-2 flex flex-col gap-1">
+                             <label className="text-[9px] font-black text-zinc-400 uppercase">يتبع للمجموعة</label>
+                             <select value={quickAddForm.parentId} onChange={e=>setQuickAddForm({...quickAddForm, parentId: e.target.value})} className="bg-white border rounded-xl p-2.5 font-bold text-xs outline-none appearance-none cursor-pointer">
+                                <option value="">-- اختر المجموعة الأب --</option>
+                                {chartAccounts.filter(a=>a.type==='FOLDER').map(f => <option key={f.id} value={f.id}>{f.name} (#{f.code})</option>)}
+                             </select>
+                          </div>
+                       </div>
+                       <div className="flex gap-2">
+                          <button onClick={handleQuickAddAccount} className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-black text-xs shadow-lg">حفظ وإدراج الحساب</button>
+                          <button onClick={() => setIsQuickAddOpen(false)} className="px-6 py-3 bg-zinc-200 text-zinc-500 rounded-xl font-bold text-xs">إلغاء</button>
+                       </div>
+                    </div>
+                 ) : (
+                    <>
+                       <div className="relative mb-4">
+                          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
+                          <input 
+                            type="text" 
+                            autoFocus
+                            className="w-full bg-zinc-50 border-2 border-zinc-100 py-3 pr-12 pl-4 rounded-2xl outline-none font-black text-base focus:border-primary transition-all shadow-inner"
+                            placeholder="بحث بالاسم أو الكود..."
+                            value={accountSearch}
+                            onChange={e => setAccountSearch(e.target.value)}
+                          />
+                       </div>
+
+                       <div className="max-h-[350px] overflow-y-auto custom-scrollbar space-y-1 pr-1 border border-zinc-50 rounded-xl p-1">
+                          {accountSearch.length > 0 ? (
+                            // عرض مسطح في حال البحث لسرعة الوصول
+                            <div className="space-y-1">
+                               {filteredFlatResults.length === 0 ? (
+                                 <div className="p-10 text-center flex flex-col items-center gap-3">
+                                   <Search className="w-8 h-8 text-zinc-100" />
+                                   <p className="text-zinc-400 font-black text-xs italic">لا توجد نتائج</p>
+                                   <button 
+                                     onClick={() => { setQuickAddForm({ ...quickAddForm, name: accountSearch }); setIsQuickAddOpen(true); }}
+                                     className="mt-2 text-primary font-black text-[10px] flex items-center gap-1.5 hover:underline"
+                                   >
+                                      <PlusCircle className="w-3 h-3" /> إضافة "{accountSearch}" كحساب جديد؟
+                                   </button>
+                                 </div>
+                               ) : filteredFlatResults.map(acc => (
+                                 <div key={acc.id} onClick={() => handleSelectAccount(acc)} className="p-3 bg-zinc-50 hover:bg-primary hover:text-white rounded-xl cursor-pointer transition-all flex items-center justify-between group">
+                                    <div className="flex items-center gap-3">
+                                       <Calculator className="w-4 h-4 opacity-40 group-hover:opacity-100" />
+                                       <div className="flex flex-col">
+                                          <span className="font-black text-xs leading-none">{acc.name}</span>
+                                          <span className="text-[8px] font-mono opacity-50 group-hover:opacity-100 mt-0.5">#{acc.code}</span>
+                                       </div>
+                                    </div>
+                                    <Check className="w-3 h-3 opacity-0 group-hover:opacity-100" />
+                                 </div>
+                               ))}
+                            </div>
+                          ) : (
+                            // عرض شجري في الوضع الافتراضي
+                            renderSearchTree(null, 0)
+                          )}
+                       </div>
+                       
+                       <div className="mt-4 pt-4 border-t flex justify-between items-center no-print">
+                          <p className="text-[8px] text-zinc-400 font-black flex items-center gap-1.5">
+                             <Info className="w-3 h-3" /> يسمح فقط باختيار الحسابات الفرعية القابلة للقيد
+                          </p>
+                          <button onClick={() => setIsQuickAddOpen(true)} className="text-[10px] font-black text-emerald-600 flex items-center gap-1.5 hover:text-emerald-700">
+                             <PlusCircle className="w-3.5 h-3.5" /> حساب جديد
+                          </button>
+                       </div>
+                    </>
+                 )}
               </div>
            </div>
         </div>
       )}
+
+      {/* Note */}
+      <div className="bg-primary/5 border border-primary/20 p-4 rounded-xl flex items-center gap-3 no-print shadow-sm">
+         <Scale className="w-8 h-8 text-primary shrink-0 opacity-30" />
+         <p className="text-[10px] font-bold text-zinc-500 leading-relaxed">
+            • ملاحظة: محرك الحسابات مربوط مباشرة بشجرة الدليل. اختيار الحساب سيؤدي لتثبيت رصيد أول مدة له في السجلات الختامية للميزانية العمومية.
+         </p>
+      </div>
     </div>
   );
 };

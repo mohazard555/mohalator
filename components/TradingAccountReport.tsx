@@ -1,6 +1,11 @@
-import React from 'react';
-import { MinusSquare, PlusSquare, FileSpreadsheet, List, Calculator, ArrowDownLeft, Tag, Truck, RefreshCcw, Percent } from 'lucide-react';
+
+import React, { useState, useRef } from 'react';
+import { 
+  MinusSquare, PlusSquare, FileSpreadsheet, List, Calculator, 
+  ArrowDownLeft, Tag, Truck, RefreshCcw, Percent, X, Printer, FileDown, Search 
+} from 'lucide-react';
 import { exportToCSV } from '../utils/export';
+import { PdfExportService } from '../utils/PdfExportService';
 
 interface TradingAccountReportProps {
   fin: any;
@@ -9,7 +14,9 @@ interface TradingAccountReportProps {
 }
 
 const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expandedSections, toggleSection }) => {
-  
+  const [drillDown, setDrillDown] = useState<{ title: string; data: any[] } | null>(null);
+  const modalPrintRef = useRef<HTMLDivElement>(null);
+
   const handleExportExcel = () => {
     const data = [
       { "الجانب": "مدين (منه)", "البيان": "بضاعة أول المدة", "القيمة": fin.openingStockValue },
@@ -20,6 +27,28 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
       { "الجانب": "النتيجة", "البيان": "مجمل الربح/الخسارة", "القيمة": fin.grossProfit }
     ];
     exportToCSV(data, 'حساب_المتاجرة');
+  };
+
+  const handleDrillDownExportExcel = () => {
+    if (!drillDown) return;
+    const data = drillDown.data.map((item, idx) => ({
+      'م': idx + 1,
+      'التاريخ': item.date,
+      'رقم المستند': item.number,
+      'الطرف': item.party,
+      'البيان': item.statement,
+      'القيمة': item.value
+    }));
+    exportToCSV(data, drillDown.title.replace(/\s+/g, '_'));
+  };
+
+  const handleDrillDownExportPDF = async () => {
+    if (!modalPrintRef.current || !drillDown) return;
+    await PdfExportService.export({
+      element: modalPrintRef.current,
+      fileName: drillDown.title.replace(/\s+/g, '_'),
+      orientation: 'portrait'
+    });
   };
 
   const renderItemsTable = (items: any[], type: 'STOCK' | 'INVOICE') => (
@@ -91,19 +120,31 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
                    
                    {expandedSections.has('tr_net_purchases') && (
                      <div className="mt-4 space-y-2 no-print bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-                        <div className="flex justify-between items-center text-[11px] font-bold text-zinc-600 dark:text-zinc-400">
+                        <div 
+                          className="flex justify-between items-center text-[11px] font-bold text-zinc-600 dark:text-zinc-400 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 p-2 rounded-lg transition-all"
+                          onClick={() => setDrillDown({ title: 'إجمالي المشتريات', data: fin.purchasesBreakdown })}
+                        >
                            <span className="flex items-center gap-2"><Tag className="w-3 h-3"/> إجمالي المشتريات</span>
                            <span className="font-mono">+{(fin.grossPurchasesVal || 0).toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between items-center text-[11px] font-bold text-primary">
+                        <div 
+                          className="flex justify-between items-center text-[11px] font-bold text-primary cursor-pointer hover:bg-white dark:hover:bg-zinc-800 p-2 rounded-lg transition-all"
+                          onClick={() => setDrillDown({ title: 'مصاريف النقل', data: fin.transportBreakdown })}
+                        >
                            <span className="flex items-center gap-2"><Truck className="w-3 h-3"/> مصاريف النقل</span>
                            <span className="font-mono">+{(fin.purchaseTransport || 0).toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between items-center text-[11px] font-bold text-rose-600">
+                        <div 
+                          className="flex justify-between items-center text-[11px] font-bold text-rose-600 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 p-2 rounded-lg transition-all"
+                          onClick={() => setDrillDown({ title: 'مردودات المشتريات', data: fin.purchaseReturnsBreakdown })}
+                        >
                            <span className="flex items-center gap-2"><RefreshCcw className="w-3 h-3"/> مردودات المشتريات</span>
                            <span className="font-mono">-{(fin.purchaseReturnsVal || 0).toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between items-center text-[11px] font-bold text-emerald-600">
+                        <div 
+                          className="flex justify-between items-center text-[11px] font-bold text-emerald-600 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 p-2 rounded-lg transition-all"
+                          onClick={() => setDrillDown({ title: 'الخصم المكتسب', data: fin.purchaseDiscountsBreakdown })}
+                        >
                            <span className="flex items-center gap-2"><Percent className="w-3 h-3"/> الخصم المكتسب</span>
                            <span className="font-mono">-{(fin.purchaseDiscountsVal || 0).toLocaleString()}</span>
                         </div>
@@ -139,15 +180,24 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
                    
                    {expandedSections.has('tr_sales') && (
                      <div className="mt-4 space-y-2 no-print bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-                        <div className="flex justify-between items-center text-[11px] font-bold text-zinc-600 dark:text-zinc-400">
+                        <div 
+                          className="flex justify-between items-center text-[11px] font-bold text-zinc-600 dark:text-zinc-400 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 p-2 rounded-lg transition-all"
+                          onClick={() => setDrillDown({ title: 'إجمالي المبيعات (Gross)', data: fin.salesBreakdown })}
+                        >
                            <span className="flex items-center gap-2"><Tag className="w-3 h-3"/> إجمالي المبيعات (Gross)</span>
                            <span className="font-mono">+{(fin.grossSalesVal || 0).toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between items-center text-[11px] font-bold text-rose-600">
+                        <div 
+                          className="flex justify-between items-center text-[11px] font-bold text-rose-600 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 p-2 rounded-lg transition-all"
+                          onClick={() => setDrillDown({ title: 'مردودات المبيعات', data: fin.salesReturnsBreakdown })}
+                        >
                            <span className="flex items-center gap-2"><RefreshCcw className="w-3 h-3"/> مردودات المبيعات</span>
                            <span className="font-mono">-{(fin.salesReturnsVal || 0).toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between items-center text-[11px] font-bold text-amber-600">
+                        <div 
+                          className="flex justify-between items-center text-[11px] font-bold text-amber-600 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 p-2 rounded-lg transition-all"
+                          onClick={() => setDrillDown({ title: 'الخصم الممنوح', data: fin.salesDiscountsBreakdown })}
+                        >
                            <span className="flex items-center gap-2"><Percent className="w-3 h-3"/> الخصم الممنوح</span>
                            <span className="font-mono">-{(fin.salesDiscountsVal || 0).toLocaleString()}</span>
                         </div>
@@ -181,8 +231,80 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
           </div>
        </div>
 
+       {/* Drill Down Modal */}
+       {drillDown && (
+         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300">
+            <div className="bg-white dark:bg-zinc-900 w-full max-w-5xl rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+               <div className="p-6 bg-zinc-900 text-white flex justify-between items-center px-10">
+                  <div className="flex items-center gap-4">
+                     <div className="p-3 bg-primary rounded-2xl"><Calculator className="w-6 h-6"/></div>
+                     <div>
+                        <h3 className="text-2xl font-black tracking-tight">{drillDown.title}</h3>
+                        <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">التدقيق التفصيلي لمفردات البند</p>
+                     </div>
+                  </div>
+                  <div className="flex items-center gap-2 no-print">
+                     <button onClick={handleDrillDownExportExcel} className="p-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all shadow-lg flex items-center gap-2 text-xs font-black"><FileDown className="w-4 h-4"/> Excel</button>
+                     <button onClick={handleDrillDownExportPDF} className="p-2.5 bg-rose-800 hover:bg-rose-700 text-white rounded-xl transition-all shadow-lg flex items-center gap-2 text-xs font-black"><FileDown className="w-4 h-4"/> PDF</button>
+                     <button onClick={() => window.print()} className="p-2.5 bg-zinc-700 hover:bg-zinc-600 text-white rounded-xl transition-all shadow-lg"><Printer className="w-4 h-4"/></button>
+                     <button onClick={() => setDrillDown(null)} className="p-2.5 bg-white/10 hover:bg-rose-600 text-white rounded-xl transition-all"><X className="w-5 h-5"/></button>
+                  </div>
+               </div>
+
+               <div className="p-8 flex-1 overflow-y-auto custom-scrollbar" ref={modalPrintRef}>
+                  <div className="hidden print:block mb-6 border-b-2 pb-4">
+                     <h1 className="text-2xl font-black">تفصيل بند: {drillDown.title}</h1>
+                     <p className="text-xs text-zinc-500 italic">تم استخراج هذا التقرير التفصيلي من حساب المتاجرة بتاريخ: {new Date().toLocaleDateString('ar-SA')}</p>
+                  </div>
+
+                  <table className="w-full text-right border-collapse">
+                     <thead>
+                        <tr className="bg-zinc-50 dark:bg-zinc-800 border-b-2 border-zinc-100 dark:border-zinc-700 h-12 text-zinc-500 dark:text-zinc-400 font-black text-[10px] uppercase tracking-widest">
+                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800 w-12 text-center">م</th>
+                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800 w-32 text-center">التاريخ</th>
+                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800 w-32 text-center">رقم المستند</th>
+                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800">الطرف / الحساب</th>
+                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800">البيان</th>
+                           <th className="p-3 text-center w-40 bg-zinc-100/50 dark:bg-zinc-800/50">القيمة</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
+                        {drillDown.data.map((item, idx) => (
+                           <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors h-14 font-bold text-sm">
+                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono text-zinc-300">{idx + 1}</td>
+                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono text-zinc-400">{item.date}</td>
+                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center text-primary">#{item.number}</td>
+                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-readable">{item.party}</td>
+                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-zinc-500 font-normal italic text-xs">{item.statement}</td>
+                              <td className="p-3 text-center font-mono font-black text-lg text-zinc-900 dark:text-zinc-100">{item.value.toLocaleString()}</td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
+
+                  {drillDown.data.length === 0 && (
+                     <div className="p-20 text-center">
+                        <Search className="w-16 h-16 text-zinc-100 mx-auto mb-4" />
+                        <p className="text-zinc-400 font-black text-lg italic">لا توجد سجلات مسجلة لهذا البند في الفترة المحددة</p>
+                     </div>
+                  )}
+               </div>
+
+               <div className="p-8 bg-zinc-900 text-white flex justify-between items-center px-12 border-t-4 border-primary no-print">
+                  <div className="flex flex-col">
+                     <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">إجمالي المبلغ المحقق للبند</span>
+                     <div className="text-4xl font-mono font-black text-primary">
+                        {drillDown.data.reduce((acc, curr) => acc + curr.value, 0).toLocaleString()}
+                     </div>
+                  </div>
+                  <button onClick={() => setDrillDown(null)} className="px-12 py-4 bg-zinc-800 hover:bg-zinc-700 rounded-2xl font-black text-sm border border-zinc-700 transition-all">إغلاق النافذة</button>
+               </div>
+            </div>
+         </div>
+       )}
+
        {/* تحليل إضافي */}
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
           <div className="p-6 bg-zinc-50 dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-center group">
              <div className="flex items-center gap-3">
                 <div className="p-3 bg-zinc-200 dark:bg-zinc-800 rounded-2xl"><List className="w-5 h-5 text-zinc-500"/></div>

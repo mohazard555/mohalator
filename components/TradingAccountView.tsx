@@ -66,14 +66,14 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
     const pDiscountsVal = safeRound(filteredPurchases.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0));
     const netPurchases = safeRound((grossPurchases + purchaseTransport) - (pReturnsVal + pDiscountsVal));
 
-    // 3. بضاعة أول المدة - الربط المباشر مع سجلات الجرد
+    // 3. بضاعة أول المدة
     const openingStockInv = inventories
       .filter(i => i.type === 'OPENING' && i.date <= endDate)
       .sort((a, b) => b.date.localeCompare(a.date))[0];
     const openingStockValue = safeRound(openingStockInv?.totalValue || 0);
     const openingStockItems = openingStockInv?.items || [];
 
-    // 4. بضاعة آخر المدة - جرد تلقائي تراكمي
+    // 4. بضاعة آخر المدة
     const calculateClosingStock = (targetDate: string) => {
       const items = inventoryList.map(item => {
         const moves = stockEntries.filter(e => e.itemCode === item.code && e.date <= targetDate);
@@ -81,7 +81,7 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
         const issued = moves.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
         const returned = moves.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
         const balance = (item.openingStock || 0) + added - issued + returned;
-        return { name: item.name, quantity: balance, price: item.price, total: balance * item.price };
+        return { name: item.name, code: item.code, quantity: balance, unit: item.unit, price: item.price, total: balance * item.price };
       });
       return { items: items.filter(i => i.quantity !== 0), total: items.reduce((s, i) => s + i.total, 0) };
     };
@@ -98,6 +98,17 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
       cogs, grossProfit, openingStockValue, openingStockItems, 
       closingStockValue, closingStockItems: closingStock.items,
       grossSalesVal: grossSales, salesReturnsVal, salesDiscountsVal,
+      
+      // تفاصيل إضافية للنافذة المنبثقة
+      salesBreakdown: filteredSales.map(s => ({ date: s.date, number: s.invoiceNumber, party: s.customerName, statement: 'فاتورة مبيعات', value: s.items.reduce((acc, i) => acc + i.total, 0) })),
+      salesReturnsBreakdown: filteredSalesReturns.map(r => ({ date: r.date, number: r.invoiceNumber, party: r.customerName, statement: 'مرتجع مبيعات', value: r.totalReturnAmount })),
+      salesDiscountsBreakdown: filteredSales.filter(s => s.discountAmount > 0).map(s => ({ date: s.date, number: s.invoiceNumber, party: s.customerName, statement: 'حسم ممنوح زبون', value: s.discountAmount })),
+      
+      purchasesBreakdown: filteredPurchases.map(p => ({ date: p.date, number: p.invoiceNumber, party: p.supplierName, statement: 'فاتورة مشتريات', value: p.items.reduce((acc, i) => acc + i.total, 0) })),
+      purchaseReturnsBreakdown: filteredPurchaseReturns.map(r => ({ date: r.date, number: r.invoiceNumber, party: r.supplierName, statement: 'مرتجع مشتريات', value: r.totalReturnAmount })),
+      purchaseDiscountsBreakdown: filteredPurchases.filter(p => p.discountAmount > 0).map(p => ({ date: p.date, number: p.invoiceNumber, party: p.supplierName, statement: 'حسم مكتسب مورد', value: p.discountAmount })),
+      transportBreakdown: filteredPurchases.filter(p => p.transportExpenses > 0).map(p => ({ date: p.date, number: p.invoiceNumber, party: p.supplierName, statement: 'مصاريف نقل توريد', value: p.transportExpenses })),
+      
       saleItems: filteredSales.flatMap(s => s.items.map(i => ({ ...i, customer: s.customerName, invoice: s.invoiceNumber }))),
       purchaseItems: filteredPurchases.flatMap(p => p.items.map(i => ({ ...i, supplier: p.supplierName, invoice: p.invoiceNumber })))
     };
