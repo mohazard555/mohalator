@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Scale, ImageIcon, Printer, Eye, EyeOff, Calendar } from 'lucide-react';
 import { CashEntry, SalesInvoice, PurchaseInvoice, PeriodicInventory, InventoryItem, StockEntry, OpeningEntry, Party, PartyType, AppSettings, AccountingCategory } from '../types';
@@ -75,8 +76,18 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
     }).filter(it => it.quantity !== 0);
     const closingStockValue = closingStockItems.reduce((sum, it) => sum + it.total, 0);
 
-    // 2. النقدية (أصول)
-    const cashInHand = Math.abs(journal.filter(j => j.date <= endDate).reduce((s, c) => s + (Number(c.receivedSYP || 0) - Number(c.paidSYP || 0)), 0));
+    // 2. النقدية (أصول) - فصل الصندوق عن المصرف
+    const journalBeforeEnd = journal.filter(j => j.date <= endDate);
+    
+    const cashBalance = journalBeforeEnd
+      .filter(j => j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))
+      .reduce((s, c) => s + (Number(c.receivedSYP || 0) - Number(c.paidSYP || 0)), 0);
+
+    const bankBalance = journalBeforeEnd
+      .filter(j => j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))
+      .reduce((s, c) => s + (Number(c.receivedSYP || 0) - Number(c.paidSYP || 0)), 0);
+
+    const cashInHand = Math.abs(cashBalance + bankBalance);
     
     // 3. الزبائن (أصول)
     const receivablesList = parties.filter(p => p.type === PartyType.CUSTOMER || p.type === PartyType.BOTH).map(p => {
@@ -123,7 +134,7 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
     const netProfit = grossProfit + otherRevenues - expenses;
 
     return { 
-      closingStockValue, closingStockItems, cashInHand, receivables,
+      closingStockValue, closingStockItems, cashInHand, cashBalance, bankBalance, receivables,
       payables, fixedAssets, equityOpening, netProfit,
       receivablesList, payablesList, fixedAssetsList, equityList
     };
@@ -184,8 +195,9 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
         </div>
       </div>
 
-      <div className="bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-800 shadow-2xl flex flex-wrap items-center justify-between no-print mb-6">
-          <div className="flex flex-col gap-1">
+      <div className="bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-800 shadow-2xl flex flex-wrap items-center justify-between no-print mb-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full"></div>
+          <div className="flex flex-col gap-1 relative z-10">
             <span className="text-[10px] text-slate-400 font-black uppercase mr-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> نطاق تقرير الميزانية</span>
             <div className="flex items-center gap-3">
                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-slate-900 border border-slate-700 text-white p-2 rounded-xl text-xs font-mono outline-none focus:border-primary" />

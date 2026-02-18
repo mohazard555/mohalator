@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { MinusSquare, PlusSquare, Box, Wallet, Scale, AlertTriangle, CheckCircle2, FileSpreadsheet, UserCheck, ShieldCheck } from 'lucide-react';
 import { exportToCSV } from '../utils/export';
@@ -70,7 +71,10 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
                       </span>
                       <span className="font-mono font-black text-lg">{fin.cashInHand.toLocaleString()}</span>
                    </div>
-                   {expandedSections.has('bs_cash') && renderDetailTable([{name: 'رصيد السيولة الجاهزة', balance: fin.cashInHand}])}
+                   {expandedSections.has('bs_cash') && renderDetailTable([
+                     { name: 'الصندوق الرئيسي', balance: fin.cashBalance },
+                     { name: 'حساب المصرف البنكي', balance: fin.bankBalance }
+                   ])}
                 </div>
 
                 <div className="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">

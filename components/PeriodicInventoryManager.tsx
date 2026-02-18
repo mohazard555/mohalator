@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Package, Trash2, History, Eye, EyeOff, FileDown, Box, LayoutList, Calculator, Edit2 } from 'lucide-react';
+import { Package, Trash2, History, Eye, EyeOff, FileDown, Box, LayoutList, Calculator, Edit2, ChevronDown } from 'lucide-react';
 import { PeriodicInventory } from '../types';
 import { exportToCSV } from '../utils/export';
 
@@ -43,16 +43,16 @@ const PeriodicInventoryManager: React.FC<PeriodicInventoryManagerProps> = ({
           <div className="flex flex-wrap gap-4">
              <div className="bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-6 py-3 rounded-2xl flex flex-col items-center shadow-inner">
                 <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">قيمة بضاعة آخر المدة الحالية</span>
-                <span className="text-2xl font-mono font-black text-zinc-800 dark:text-zinc-100">
+                <span className="text-2xl font-mono font-black text-emerald-600 dark:text-emerald-400">
                    {closingStockValue.toLocaleString()}
                 </span>
              </div>
              <button 
                 onClick={() => setShowClosingDetails(!showClosingDetails)}
-                className={`px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-2 transition-all shadow-lg ${showClosingDetails ? 'bg-zinc-900 text-white' : 'bg-white dark:bg-zinc-800 text-readable border border-zinc-200 dark:border-zinc-700'}`}
+                className={`px-8 py-3 rounded-2xl font-black text-sm flex items-center gap-3 transition-all shadow-xl border-4 ${showClosingDetails ? 'bg-zinc-900 text-white border-zinc-700' : 'bg-emerald-600 text-white border-emerald-500 animate-pulse hover:animate-none'}`}
              >
                 {showClosingDetails ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                {showClosingDetails ? 'إخفاء تفاصيل الجرد الحالي' : 'عرض محتويات المستودع'}
+                {showClosingDetails ? 'إخفاء تفاصيل الجرد الحالي' : 'عرض بضاعة آخر المدة الآن'}
              </button>
           </div>
        </div>
@@ -60,8 +60,8 @@ const PeriodicInventoryManager: React.FC<PeriodicInventoryManagerProps> = ({
        {showClosingDetails ? (
          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
             <div className="flex items-center justify-between">
-               <h4 className="text-lg font-black flex items-center gap-2 text-zinc-600">
-                  <Package className="w-5 h-5" /> كشف تفصيلي لمحتويات المخزن (بضاعة آخر المدة)
+               <h4 className="text-lg font-black flex items-center gap-2 text-emerald-700">
+                  <Package className="w-5 h-5" /> بضاعة آخر المدة الحالية (محتويات المستودع المحدثة)
                </h4>
                <button 
                   onClick={handleExportClosing}
@@ -71,30 +71,30 @@ const PeriodicInventoryManager: React.FC<PeriodicInventoryManagerProps> = ({
                </button>
             </div>
 
-            <div className="overflow-x-auto rounded-[2rem] border-2 border-zinc-100 dark:border-zinc-800 shadow-xl bg-white dark:bg-zinc-900">
+            <div className="overflow-x-auto rounded-[2rem] border-2 border-emerald-100 dark:border-zinc-800 shadow-xl bg-white dark:bg-zinc-900">
                <table className="w-full text-right border-collapse text-sm">
                   <thead>
-                     <tr className="bg-zinc-900 text-white font-black text-[10px] uppercase tracking-widest h-12">
-                        <th className="p-4 w-32">كود الصنف</th>
-                        <th className="p-4">اسم المادة</th>
-                        <th className="p-4 text-center">الكمية المتوفرة</th>
-                        <th className="p-4 text-center">السعر التقديري</th>
-                        <th className="p-4 text-center bg-black">إجمالي القيمة</th>
+                     <tr className="bg-emerald-700 text-white font-black text-[10px] uppercase tracking-widest h-12">
+                        <th className="p-4 w-32 border-l border-emerald-600">كود الصنف</th>
+                        <th className="p-4 border-l border-emerald-600">اسم المادة</th>
+                        <th className="p-4 text-center border-l border-emerald-600">الكمية المتوفرة</th>
+                        <th className="p-4 text-center border-l border-emerald-600">السعر التقديري</th>
+                        <th className="p-4 text-center bg-emerald-900">إجمالي القيمة</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y dark:divide-zinc-800 font-bold text-readable">
                      {closingStockItems.length === 0 ? (
                         <tr><td colSpan={5} className="p-24 text-center italic text-zinc-400 font-black text-xl">المستودع فارغ حالياً، لا توجد بضاعة متبقية</td></tr>
                      ) : closingStockItems.map((it, idx) => (
-                        <tr key={idx} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/30'}`}>
-                           <td className="p-4 font-mono text-zinc-500">#{it.code}</td>
-                           <td className="p-4 text-zinc-900 dark:text-zinc-100">{it.name}</td>
-                           <td className="p-4 text-center font-mono">
+                        <tr key={idx} className={`hover:bg-emerald-50 dark:hover:bg-zinc-800/30 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/30'}`}>
+                           <td className="p-4 font-mono text-zinc-500 border-l border-zinc-100 dark:border-zinc-800">#{it.code}</td>
+                           <td className="p-4 text-zinc-900 dark:text-zinc-100 border-l border-zinc-100 dark:border-zinc-800">{it.name}</td>
+                           <td className="p-4 text-center font-mono border-l border-zinc-100 dark:border-zinc-800">
                               <span className="text-zinc-800 dark:text-zinc-200 font-black">{it.quantity.toLocaleString()}</span>
                               <span className="text-[9px] text-zinc-400 mr-1 uppercase">{it.unit}</span>
                            </td>
-                           <td className="p-4 text-center font-mono text-zinc-400">{it.price.toLocaleString()}</td>
-                           <td className="p-4 text-center font-mono font-black text-lg bg-zinc-50/50 dark:bg-zinc-800/20">{it.total.toLocaleString()}</td>
+                           <td className="p-4 text-center font-mono text-zinc-500 border-l border-zinc-100 dark:border-zinc-800">{it.price.toLocaleString()}</td>
+                           <td className="p-4 text-center font-mono font-black text-lg bg-emerald-50/50 dark:bg-zinc-800/20">{it.total.toLocaleString()}</td>
                         </tr>
                      ))}
                   </tbody>

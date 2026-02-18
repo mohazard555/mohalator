@@ -260,13 +260,11 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     const savedCash = localStorage.getItem('sheno_cash_journal');
     let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
     if (editingId) {
-      // تعديل شرط الحذف لضمان مسح الحركات القديمة المتعلقة بالفاتورة فقط
       cashEntries = cashEntries.filter(e => !e.statement.includes(`رقم ${invoice.invoiceNumber}`) && e.type !== 'حسم');
     }
 
     const isPrimary = selectedCurrencyType === 'primary';
     
-    // تسجيل الدفعة النقدية الفعلية فقط (لا نسجل الحسم كحركة نقدية)
     if (invoice.paidAmount && invoice.paidAmount > 0) {
       const destination = invoice.paymentType === 'نقداً' ? (invoice.cashAccount || 'الصندوق') : 'آجل';
       cashEntries.unshift({
@@ -279,12 +277,10 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
         paidUSD: 0,
         notes: `الزبون: ${invoice.customerName}`,
         partyName: invoice.customerName,
-        type: 'بيع'
+        type: 'بيع',
+        cashAccount: invoice.cashAccount || 'الصندوق'
       });
     }
-
-    // ملاحظة محاسبية: لا يتم تسجيل الحسم في دفتر اليومية (الصندوق) ليبقى كتسوية على ذمة العميل فقط
-    // سيتم معالجته برمجياً في كشوفات الحساب ودفتر الأستاذ
 
     localStorage.setItem('sheno_cash_journal', JSON.stringify(cashEntries));
 

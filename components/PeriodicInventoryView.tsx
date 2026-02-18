@@ -80,7 +80,7 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
     // ضبط المستودع الافتراضي في الترويسة
     if (!headerData.warehouse) {
       const mainWh = loadedWarehouses.find(w => w.isMain) || loadedWarehouses[0];
-      setHeaderData(prev => ({ ...prev, warehouse: mainWh.name }));
+      setHeaderData(prev => ({ ...prev, warehouse: mainWh?.name || '' }));
     }
 
     if (sInv) setInventories(JSON.parse(sInv));
@@ -116,7 +116,7 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
   const handleSaveJard = () => {
     const validItems = rows.filter(r => r.itemCode && r.quantity > 0);
     if (validItems.length === 0) {
-      alert('يرجى إدخال مادة واحدة على الأقل بكمية صحيحة');
+      alert('يرجى إدخل مادة واحدة على الأقل بكمية صحيحة');
       return;
     }
 
@@ -208,7 +208,7 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
     setEditingId(inv.id);
     setHeaderData({
       date: inv.date,
-      warehouse: headerData.warehouse, // الاحتفاظ بالمستودع الحالي المختار
+      warehouse: headerData.warehouse,
       statement: inv.notes,
       currency: 'ليرة سورية',
       details: ''
@@ -246,7 +246,6 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
       setInventories(updatedInventories);
       localStorage.setItem('sheno_periodic_inventories', JSON.stringify(updatedInventories));
 
-      // حذف الحركات المخزنية المرتبطة
       const savedStock = localStorage.getItem('sheno_stock_entries');
       if (savedStock) {
         const currentStock = JSON.parse(savedStock);
@@ -263,8 +262,23 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
      const issued = moves.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0);
      const returned = moves.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
      const baseItem = inventoryList.find(i => i.code === itemCode);
-     return (baseItem?.openingStock || 0) + added - issued + returned;
+     return (Number(baseItem?.openingStock) || 0) + added - issued + returned;
   };
+
+  // احتساب بضاعة آخر المدة بناءً على آخر تحديث
+  const closingStockItems = inventoryList.map(item => {
+    const balance = calculateCurrentBalance(item.code);
+    return {
+      code: item.code,
+      name: item.name,
+      quantity: balance,
+      price: item.price,
+      total: balance * item.price,
+      unit: item.unit
+    };
+  }).filter(it => it.quantity !== 0);
+
+  const closingStockValue = closingStockItems.reduce((sum, it) => sum + it.total, 0);
 
   const filteredItems = inventoryList.filter(i => 
     i.name.toLowerCase().includes(itemSearch.toLowerCase()) || i.code.toLowerCase().includes(itemSearch.toLowerCase())
@@ -273,7 +287,6 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
   if (viewMode === 'ENTRY') {
     return (
       <div className="min-h-screen bg-[#f4f4f5] text-zinc-900 p-4 flex flex-col gap-4 animate-in fade-in" dir="rtl">
-        {/* Title Bar */}
         <div className="flex items-center justify-between border-b-2 border-zinc-300 pb-2 no-print">
           <h1 className="text-xl font-black text-zinc-800 flex items-center gap-2">
             <Package className="w-6 h-6 text-primary" /> {editingId ? 'تعديل جرد بضاعة أول المدة' : 'تسجيل بضاعة أول المدة'}
@@ -283,7 +296,6 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
           </button>
         </div>
 
-        {/* Top Header Form */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm no-print">
           <div className="md:col-span-4 space-y-4">
             <div className="flex items-center gap-2">
@@ -330,7 +342,6 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
           </div>
         </div>
 
-        {/* Main Grid Table */}
         <div className="flex-1 bg-white border border-zinc-200 overflow-hidden flex flex-col shadow-sm rounded-2xl">
            <div className="overflow-auto custom-scrollbar flex-1">
               <table className="w-full text-right border-collapse table-fixed">
@@ -413,7 +424,6 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
            </div>
         </div>
 
-        {/* Footer Totals and Actions */}
         <div className="flex flex-col md:flex-row items-end justify-between gap-6 pb-6 no-print">
            <div className="bg-zinc-900 p-1 min-w-[320px] shadow-2xl rounded-2xl">
               <div className="bg-black text-white flex flex-col items-center justify-center h-24 border border-zinc-800 rounded-xl">
@@ -495,7 +505,6 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
     );
   }
 
-  // Default List View
   return (
     <div className="space-y-6 animate-in fade-in">
       <div className="flex flex-col md:flex-row items-center justify-between no-print gap-4">
@@ -517,53 +526,14 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
       </div>
 
       <div className="bg-white dark:bg-zinc-950 p-6 md:p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl space-y-8">
-         <div className="flex items-center justify-between border-b dark:border-zinc-800 pb-5">
-            <h3 className="text-xl font-black flex items-center gap-3 text-readable"><LayoutList className="w-6 h-6 text-primary" /> سجل عمليات الجرد الموثقة</h3>
-            <div className="flex items-center gap-4">
-               <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-6 py-2 rounded-2xl flex flex-col items-center">
-                  <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">إجمالي قيمة المخزون الحالي</span>
-                  <span className="text-xl font-mono font-black text-emerald-600">
-                     {inventoryList.reduce((sum, item) => sum + (calculateCurrentBalance(item.code) * item.price), 0).toLocaleString()}
-                  </span>
-               </div>
-            </div>
-         </div>
-
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {inventories.map(inv => (
-               <div key={inv.id} className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-[2rem] space-y-4 hover:shadow-2xl transition-all relative overflow-hidden group border-b-4 border-b-primary/40">
-                  <div className="flex justify-between items-start relative z-10">
-                     <div className="p-3 bg-white dark:bg-zinc-800 rounded-2xl shadow-sm"><Calendar className="w-6 h-6 text-primary" /></div>
-                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                        <button onClick={() => handlePreview(inv)} className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-blue-500 shadow-sm hover:bg-blue-50 transition-colors"><Eye className="w-4 h-4"/></button>
-                        <button onClick={() => handleEdit(inv)} className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-amber-500 shadow-sm hover:bg-amber-50 transition-colors"><Edit2 className="w-4 h-4"/></button>
-                        <button onClick={() => handleDelete(inv.id)} className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-rose-500 shadow-sm hover:bg-rose-50 transition-colors"><Trash2 className="w-4 h-4"/></button>
-                     </div>
-                  </div>
-                  <div>
-                     <h4 className="font-black text-lg text-readable leading-tight mb-1">{inv.notes}</h4>
-                     <p className="text-xs font-mono font-bold text-zinc-400">{inv.date}</p>
-                  </div>
-                  <div className="flex justify-between items-center pt-4 border-t dark:border-zinc-800">
-                     <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-zinc-400 uppercase">قيمة المواد</span>
-                        <span className="text-2xl font-mono font-black text-primary">{inv.totalValue.toLocaleString()}</span>
-                     </div>
-                     <div className="text-left">
-                        <span className="text-[9px] font-black text-zinc-400 uppercase">عدد الأصناف</span>
-                        <p className="font-black text-zinc-700 dark:text-zinc-300">{inv.items.length}</p>
-                     </div>
-                  </div>
-               </div>
-            ))}
-            {inventories.length === 0 && (
-               <div className="col-span-full py-20 text-center border-4 border-dashed border-zinc-100 dark:border-zinc-900 rounded-[3rem]">
-                  <Package className="w-16 h-16 text-zinc-200 mx-auto mb-4" />
-                  <p className="text-zinc-500 font-black text-lg">لا يوجد سجلات جرد أول مدة مسجلة حالياً</p>
-                  <button onClick={handleNew} className="mt-4 text-primary font-black underline hover:text-blue-700 transition-colors">اضغط هنا للبدء بتسجيل أول جرد</button>
-               </div>
-            )}
-         </div>
+         <PeriodicInventoryManager 
+            inventories={inventories} 
+            closingStockValue={closingStockValue} 
+            closingStockItems={closingStockItems} 
+            onDelete={handleDelete}
+            onEdit={handleEdit}
+            onPreview={handlePreview}
+         />
          
          <div className="p-5 bg-amber-50 dark:bg-amber-950/20 rounded-[2rem] border-2 border-dashed border-amber-200 dark:border-amber-900 flex gap-4">
             <div className="p-3 bg-amber-500 rounded-2xl text-white shadow-lg h-fit"><AlertCircle className="w-6 h-6" /></div>

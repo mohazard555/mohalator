@@ -257,6 +257,7 @@ export interface CashEntry {
   amount?: number;
   amountLiteral?: string;
   categoryId?: string; 
+  cashAccount?: 'الصندوق' | 'المصرف';
 }
 
 export interface WarehouseEntity {

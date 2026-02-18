@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Printer, Search, FileOutput, X, Users, Box, HardDrive, Calendar, Eye, EyeOff, FileDown, ImageIcon, Calculator, FileStack, Truck } from 'lucide-react';
+import { ArrowRight, Printer, Search, FileOutput, X, Users, Box, HardDrive, Calendar, Eye, EyeOff, FileDown, ImageIcon, Calculator, FileStack, Truck, Coins, CreditCard } from 'lucide-react';
 import { PurchaseInvoice, InvoiceItem, CashEntry, Party, PartyType, AppSettings } from '../types';
 import { tafqeet } from '../utils/tafqeet';
 import { ImageExportService } from '../utils/ImageExportService';
@@ -25,13 +25,17 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
   const [isExportingImage, setIsExportingImage] = useState(false);
   
   const [showItems, setShowItems] = useState(true);
+  const [currencyMode, setCurrencyMode] = useState<'primary' | 'secondary'>('primary');
 
   useEffect(() => {
-    const savedPurchases = localStorage.getItem('sheno_purchases');
-    const savedReturns = localStorage.getItem('sheno_purchase_returns');
-    const savedCash = localStorage.getItem('sheno_cash_journal');
-    const savedParties = localStorage.getItem('sheno_parties');
-    const savedSettings = localStorage.getItem('sheno_settings');
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+
+    const savedPurchases = localStorage.getItem(`${prefix}_purchases`);
+    const savedReturns = localStorage.getItem(`${prefix}_purchase_returns`);
+    const savedCash = localStorage.getItem(`${prefix}_cash_journal`);
+    const savedParties = localStorage.getItem(`${prefix}_parties`);
+    const savedSettings = localStorage.getItem(`${prefix}_settings`);
     
     if (savedPurchases) setPurchases(JSON.parse(savedPurchases));
     if (savedReturns) setPurchaseReturns(JSON.parse(savedReturns));
@@ -42,12 +46,14 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
 
   const getSupplierMovements = () => {
     const movements: any[] = [];
+    const targetSymbol = currencyMode === 'primary' ? settings?.currencySymbol : settings?.secondaryCurrencySymbol;
     
     // 1. فواتير المشتريات (تزيد مديونية المورد)
     purchases.filter(p => {
       const matchName = p.supplierName === supplierFilter;
       const matchDate = (!startDate || p.date >= startDate) && (!endDate || p.date <= endDate);
-      return matchName && matchDate;
+      const matchCurrency = p.currencySymbol === targetSymbol;
+      return matchName && matchDate && matchCurrency;
     }).forEach(inv => {
       const itemsGross = inv.items.reduce((s, i) => s + i.total, 0) + (inv.transportExpenses || 0);
 
@@ -85,7 +91,8 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
     purchaseReturns.filter(r => {
       const matchName = r.supplierName === supplierFilter;
       const matchDate = (!startDate || r.date >= startDate) && (!endDate || r.date <= endDate);
-      return matchName && matchDate;
+      const matchCurrency = r.currencySymbol === targetSymbol || (!r.currencySymbol && currencyMode === 'primary');
+      return matchName && matchDate && matchCurrency;
     }).forEach(ret => {
       movements.push({
         date: ret.date,
@@ -106,8 +113,12 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
       const matchName = e.partyName === supplierFilter || e.statement.includes(supplierFilter);
       const matchType = e.type === 'دفع' || e.type === 'شراء';
       const matchDate = (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate);
-      return matchName && matchType && matchDate;
+      // التحقق من وجود قيمة في حقل العملة المختار
+      const hasValue = currencyMode === 'primary' ? (e.paidSYP > 0) : (e.paidUSD > 0);
+      
+      return matchName && matchType && matchDate && hasValue;
     }).forEach(entry => {
+      const amount = currencyMode === 'primary' ? (entry.paidSYP || 0) : (entry.paidUSD || 0);
       movements.push({
         date: entry.date,
         type: 'دفع',
@@ -116,7 +127,7 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
         items: [],
         purchases: 0,
         returns: 0,
-        paid: (entry.paidSYP || 0) + (entry.paidUSD || 0),
+        paid: amount,
         discount: 0,
         ref: entry.id
       });
@@ -135,9 +146,8 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
     return acc;
   }, { purchases: 0, returns: 0, paid: 0, discount: 0 });
 
-  const openingBalance = supplierFilter ? (parties.find(p => p.name === supplierFilter)?.openingBalance || 0) : 0;
+  const openingBalance = (supplierFilter && currencyMode === 'primary') ? (parties.find(p => p.name === supplierFilter)?.openingBalance || 0) : 0;
   
-  // الرصيد = (الافتتاحي + المشتريات) - (المرتجع + المدفوع + الحسم المكتسب)
   const finalBalance = openingBalance + totals.purchases - (totals.returns + totals.paid + totals.discount);
 
   const handleExportPDF = () => {
@@ -145,7 +155,7 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
     const element = reportRef.current;
     const opt = {
       margin: 10,
-      filename: `كشف_حساب_مورد_${supplierFilter || 'عام'}.pdf`,
+      filename: `كشف_حساب_مورد_${supplierFilter || 'عام'}_${currencyMode}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, letterRendering: false },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
@@ -153,9 +163,21 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
     html2pdf().set(opt).from(element).save();
   };
 
+  const activeCurrencyName = currencyMode === 'primary' ? (settings?.currency || 'ليرة سورية') : (settings?.secondaryCurrency || 'دولار أمريكي');
+  const activeCurrencySymbol = currencyMode === 'primary' ? (settings?.currencySymbol || 'ل.س') : (settings?.secondaryCurrencySymbol || '$');
+
   return (
     <div className="space-y-4 text-right bg-zinc-50 dark:bg-zinc-950 p-4 md:p-8 rounded-3xl shadow-2xl min-h-screen text-readable border border-zinc-200 dark:border-zinc-800 print:bg-white print:border-none print:shadow-none" dir="rtl">
       
+      {previewImage && (
+        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 md:p-20 animate-in fade-in duration-300" onClick={() => setPreviewImage(null)}>
+          <button className="absolute top-10 right-10 text-white hover:text-rose-500 transition-colors no-print">
+            <X className="w-10 h-10" />
+          </button>
+          <img src={previewImage} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border-4 border-white/10" onClick={(e) => e.stopPropagation()} alt="Full Preview" />
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row items-center justify-between border-b-2 border-zinc-200 dark:border-zinc-800 pb-4 mb-4 no-print gap-4">
          <div className="flex items-center gap-4">
             <button onClick={onBack} className="p-2 bg-white dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl border border-zinc-200 dark:border-zinc-700 transition-all">
@@ -185,7 +207,7 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
          </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden rounded-2xl no-print">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden rounded-2xl no-print shadow-sm">
          <div className="col-span-1 border-l-2 border-zinc-200 dark:border-zinc-800 flex flex-col">
             <div className="flex border-b-2 border-zinc-200 dark:border-zinc-800 flex-1">
                <div className="bg-zinc-100 dark:bg-zinc-800 flex-1 p-2 text-xs font-bold text-center border-l border-zinc-200 dark:border-zinc-700 flex items-center justify-center">عدد الأصناف الموردة</div>
@@ -222,12 +244,22 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
             </select>
          </div>
 
-         <div className="col-span-1 flex flex-col items-center justify-center p-4 gap-3 bg-zinc-100/50 dark:bg-zinc-800/30">
-            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">إعدادات العرض</span>
-            <button onClick={() => setShowItems(!showItems)} className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl font-black text-xs transition-all w-full justify-center ${showItems ? 'bg-emerald-600 text-white shadow-lg' : 'bg-rose-600 text-white shadow-lg'}`}>
-               {showItems ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-               {showItems ? 'إخفاء عمود المواد' : 'إظهار عمود المواد'}
-            </button>
+         <div className="col-span-1 flex flex-col p-4 gap-2 bg-zinc-100/50 dark:bg-zinc-800/30">
+            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest text-center mb-1">إعدادات العرض والعملة</span>
+            <div className="grid grid-cols-1 gap-2">
+               <button onClick={() => setShowItems(!showItems)} className={`flex items-center gap-2 px-6 py-1.5 rounded-xl font-black text-xs transition-all w-full justify-center ${showItems ? 'bg-zinc-800 text-white shadow-md' : 'bg-white text-zinc-400 border border-zinc-200'}`}>
+                  {showItems ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  {showItems ? 'المواد المعروضة' : 'إخفاء المواد'}
+               </button>
+               <div className="flex items-center gap-1 bg-white dark:bg-zinc-950 rounded-xl border p-0.5 h-10 shadow-inner">
+                  <button onClick={() => setCurrencyMode('primary')} className={`flex-1 h-full rounded-lg text-[9px] font-black transition-all flex items-center justify-center gap-1 ${currencyMode === 'primary' ? 'bg-amber-600 text-white shadow-md' : 'text-zinc-400'}`}>
+                    <Coins className="w-3 h-3" /> {settings?.currencySymbol || 'ل.س'}
+                  </button>
+                  <button onClick={() => setCurrencyMode('secondary')} className={`flex-1 h-full rounded-lg text-[9px] font-black transition-all flex items-center justify-center gap-1 ${currencyMode === 'secondary' ? 'bg-amber-600 text-white shadow-md' : 'text-zinc-400'}`}>
+                    <CreditCard className="w-3 h-3" /> {settings?.secondaryCurrencySymbol || '$'}
+                  </button>
+               </div>
+            </div>
          </div>
       </div>
 
@@ -243,13 +275,14 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
             </div>
           </div>
 
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <h2 className="text-3xl font-black underline decoration-amber-900/20 underline-offset-8">كشف حساب المورد التفصيلي</h2>
             <div className="text-lg font-black text-amber-800 mt-4">{supplierFilter || 'كافة الموردين'}</div>
-            <div className="flex items-center justify-center gap-3 mt-2 text-zinc-400 text-[9px] font-bold">
+            <div className="flex items-center justify-center gap-3 mt-2 text-zinc-400 text-[9px] font-black">
                <span className="font-mono bg-zinc-50 px-2 py-0.5 rounded border">{startDate || 'الأول'}</span>
                <span className="text-amber-300">←</span>
                <span className="font-mono bg-zinc-50 px-2 py-0.5 rounded border">{endDate || 'الآن'}</span>
+               <span className="bg-zinc-900 text-white px-3 py-0.5 rounded-full uppercase tracking-widest">{activeCurrencyName}</span>
             </div>
           </div>
 
@@ -283,7 +316,7 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
             )}
 
             {reportMovements.length === 0 ? (
-              Array.from({ length: 10 }).map((_, i) => (
+              Array.from({ length: 15 }).map((_, i) => (
                 <tr key={i} className="h-8 border-b border-zinc-100">
                   {Array.from({ length: showItems ? 6 : 5 }).map((__, j) => <td key={j} className="border border-zinc-100"></td>)}
                 </tr>
@@ -355,14 +388,14 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
                  <div className="text-5xl font-black font-mono tracking-tighter text-amber-400">
                     {finalBalance.toLocaleString()}
                  </div>
-                 <span className="text-sm font-bold text-zinc-500 uppercase mt-2 block tracking-widest">{settings?.currency}</span>
+                 <span className="text-sm font-bold text-zinc-500 uppercase mt-2 block tracking-widest">{activeCurrencyName}</span>
               </div>
            </div>
 
            <div className="w-full md:w-96 bg-white border-2 border-zinc-200 p-6 rounded-[2rem] flex flex-col justify-center space-y-3">
               <span className="text-[10px] font-black text-zinc-400 uppercase border-b pb-1">المبلغ كتابةً / التفقيط</span>
               <div className="text-xs font-black italic text-zinc-700 leading-relaxed">
-                 {tafqeet(finalBalance, settings?.currency || 'ليرة سورية')}
+                 {tafqeet(finalBalance, activeCurrencyName)}
               </div>
            </div>
         </div>

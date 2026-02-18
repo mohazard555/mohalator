@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, FileDown, Calendar as CalendarIcon, FileText, Search, User, Hash, MessageSquare, Coins, CreditCard, ImageIcon, LayoutDashboard, CheckCircle, Calculator, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, MapPin } from 'lucide-react';
+import { ArrowRight, Printer, Plus, Trash2, Edit2, Save, X, FileDown, Calendar as CalendarIcon, FileText, Search, User, Hash, MessageSquare, Coins, CreditCard, ImageIcon, LayoutDashboard, CheckCircle, Calculator, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, MapPin, Wallet, Landmark } from 'lucide-react';
 import { CashEntry, Party, AppSettings, SalesInvoice, PurchaseInvoice, PartyType } from '../types';
 import { tafqeet } from '../utils/tafqeet';
 import { ImageExportService } from '../utils/ImageExportService';
@@ -30,7 +30,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
   const [reportStart, setReportStart] = useState('');
   const [reportEnd, setReportEnd] = useState('');
 
-  // الوان الهوية حسب النوع
   const isReceipt = type === 'قبض';
   const themeColor = isReceipt ? 'emerald-600' : 'rose-600';
   const themeBg = isReceipt ? 'bg-emerald-600' : 'bg-rose-600';
@@ -38,15 +37,22 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
   const themeText = isReceipt ? 'text-emerald-600' : 'text-rose-600';
   const hexColor = isReceipt ? '#059669' : '#e11d48';
 
+  const getActivePrefix = () => {
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    return activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+  };
+
   useEffect(() => {
-    const savedSettings = localStorage.getItem('sheno_settings');
+    const prefix = getActivePrefix();
+    const savedSettings = localStorage.getItem(`${prefix}_settings`);
     if (savedSettings) setSettings(JSON.parse(savedSettings));
     loadData();
   }, [type]);
 
   const loadData = () => {
-    const savedVouchers = localStorage.getItem('sheno_cash_journal');
-    const savedParties = localStorage.getItem('sheno_parties');
+    const prefix = getActivePrefix();
+    const savedVouchers = localStorage.getItem(`${prefix}_cash_journal`);
+    const savedParties = localStorage.getItem(`${prefix}_parties`);
     if (savedVouchers) {
       const all = JSON.parse(savedVouchers);
       setVouchers(all.filter((v: CashEntry) => v.type === type));
@@ -62,28 +68,51 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
   };
 
   const calculateCustomerTotals = () => {
-    if (!reportParty) return { due: 0, paid: 0, filteredVouchers: [] };
+    if (!reportParty) return { opening: 0, gross: 0, returns: 0, discounts: 0, paid: 0, finalBalance: 0, filteredVouchers: [] };
     
-    let totalDue = 0;
+    const prefix = getActivePrefix();
+    const party = parties.find(p => p.name === reportParty);
+    const opening = party?.openingBalance || 0;
+
+    let totalGross = 0;
+    let totalReturns = 0;
+    let totalDiscounts = 0;
+
     if (type === 'قبض') {
-      const salesRaw = localStorage.getItem('sheno_sales_invoices');
+      const salesRaw = localStorage.getItem(`${prefix}_sales_invoices`);
+      const returnsRaw = localStorage.getItem(`${prefix}_sales_returns`);
+      
       if (salesRaw) {
         const sales: SalesInvoice[] = JSON.parse(salesRaw);
-        totalDue = sales
-          .filter(s => s.customerName === reportParty)
-          .reduce((acc, curr) => acc + curr.totalAmount, 0);
+        const pSales = sales.filter(s => s.customerName === reportParty);
+        totalGross = pSales.reduce((acc, s) => acc + s.items.reduce((sum, it) => sum + it.total, 0), 0);
+        totalDiscounts = pSales.reduce((acc, s) => acc + (s.discountAmount || 0), 0);
+      }
+      if (returnsRaw) {
+        const returns = JSON.parse(returnsRaw);
+        totalReturns = returns
+          .filter((r: any) => r.customerName === reportParty)
+          .reduce((acc: number, curr: any) => acc + (curr.totalReturnAmount || 0), 0);
       }
     } else {
-      const purRaw = localStorage.getItem('sheno_purchases');
+      const purRaw = localStorage.getItem(`${prefix}_purchases`);
+      const returnsRaw = localStorage.getItem(`${prefix}_purchase_returns`);
+      
       if (purRaw) {
-        const pur: PurchaseInvoice[] = JSON.parse(purRaw);
-        totalDue = pur
-          .filter(p => p.supplierName === reportParty)
-          .reduce((acc, curr) => acc + curr.totalAmount, 0);
+        const purchases: PurchaseInvoice[] = JSON.parse(purRaw);
+        const pPurch = purchases.filter(p => p.supplierName === reportParty);
+        totalGross = pPurch.reduce((acc, p) => acc + (p.items.reduce((sum, it) => sum + it.total, 0) + (p.transportExpenses || 0)), 0);
+        totalDiscounts = pPurch.reduce((acc, p) => acc + (p.discountAmount || 0), 0);
+      }
+      if (returnsRaw) {
+        const returns = JSON.parse(returnsRaw);
+        totalReturns = returns
+          .filter((r: any) => r.supplierName === reportParty)
+          .reduce((acc: number, curr: any) => acc + (curr.totalReturnAmount || 0), 0);
       }
     }
 
-    const savedAllCash = localStorage.getItem('sheno_cash_journal');
+    const savedAllCash = localStorage.getItem(`${prefix}_cash_journal`);
     let allFilteredVouchers: CashEntry[] = [];
     if (savedAllCash) {
        allFilteredVouchers = JSON.parse(savedAllCash).filter((v: CashEntry) => {
@@ -99,13 +128,23 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
       acc + (curr.receivedSYP || curr.paidSYP || curr.receivedUSD || curr.paidUSD || 0), 0
     );
 
-    return { due: totalDue, paid: totalPaid, filteredVouchers: allFilteredVouchers };
+    const finalBalance = (opening + totalGross) - (totalReturns + totalDiscounts + totalPaid);
+
+    return { 
+      opening, 
+      gross: totalGross, 
+      returns: totalReturns, 
+      discounts: totalDiscounts, 
+      paid: totalPaid, 
+      finalBalance, 
+      filteredVouchers: allFilteredVouchers 
+    };
   };
 
   const handleEdit = (v: CashEntry) => {
     setEditingId(v.id);
     const amountVal = (v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD || 0);
-    setFormData({ ...v, amount: amountVal });
+    setFormData({ ...v, amount: amountVal, cashAccount: v.cashAccount || 'الصندوق' });
     const isPrimary = (v.receivedSYP || 0) > 0 || (v.paidSYP || 0) > 0;
     setSelectedCurrencyType(isPrimary ? 'primary' : 'secondary');
     setIsAdding(true);
@@ -117,7 +156,8 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     statement: '',
     partyName: '',
     amount: 0,
-    notes: ''
+    notes: '',
+    cashAccount: 'الصندوق'
   });
 
   const handleSave = () => {
@@ -125,6 +165,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
       alert('يرجى اختيار الحساب وتحديد المبلغ');
       return;
     }
+    const prefix = getActivePrefix();
     const currencyName = selectedCurrencyType === 'primary' ? (settings?.currency || 'ليرة سورية') : (settings?.secondaryCurrency || 'دولار');
     const isPrimary = selectedCurrencyType === 'primary';
     const amountValue = formData.amount || 0;
@@ -139,14 +180,15 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
       paidSYP: type === 'دفع' && isPrimary ? amountValue : 0,
       receivedUSD: type === 'قبض' && !isPrimary ? amountValue : 0,
       paidUSD: type === 'دفع' && !isPrimary ? amountValue : 0,
+      cashAccount: formData.cashAccount || 'الصندوق'
     };
 
-    const savedAll = localStorage.getItem('sheno_cash_journal');
+    const savedAll = localStorage.getItem(`${prefix}_cash_journal`);
     let allEntries = savedAll ? JSON.parse(savedAll) : [];
     if (editingId) allEntries = allEntries.map((e: CashEntry) => e.id === editingId ? entry : e);
     else allEntries = [entry, ...allEntries];
 
-    localStorage.setItem('sheno_cash_journal', JSON.stringify(allEntries));
+    localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(allEntries));
     setIsAdding(false);
     setEditingId(null);
     loadData();
@@ -154,16 +196,17 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
   };
 
   const resetForm = () => {
-    setFormData({ voucherNumber: '', date: new Date().toISOString().split('T')[0], statement: '', partyName: '', amount: 0, notes: '' });
+    setFormData({ voucherNumber: '', date: new Date().toISOString().split('T')[0], statement: '', partyName: '', amount: 0, notes: '', cashAccount: 'الصندوق' });
     setSelectedCurrencyType('primary');
   };
 
   const handleDelete = (id: string) => {
     if (window.confirm('حذف السند نهائياً؟')) {
-      const savedAll = localStorage.getItem('sheno_cash_journal');
+      const prefix = getActivePrefix();
+      const savedAll = localStorage.getItem(`${prefix}_cash_journal`);
       if (savedAll) {
         const updated = JSON.parse(savedAll).filter((v: CashEntry) => v.id !== id);
-        localStorage.setItem('sheno_cash_journal', JSON.stringify(updated));
+        localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(updated));
         loadData();
       }
     }
@@ -200,7 +243,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
     }
   };
 
-  const { due, paid, filteredVouchers: reportVouchers } = calculateCustomerTotals();
+  const { opening, gross, returns, discounts, paid, finalBalance, filteredVouchers: reportVouchers } = calculateCustomerTotals();
   const currentFilteredList = vouchers.filter(v => 
     v.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     v.statement?.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -365,7 +408,15 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                        <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className={`bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-mono text-readable outline-none focus:${themeBorder} transition-all`} />
                     </div>
 
-                    <div className="md:col-span-2 flex flex-col gap-1.5">
+                    <div className="md:col-span-1 flex flex-col gap-1.5">
+                       <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2 flex items-center gap-1"><Landmark className="w-3 h-3" /> جهة السند</label>
+                       <select value={formData.cashAccount} onChange={e => setFormData({...formData, cashAccount: e.target.value as 'الصندوق' | 'المصرف'})} className={`bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-black text-readable outline-none focus:${themeBorder} transition-all cursor-pointer`}>
+                          <option value="الصندوق">الصندوق الرئيسي</option>
+                          <option value="المصرف">حساب المصرف</option>
+                       </select>
+                    </div>
+
+                    <div className="md:col-span-1 flex flex-col gap-1.5">
                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2 flex items-center gap-1"><MessageSquare className="w-3 h-3" /> البيان / التفاصيل</label>
                        <input type="text" value={formData.statement} onChange={e => setFormData({...formData, statement: e.target.value})} placeholder="مثلاً: دفعة..." className={`bg-zinc-50 dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl font-black text-readable outline-none focus:${themeBorder} transition-all`} />
                     </div>
@@ -473,7 +524,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
            `}</style>
            
            <div ref={reportRef} className="xo-report-container-styled p-6 flex flex-col gap-4 relative export-fix bg-white">
-              {/* ترويسة الكشف المدمجة */}
               <div className="flex justify-between items-center mb-1 xo-report-header-print">
                  <div className="text-right space-y-1">
                     <p className={`text-[12px] font-black ${themeText} uppercase tracking-widest border-b border-zinc-100 pb-0.5 inline-block`}>FINANCIAL STATEMENT</p>
@@ -507,7 +557,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  </div>
               </div>
 
-              {/* معلومات الحساب المدمجة */}
               <div className="bg-zinc-50 border border-zinc-100 p-3 rounded-2xl flex items-center justify-between">
                   <div className="flex items-center gap-4">
                      <div className={`w-10 h-10 ${themeBg} rounded-xl flex items-center justify-center text-white shadow-md`}><User className="w-5 h-5" /></div>
@@ -516,31 +565,32 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                         <span className="text-2xl font-black text-zinc-900 italic tracking-tight leading-none">{reportParty || 'جميع الأطراف'}</span>
                      </div>
                   </div>
-                  <div className="bg-emerald-500/10 text-emerald-600 px-4 py-1 rounded-full text-[9px] font-black border border-emerald-500/20">معتمد وحقيقي</div>
+                  <div className="bg-emerald-500/10 text-emerald-600 px-4 py-1 rounded-full text-[9px] font-black border border-emerald-500/20">مطابقة معتمدة</div>
               </div>
 
-              {/* بطاقات الإجماليات المدمجة */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 xo-summary-grid">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 xo-summary-grid">
                   <div className="xo-card-print p-4 rounded-2xl flex flex-col items-center justify-center bg-zinc-50 border border-zinc-100 shadow-sm">
-                     <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">إجمالي {isReceipt ? 'المبيعات' : 'المشتريات'}</span>
-                     <span className="text-3xl font-mono font-black text-zinc-900 leading-none">{due.toLocaleString()}</span>
-                     <span className="text-[9px] font-bold text-zinc-400 uppercase mt-1">{settings?.currencySymbol}</span>
+                     <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">رصيد أول المدة</span>
+                     <span className="text-xl font-mono font-black text-zinc-900 leading-none">{opening.toLocaleString()}</span>
                   </div>
-                  
+                  <div className="xo-card-print p-4 rounded-2xl flex flex-col items-center justify-center bg-zinc-50 border border-zinc-100 shadow-sm">
+                     <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">إجمالي الفواتير</span>
+                     <span className="text-xl font-mono font-black text-zinc-900 leading-none">{gross.toLocaleString()}</span>
+                  </div>
+                  <div className="xo-card-print p-4 rounded-2xl flex flex-col items-center justify-center bg-rose-50/20 border border-rose-100 shadow-sm">
+                     <span className="text-[9px] font-black text-rose-700 uppercase tracking-widest mb-1">المرتجعات والخصم</span>
+                     <span className="text-xl font-mono font-black text-rose-600">{(returns + discounts).toLocaleString()}</span>
+                  </div>
                   <div className="xo-card-print p-4 rounded-2xl flex flex-col items-center justify-center bg-emerald-50/20 border border-emerald-100 shadow-sm">
-                     <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-1">إجمالي {type} المبالغ</span>
-                     <span className="text-3xl font-mono font-black text-emerald-600 leading-none">{paid.toLocaleString()}</span>
-                     <span className="text-[9px] font-bold text-emerald-400 uppercase mt-1">{settings?.currencySymbol}</span>
+                     <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest mb-1">إجمالي الدفعات</span>
+                     <span className="text-xl font-mono font-black text-emerald-600">{paid.toLocaleString()}</span>
                   </div>
-                  
-                  <div className={`xo-card-print border-2 ${isReceipt ? 'border-emerald-600/20' : 'border-rose-600/20'} p-4 rounded-2xl flex flex-col items-center justify-center bg-white relative shadow-md`}>
-                     <span className={`text-[10px] font-black ${themeText} uppercase tracking-widest mb-1`}>صافي الرصيد المتبقي</span>
-                     <span className={`text-4xl font-mono font-black ${themeText} leading-none`}>{(due - paid).toLocaleString()}</span>
-                     <span className={`text-[9px] font-bold ${isReceipt ? 'text-emerald-400' : 'text-rose-400'} uppercase mt-1`}>{settings?.currencySymbol}</span>
+                  <div className={`xo-card-print border-2 ${finalBalance > 0 ? 'border-rose-600/20' : 'border-emerald-600/20'} p-4 rounded-2xl flex flex-col items-center justify-center bg-white relative shadow-md`}>
+                     <span className={`text-[9px] font-black ${themeText} uppercase tracking-widest mb-1`}>صافي الرصيد المتبقي</span>
+                     <span className={`text-2xl font-mono font-black ${finalBalance > 0 ? 'text-rose-700' : 'text-emerald-700'} leading-none`}>{finalBalance.toLocaleString()}</span>
                   </div>
               </div>
 
-              {/* الجدول التفصيلي برتفاع صفوف أقل */}
               <div className="flex-1 border border-zinc-200 rounded-2xl overflow-hidden shadow-sm bg-white">
                   <table className="w-full text-right border-collapse xo-table-print">
                     <thead>
@@ -570,12 +620,11 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  <div className="flex flex-col gap-1">
                     <span className={`text-[9px] font-black ${themeText} uppercase tracking-widest`}>AMOUNT IN WORDS | التفقيط</span>
                     <p className="text-lg font-black italic tracking-tight border-b border-zinc-100 text-zinc-700">
-                       {tafqeet(Math.abs(due - paid), settings?.currency || 'ليرة سورية')}
+                       {tafqeet(Math.abs(finalBalance), settings?.currency || 'ليرة سورية')}
                     </p>
                  </div>
               </div>
 
-              {/* الفلاتر والتحكم (لا تظهر في الطباعة) */}
               <div className="mt-4 no-print pt-4 flex flex-col gap-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-zinc-900/95 rounded-3xl border border-slate-800 shadow-xl">
                     <div className="flex flex-col gap-1.5">
@@ -613,7 +662,6 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
         </div>
       )}
 
-      {/* عرض القائمة الأساسية */}
       <div className="flex flex-col md:flex-row items-center justify-between no-print gap-4">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-3 bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white rounded-xl transition-all shadow-lg"><ArrowRight className="w-6 h-6" /></button>
@@ -672,9 +720,9 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                       <td className="p-4 text-center font-black text-lg text-zinc-200">{(v.receivedSYP || v.paidSYP || v.receivedUSD || v.paidUSD).toLocaleString()}</td>
                       <td className="p-4 no-print">
                         <div className="flex justify-center gap-2 opacity-40 group-hover:opacity-100 transition-all">
-                          <button onClick={() => setPrintingVoucher(v)} className="p-2 bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-400 hover:text-white" title="طباعة"><Printer className="w-5 h-5" /></button>
-                          <button onClick={() => handleEdit(v)} className="p-2 bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-400 hover:text-amber-500" title="تعديل"><Edit2 className="w-5 h-5" /></button>
-                          <button onClick={() => handleDelete(v.id)} className="p-2 bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-400 hover:text-rose-500" title="حذف"><Trash2 className="w-5 h-5" /></button>
+                          <button onClick={() => setPrintingVoucher(v)} className="p-2 bg-zinc-900 border border-zinc-200 rounded-xl text-zinc-400 hover:text-white" title="طباعة"><Printer className="w-5 h-5" /></button>
+                          <button onClick={() => handleEdit(v)} className="p-2 bg-zinc-900 border border-zinc-200 rounded-xl text-zinc-400 hover:text-amber-500" title="تعديل"><Edit2 className="w-5 h-5" /></button>
+                          <button onClick={() => handleDelete(v.id)} className="p-2 bg-zinc-900 border border-zinc-200 rounded-xl text-zinc-400 hover:text-rose-500" title="حذف"><Trash2 className="w-5 h-5" /></button>
                         </div>
                       </td>
                     </tr>

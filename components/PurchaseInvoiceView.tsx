@@ -45,11 +45,17 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
     customUnit: ''
   });
 
+  const getActivePrefix = () => {
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    return activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+  };
+
   useEffect(() => {
-    const saved = localStorage.getItem('sheno_purchases');
-    const savedParties = localStorage.getItem('sheno_parties');
-    const savedSettings = localStorage.getItem('sheno_settings');
-    const savedInventory = localStorage.getItem('sheno_inventory_list');
+    const prefix = getActivePrefix();
+    const saved = localStorage.getItem(`${prefix}_purchases`);
+    const savedParties = localStorage.getItem(`${prefix}_parties`);
+    const savedSettings = localStorage.getItem(`${prefix}_settings`);
+    const savedInventory = localStorage.getItem(`${prefix}_inventory_list`);
 
     if (saved) setPurchases(JSON.parse(saved));
     if (savedSettings) setSettings(JSON.parse(savedSettings));
@@ -140,17 +146,18 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
 
   const handleDelete = (id: string, invNum: string) => {
     if (window.confirm(`حذف فاتورة المشتريات رقم ${invNum}؟`)) {
+      const prefix = getActivePrefix();
       const updated = purchases.filter(p => p.id !== id);
       setPurchases(updated);
-      localStorage.setItem('sheno_purchases', JSON.stringify(updated));
+      localStorage.setItem(`${prefix}_purchases`, JSON.stringify(updated));
       
-      const stock = localStorage.getItem('sheno_stock_entries');
+      const stock = localStorage.getItem(`${prefix}_stock_entries`);
       if (stock) {
-        localStorage.setItem('sheno_stock_entries', JSON.stringify(JSON.parse(stock).filter((e:StockEntry) => e.invoiceNumber !== invNum)));
+        localStorage.setItem(`${prefix}_stock_entries`, JSON.stringify(JSON.parse(stock).filter((e:StockEntry) => e.invoiceNumber !== invNum)));
       }
-      const cash = localStorage.getItem('sheno_cash_journal');
+      const cash = localStorage.getItem(`${prefix}_cash_journal`);
       if (cash) {
-        localStorage.setItem('sheno_cash_journal', JSON.stringify(JSON.parse(cash).filter((e:CashEntry) => !e.statement.includes(`رقم ${invNum}`))));
+        localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(JSON.parse(cash).filter((e:CashEntry) => !e.statement.includes(`رقم ${invNum}`))));
       }
     }
   };
@@ -161,6 +168,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
       return;
     }
 
+    const prefix = getActivePrefix();
     const subTotal = (newInvoice.items || []).reduce((s, i) => s + i.total, 0);
     const transport = Number(newInvoice.transportExpenses) || 0;
     const discount = Number(newInvoice.discountAmount) || 0;
@@ -180,17 +188,17 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
     };
 
     if (editingId) {
-      const stock = localStorage.getItem('sheno_stock_entries');
-      if (stock) localStorage.setItem('sheno_stock_entries', JSON.stringify(JSON.parse(stock).filter((e:StockEntry) => e.invoiceNumber !== invoice.invoiceNumber)));
-      const cash = localStorage.getItem('sheno_cash_journal');
-      if (cash) localStorage.setItem('sheno_cash_journal', JSON.stringify(JSON.parse(cash).filter((e:CashEntry) => !e.statement.includes(`رقم ${invoice.invoiceNumber}`))));
+      const stock = localStorage.getItem(`${prefix}_stock_entries`);
+      if (stock) localStorage.setItem(`${prefix}_stock_entries`, JSON.stringify(JSON.parse(stock).filter((e:StockEntry) => e.invoiceNumber !== invoice.invoiceNumber)));
+      const cash = localStorage.getItem(`${prefix}_cash_journal`);
+      if (cash) localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(JSON.parse(cash).filter((e:CashEntry) => !e.statement.includes(`رقم ${invoice.invoiceNumber}`))));
     }
 
     const updated = editingId ? purchases.map(p => p.id === editingId ? invoice : p) : [invoice, ...purchases];
     setPurchases(updated);
-    localStorage.setItem('sheno_purchases', JSON.stringify(updated));
+    localStorage.setItem(`${prefix}_purchases`, JSON.stringify(updated));
 
-    const savedStock = localStorage.getItem('sheno_stock_entries');
+    const savedStock = localStorage.getItem(`${prefix}_stock_entries`);
     let stockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
     const stockMoves: StockEntry[] = invoice.items.map(i => ({
       id: crypto.randomUUID(), date: invoice.date,
@@ -201,13 +209,12 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
       statement: `شراء من المورد: ${invoice.supplierName}`,
       notes: i.notes
     }));
-    localStorage.setItem('sheno_stock_entries', JSON.stringify([...stockMoves, ...stockEntries]));
+    localStorage.setItem(`${prefix}_stock_entries`, JSON.stringify([...stockMoves, ...stockEntries]));
 
-    const savedCash = localStorage.getItem('sheno_cash_journal');
+    const savedCash = localStorage.getItem(`${prefix}_cash_journal`);
     let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
     const isPrimary = selectedCurrencyType === 'primary';
 
-    // تسجيل الدفعة النقدية الفعلية فقط
     if (invoice.paidAmount > 0) {
       const source = invoice.paymentType === 'نقداً' ? (invoice.cashAccount || 'الصندوق') : 'آجل';
       cashEntries.unshift({
@@ -219,11 +226,11 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
         paidUSD: !isPrimary ? invoice.paidAmount : 0,
         notes: invoice.notes, 
         partyName: invoice.supplierName,
-        type: 'شراء'
+        type: 'شراء',
+        cashAccount: invoice.cashAccount || 'الصندوق'
       });
     }
 
-    // تسجيل مصاريف النقل كحركة صرف سيولة
     if (transport > 0) {
       cashEntries.unshift({
         id: crypto.randomUUID(), date: invoice.date,
@@ -232,13 +239,12 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
         paidSYP: isPrimary ? transport : 0,
         receivedUSD: 0,
         paidUSD: !isPrimary ? transport : 0,
-        notes: 'مصاريف نقل بضاعة', type: 'دفع'
+        notes: 'مصاريف نقل بضاعة', type: 'دفع',
+        cashAccount: invoice.cashAccount || 'الصندوق'
       });
     }
 
-    // ملاحظة محاسبية: لا يتم تسجيل الحسم المكتسب في الصندوق ليبقى كتسوية على ذمة المورد فقط
-
-    localStorage.setItem('sheno_cash_journal', JSON.stringify(cashEntries));
+    localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(cashEntries));
 
     setIsAdding(false);
     setEditingId(null);
