@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Folder, ChevronRight, ChevronDown, 
   Search, Plus, Trash2, Edit2, X, Landmark, 
-  ArrowLeftRight, Calculator, ImageIcon, FileSpreadsheet, Printer, Save, History, ArrowRight, Info, ArrowUpRight, ArrowDownLeft, FileText, UserCircle, FileStack
+  ArrowLeftRight, Calculator, ImageIcon, FileSpreadsheet, Printer, Save, History, ArrowRight, Info, ArrowUpRight, ArrowDownLeft, FileStack, UserCircle, FileText
 } from 'lucide-react';
 import { AccountNode, CashEntry, OpeningEntry, AppSettings, SalesInvoice, PurchaseInvoice, AccountingCategory, Party, PartyType, InventoryItem, StockEntry, PeriodicInventory } from '../types';
 import { ImageExportService } from '../utils/ImageExportService';
@@ -23,9 +23,10 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
   const [modalMode, setModalMode] = useState<'ADD' | 'EDIT'>('ADD');
   
   // States for Popups
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isDetailPopupOpen, setIsDetailPopupOpen] = useState(false);
   const [detailAccount, setDetailAccount] = useState<AccountNode | null>(null);
-  const [selectedMoveDetail, setSelectedMoveDetail] = useState<any | null>(null);
+  const [isMoveDetailOpen, setIsMoveDetailOpen] = useState(false);
+  const [selectedMove, setSelectedMove] = useState<any | null>(null);
 
   const [journal, setJournal] = useState<CashEntry[]>([]);
   const [openingEntries, setOpeningEntries] = useState<OpeningEntry[]>([]);
@@ -37,7 +38,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
   const [parties, setParties] = useState<Party[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [stockEntries, setStockEntries] = useState<StockEntry[]>([]);
-  const [periodicInventories, setPeriodicInventories] = useState<PeriodicInventory[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
 
   const [formData, setFormData] = useState<Partial<AccountNode>>({
@@ -66,7 +66,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const sPar = localStorage.getItem(`${prefix}_parties`);
     const sInv = localStorage.getItem(`${prefix}_inventory_list`);
     const sSto = localStorage.getItem(`${prefix}_stock_entries`);
-    const sPerInv = localStorage.getItem(`${prefix}_periodic_inventories`);
     const sSett = localStorage.getItem(`${prefix}_settings`);
 
     const defaultRoots: AccountNode[] = [
@@ -113,34 +112,33 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     setAccounts(currentAccounts);
     if (sJou) setJournal(JSON.parse(sJou));
     if (sOp) setOpeningEntries(JSON.parse(sOp));
-    /* Fixed missing name 'setAllSales'. Using 'setSales' instead. */
     if (sSal) setSales(JSON.parse(sSal));
     if (sSalRet) setSalesReturns(JSON.parse(sSalRet));
-    /* Fixed missing name 'setAllPurchases'. Using 'setPurchases' instead. */
     if (sPur) setPurchases(JSON.parse(sPur));
     if (sPurRet) setPurchaseReturns(JSON.parse(sPurRet));
     if (sCat) setCategories(JSON.parse(sCat));
     if (sPar) setParties(JSON.parse(sPar));
     if (sInv) setInventory(JSON.parse(sInv));
     if (sSto) setStockEntries(JSON.parse(sSto));
-    if (sPerInv) setPeriodicInventories(JSON.parse(sPerInv));
     if (sSett) setSettings(JSON.parse(sSett));
   };
 
   const calculateBalance = (account: AccountNode): number => {
     if (account.type === 'FOLDER') {
       const children = accounts.filter(a => a.parentId === account.id);
-      if (account.code === '3') { 
-         const b31 = calculateBalance(children.find(c => c.code === '31') || children[0]); 
-         const b32 = calculateBalance(children.find(c => c.code === '32') || children[0]); 
-         const b33 = calculateBalance(children.find(c => c.code === '33') || children[0]); 
-         const b34 = calculateBalance(children.find(c => c.code === '34') || children[0]); 
+      // وظيفة معادلة صافي المشتريات (ID 3): (31 + 33) - (32 + 34)
+      if (account.id === '3') {
+         const b31 = calculateBalance(children.find(c => c.code === '31') || { id: '0' } as any);
+         const b32 = calculateBalance(children.find(c => c.code === '32') || { id: '0' } as any);
+         const b33 = calculateBalance(children.find(c => c.code === '33') || { id: '0' } as any);
+         const b34 = calculateBalance(children.find(c => c.code === '34') || { id: '0' } as any);
          return (Math.abs(b31) + Math.abs(b33)) - (Math.abs(b32) + Math.abs(b34));
       }
-      if (account.code === '4') { 
-         const b41 = calculateBalance(children.find(c => c.code === '41') || children[0]); 
-         const b42 = calculateBalance(children.find(c => c.code === '42') || children[0]); 
-         const b43 = calculateBalance(children.find(c => c.code === '43') || children[0]); 
+      // وظيفة معادلة صافي المبيعات (ID 4): 41 - (42 + 43)
+      if (account.id === '4') {
+         const b41 = calculateBalance(children.find(c => c.code === '41') || { id: '0' } as any);
+         const b42 = calculateBalance(children.find(c => c.code === '42') || { id: '0' } as any);
+         const b43 = calculateBalance(children.find(c => c.code === '43') || { id: '0' } as any);
          return Math.abs(b41) - (Math.abs(b42) + Math.abs(b43));
       }
       return children.reduce((s, c) => s + Math.abs(calculateBalance(c)), 0);
@@ -173,29 +171,20 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     }
 
     if (code === '41') debitTotal += sales.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0); 
-    if (code === '42') creditTotal += salesReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0); 
-    if (code === '43') debitTotal += sales.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0); 
     if (code === '31') debitTotal += purchases.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0); 
-    if (code === '32') creditTotal += purchaseReturns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0); 
-    if (code === '33') debitTotal += purchases.reduce((s, c) => s + (Number(c.transportExpenses) || 0), 0); 
-    if (code === '34') creditTotal += purchases.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0); 
 
     const party = parties.find(p => p.name === name);
     if (party) {
        if (party.type === 'عميل' || account.parentId === '121') {
           debitTotal += (party.openingBalance || 0);
           debitTotal += sales.filter(s => s.customerName === name).reduce((sum, inv) => sum + inv.items.reduce((acc, it) => acc + it.total, 0), 0);
-          creditTotal += salesReturns.filter(ret => ret.customerName === name).reduce((sum, ret) => sum + (ret.totalReturnAmount || 0), 0);
-          creditTotal += sales.filter(s => s.customerName === name).reduce((sum, inv) => sum + (Number(inv.discountAmount) || 0), 0);
        } else if (party.type === 'مورد' || account.parentId === '221') {
           creditTotal += (party.openingBalance || 0);
-          creditTotal += purchases.filter(p => p.supplierName === name).reduce((sum, inv) => sum + (inv.items.reduce((acc, it) => acc + it.total, 0) + (inv.transportExpenses || 0)), 0);
-          debitTotal += purchaseReturns.filter(ret => ret.supplierName === name).reduce((sum, ret) => sum + (ret.totalReturnAmount || 0), 0);
-          debitTotal += purchases.filter(p => p.supplierName === name).reduce((sum, inv) => sum + (Number(inv.discountAmount) || 0), 0);
+          creditTotal += purchases.filter(p => p.supplierName === name).reduce((sum, inv) => sum + inv.items.reduce((acc, it) => acc + it.total, 0), 0);
        }
     }
 
-    const isDebitNature = code.startsWith('1') || code.startsWith('5') || code.startsWith('3') || code === '71' || code === '43' || code === '42';
+    const isDebitNature = code.startsWith('1') || code.startsWith('5') || code.startsWith('3');
     return isDebitNature ? (debitTotal - creditTotal) : (creditTotal - debitTotal);
   };
 
@@ -205,7 +194,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const code = account.code;
 
     openingEntries.filter(e => e.accountName === name).forEach(e => {
-        moves.push({ date: e.date, number: 'OP', statement: `قيد افتتاح: ${e.notes || 'رصيد أول مدة'}`, debit: e.debit, credit: e.credit, source: 'السجل الافتتاحي', counterAccount: 'رأس المال / أصول', user: settings?.managerName });
+        moves.push({ date: e.date, number: 'OP', statement: `قيد افتتاح: ${e.notes || 'رصيد أول مدة'}`, debit: e.debit, credit: e.credit, source: 'السجل الافتتاحي', counterAccount: 'رأس المال / أصول', user: settings?.managerName || 'النظام' });
     });
 
     const isBox = code === '131' || code === '132';
@@ -222,53 +211,23 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
           credit: isBox ? (j.paidSYP + (j.paidUSD || 0)) : (j.receivedSYP + (j.receivedUSD || 0)), 
           source: j.type === 'قبض' ? 'سند قبض' : j.type === 'دفع' ? 'سند دفع' : 'سند يومية', 
           counterAccount: isBox ? (j.partyName || 'حساب متنوع') : 'الصندوق / المصرف',
-          user: settings?.managerName
+          user: settings?.managerName || 'النظام'
        });
     });
 
-    if (code === '41') sales.forEach(s => moves.push({ date: s.date, number: s.invoiceNumber, statement: `إجمالي مبيعات فاتورة #${s.invoiceNumber}`, debit: s.items.reduce((sum, it) => sum + it.total, 0), credit: 0, source: 'فاتورة مبيعات', counterAccount: s.customerName, user: settings?.managerName }));
-    if (code === '42') salesReturns.forEach(r => moves.push({ date: r.date, number: r.invoiceNumber, statement: `مرتجع مبيعات فاتورة #${r.invoiceNumber}`, debit: 0, credit: r.totalReturnAmount, source: 'سند مرتجع', counterAccount: r.customerName, user: settings?.managerName }));
+    if (code === '41') sales.forEach(s => moves.push({ date: s.date, number: s.invoiceNumber, statement: `إجمالي مبيعات فاتورة #${s.invoiceNumber}`, debit: s.items.reduce((sum, it) => sum + it.total, 0), credit: 0, source: 'فاتورة مبيعات', counterAccount: s.customerName, user: settings?.managerName || 'النظام' }));
     
     const isParty = account.parentId === '121' || account.parentId === '221';
     if (isParty) {
        sales.filter(s => s.customerName === name).forEach(s => {
-          moves.push({ date: s.date, number: s.invoiceNumber, statement: `سحب بضاعة فاتورة #${s.invoiceNumber}`, debit: s.items.reduce((sum, it) => sum + it.total, 0), credit: 0, source: 'فاتورة مبيعات', counterAccount: 'المبيعات', user: settings?.managerName });
-          if (s.discountAmount > 0) moves.push({ date: s.date, number: s.invoiceNumber, statement: `حسم ممنوح فاتورة #${s.invoiceNumber}`, debit: 0, credit: s.discountAmount, source: 'حسم تسوية', counterAccount: 'حساب الحسم', user: settings?.managerName });
+          moves.push({ date: s.date, number: s.invoiceNumber, statement: `سحب بضاعة فاتورة #${s.invoiceNumber}`, debit: s.items.reduce((sum, it) => sum + it.total, 0), credit: 0, source: 'فاتورة مبيعات', counterAccount: 'المبيعات', user: settings?.managerName || 'النظام' });
        });
        purchases.filter(p => p.supplierName === name).forEach(p => {
-          moves.push({ date: p.date, number: p.invoiceNumber, statement: `توريد بضاعة فاتورة #${p.invoiceNumber}`, debit: 0, credit: (p.items.reduce((sum, it) => sum + it.total, 0) + (p.transportExpenses || 0)), source: 'فاتورة مشتريات', counterAccount: 'المشتريات', user: settings?.managerName });
-          if (p.discountAmount > 0) moves.push({ date: p.date, number: p.invoiceNumber, statement: `حسم مكتسب فاتورة #${p.invoiceNumber}`, debit: p.discountAmount, credit: 0, source: 'حسم تسوية', counterAccount: 'حساب الحسم', user: settings?.managerName });
+          moves.push({ date: p.date, number: p.invoiceNumber, statement: `توريد بضاعة فاتورة #${p.invoiceNumber}`, debit: 0, credit: (p.items.reduce((sum, it) => sum + it.total, 0) + (p.transportExpenses || 0)), source: 'فاتورة مشتريات', counterAccount: 'المشتريات', user: settings?.managerName || 'النظام' });
        });
     }
 
     return moves.sort((a, b) => a.date.localeCompare(b.date));
-  };
-
-  const handleDeleteNode = (node: AccountNode, e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    // 1. فحص الحسابات التابعة
-    const children = accounts.filter(a => a.parentId === node.id);
-    if (children.length > 0) {
-      alert('لا يمكن حذف مجموعة تحتوي على حسابات فرعية.');
-      return;
-    }
-
-    // 2. فحص الحركات المالية
-    const moves = getAccountMovements(node);
-    if (moves.length > 0) {
-      alert(`لا يمكن حذف الحساب "${node.name}" لأنه يحتوي على حركات مالية مسجلة مسبقاً.`);
-      return;
-    }
-
-    // 3. تأكيد الحذف
-    if (window.confirm(`هل أنت متأكد من حذف الحساب "${node.name}" نهائياً؟`)) {
-      const prefix = getPrefix();
-      const updated = accounts.filter(a => a.id !== node.id);
-      setAccounts(updated);
-      localStorage.setItem(`${prefix}_chart_accounts`, JSON.stringify(updated));
-      if (selectedAccount?.id === node.id) setSelectedAccount(null);
-    }
   };
 
   const handleSaveNode = () => {
@@ -276,7 +235,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     const prefix = getPrefix();
     const newNode = { ...formData, id: modalMode === 'EDIT' ? selectedAccount!.id : crypto.randomUUID() } as AccountNode;
     
-    // منطق المزامنة مع العملاء والموردين عند الإضافة الجديدة فقط
+    // مزامنة العملاء والموردين عند الإضافة الجديدة
     if (modalMode === 'ADD') {
       const isCustomer = newNode.parentId === '121';
       const isSupplier = newNode.parentId === '221';
@@ -284,8 +243,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
       if (isCustomer || isSupplier) {
         const savedParties = localStorage.getItem(`${prefix}_parties`);
         let currentParties: Party[] = savedParties ? JSON.parse(savedParties) : [];
-        
-        // التحقق من عدم وجوده مسبقاً
         if (!currentParties.some(p => p.name === newNode.name)) {
           const newParty: Party = {
             id: crypto.randomUUID(),
@@ -309,10 +266,37 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     loadAllData();
   };
 
-  const handleNodeClick = (node: AccountNode) => {
-    setSelectedAccount(node);
+  const handleDeleteNode = (node: AccountNode, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // 1. فحص وجود حسابات تابعة (للمجلدات)
+    const children = accounts.filter(a => a.parentId === node.id);
+    if (children.length > 0) {
+      alert('لا يمكن حذف مجموعة تحتوي على حسابات فرعية. يرجى حذف الحسابات التابعة أولاً.');
+      return;
+    }
+
+    // 2. فحص وجود حركات مالية
+    const movements = getAccountMovements(node);
+    if (movements.length > 0) {
+      alert(`لا يمكن حذف الحساب "${node.name}" لأنه يحتوي على حركات مالية مسجلة. يجب تصفية الحركات أو حذفها أولاً.`);
+      return;
+    }
+
+    // 3. تأكيد الحذف
+    if (window.confirm(`هل أنت متأكد من حذف الحساب "${node.name}" نهائياً؟`)) {
+      const prefix = getPrefix();
+      const updated = accounts.filter(a => a.id !== node.id);
+      setAccounts(updated);
+      localStorage.setItem(`${prefix}_chart_accounts`, JSON.stringify(updated));
+      if (selectedAccount?.id === node.id) setSelectedAccount(null);
+    }
+  };
+
+  const handleAccountIconClick = (node: AccountNode, e: React.MouseEvent) => {
+    e.stopPropagation();
     setDetailAccount(node);
-    setIsDetailModalOpen(true);
+    setIsDetailPopupOpen(true);
   };
 
   const renderTree = (parentId: string | null = null, level: number = 0) => {
@@ -322,17 +306,33 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
         const bal = calculateBalance(node);
         const children = accounts.filter(a => a.parentId === node.id);
         if (searchTerm && !node.name.includes(searchTerm) && !node.code.includes(searchTerm)) return null;
+        
+        const isFolder = node.type === 'FOLDER';
+
         return (
           <div key={node.id} className="select-none">
-            <div className={`flex items-center py-3 px-4 rounded-2xl transition-all cursor-pointer group mb-1.5 ${selectedAccount?.id === node.id ? 'bg-primary/10 ring-2 ring-primary/20 shadow-md' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} onClick={() => handleNodeClick(node)}>
+            <div 
+               className={`flex items-center py-3 px-4 rounded-2xl transition-all cursor-pointer group mb-1.5 ${selectedAccount?.id === node.id ? 'bg-primary/10 ring-2 ring-primary/20 shadow-md' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} 
+               onClick={() => {
+                  if (!isFolder) {
+                    setSelectedAccount(node);
+                  } else {
+                     const n = new Set(expandedNodes); if(n.has(node.id)) n.delete(node.id); else n.add(node.id); setExpandedNodes(n);
+                  }
+               }}
+            >
               <div style={{ width: `${level * 28}px` }}></div>
               <button onClick={(e) => { e.stopPropagation(); const n = new Set(expandedNodes); if(n.has(node.id)) n.delete(node.id); else n.add(node.id); setExpandedNodes(n); }} className="p-1 text-zinc-400">
                 {children.length > 0 ? (isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />) : <div className="w-4" />}
               </button>
               <div className="flex items-center gap-4 flex-1 overflow-hidden">
                 {node.type === 'FOLDER' ? <Folder className="w-5 h-5 text-amber-500 fill-amber-500/20" /> : <Calculator className="w-4 h-4 text-primary opacity-40" />}
-                <div className="flex flex-col truncate">
+                <div className="flex items-center gap-2 truncate">
                    <span className="font-black text-readable text-sm leading-tight">{node.name}</span>
+                   {/* Info Icon for Account Card */}
+                   <button onClick={(e) => handleAccountIconClick(node, e)} className="p-1 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full transition-all">
+                      <Info className="w-3.5 h-3.5" />
+                   </button>
                    <span className="font-mono text-zinc-400 text-[9px] uppercase tracking-tighter">ID: {node.code}</span>
                 </div>
               </div>
@@ -401,27 +401,35 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                        <button onClick={() => setSelectedAccount(null)} className="p-3 bg-zinc-100 dark:bg-zinc-800 rounded-2xl text-zinc-400 hover:text-rose-500 transition-all shadow-sm"><X className="w-6 h-6" /></button>
                     </div>
                  </div>
-                 <div className="max-h-[500px] overflow-y-auto custom-scrollbar pr-2 pb-10">
+                 <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
                     <table className="w-full text-right border-collapse">
                        <thead>
-                          <tr className="bg-zinc-900 text-white text-[11px] font-black uppercase text-zinc-500 border-b dark:border-zinc-800 sticky top-0 z-10 h-14 print:bg-zinc-100 print:text-black">
-                             <th className="p-5 border-l dark:border-zinc-800">التاريخ</th>
-                             <th className="p-5 border-l dark:border-zinc-800">البيان الرسمي للعملية</th>
-                             <th className="p-5 text-center border-l dark:border-zinc-800 bg-emerald-900/20">مدين (+)</th>
-                             <th className="p-5 text-center border-l dark:border-zinc-800 bg-rose-900/20">دائن (-)</th>
-                             <th className="p-5 text-center">المصدر</th>
+                          <tr className="bg-zinc-900 text-white text-[10px] font-black uppercase text-zinc-500 border-b dark:border-zinc-800 sticky top-0 z-10 h-14 print:bg-zinc-100 print:text-black">
+                             <th className="p-4 border-l border-zinc-800 w-24 text-center">التاريخ</th>
+                             <th className="p-4 border-l border-zinc-800">البيان الرسمي</th>
+                             <th className="p-4 border-l border-zinc-800 w-32 text-center">الحساب المقابل</th>
+                             <th className="p-4 border-l border-zinc-800 w-20 text-center">العملية</th>
+                             <th className="p-4 border-l border-zinc-800 w-20 text-center">رقم المستند</th>
+                             <th className="p-4 text-center border-l border-zinc-800 bg-emerald-900/20">مدين (+)</th>
+                             <th className="p-4 text-center border-l border-zinc-800 bg-rose-900/20">دائن (-)</th>
+                             <th className="p-4 text-center w-24">المستخدم</th>
                           </tr>
                        </thead>
                        <tbody className="divide-y dark:divide-zinc-800 font-bold text-zinc-700 dark:text-zinc-300">
                           {accountMoves.length === 0 ? (
-                            <tr><td colSpan={5} className="p-32 text-center italic text-zinc-400 font-black text-2xl uppercase tracking-tighter">لا توجد حركات مسجلة حالياً لهذا الحساب</td></tr>
+                            <tr><td colSpan={8} className="p-32 text-center italic text-zinc-400 font-black text-2xl uppercase tracking-tighter">لا توجد حركات مسجلة حالياً لهذا الحساب</td></tr>
                           ) : accountMoves.map((m, i) => (
-                             <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 h-16 transition-colors group cursor-pointer" onClick={() => setSelectedMoveDetail(m)}>
-                                <td className="p-5 font-mono text-zinc-400 border-l dark:border-zinc-800">{m.date}</td>
-                                <td className="p-5 text-readable border-l dark:border-zinc-800 group-hover:text-primary">{m.statement}</td>
-                                <td className="p-5 text-center font-mono text-emerald-600 border-l dark:border-zinc-800 text-xl">{m.debit > 0 ? m.debit.toLocaleString() : '-'}</td>
-                                <td className="p-5 text-center font-mono text-rose-600 border-l dark:border-zinc-800 text-xl">{m.credit > 0 ? m.credit.toLocaleString() : '-'}</td>
-                                <td className="p-5 text-center text-[10px] text-zinc-400 font-black uppercase tracking-widest">{m.source}</td>
+                             <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 h-16 transition-colors group cursor-pointer" onClick={() => { setSelectedMove(m); setIsMoveDetailOpen(true); }}>
+                                <td className="p-4 font-mono text-zinc-400 border-l border-zinc-50 dark:border-zinc-800 text-[10px] text-center">{m.date}</td>
+                                <td className="p-4 text-readable border-l border-zinc-50 dark:border-zinc-800 text-xs leading-tight group-hover:text-primary">{m.statement}</td>
+                                <td className="p-4 text-zinc-500 text-[10px] font-black italic border-l border-zinc-50 dark:border-zinc-800 text-center">{m.counterAccount || '-'}</td>
+                                <td className="p-4 text-center border-l border-zinc-50 dark:border-zinc-800">
+                                   <span className="text-[8px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-black uppercase">{m.source}</span>
+                                </td>
+                                <td className="p-4 text-center font-mono text-zinc-400 text-[10px] border-l border-zinc-50 dark:border-zinc-800">#{m.number}</td>
+                                <td className="p-4 text-center font-mono text-emerald-600 border-l border-zinc-50 dark:border-zinc-800 text-base">{m.debit > 0 ? m.debit.toLocaleString() : '-'}</td>
+                                <td className="p-4 text-center font-mono text-rose-600 border-l border-zinc-50 dark:border-zinc-800 text-base">{m.credit > 0 ? m.credit.toLocaleString() : '-'}</td>
+                                <td className="p-4 text-center text-[9px] text-zinc-400 border-l border-zinc-50 dark:border-zinc-800">{m.user || '-'}</td>
                              </tr>
                           ))}
                        </tbody>
@@ -433,12 +441,11 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
            <div className="bg-white dark:bg-zinc-900/30 rounded-[4rem] h-[calc(100vh-180px)] flex flex-col items-center justify-center border-4 border-dashed border-zinc-200 dark:border-zinc-800 p-10 text-center shadow-inner">
               <div className="w-32 h-32 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-8 animate-pulse"><History className="w-16 h-16 text-zinc-300 dark:text-zinc-600" /></div>
               <h3 className="text-3xl font-black text-zinc-300 uppercase tracking-[0.2em]">ACCOUNT DASHBOARD</h3>
-              <p className="text-zinc-400 max-w-sm mt-4 font-bold text-lg leading-relaxed">يرجى اختيار أحد الحسابات من الشجرة الجانبية لعرض تفاصيل الحركات والرصيد الحالي.</p>
+              <p className="text-zinc-400 max-w-sm mt-4 font-bold text-lg leading-relaxed">يرجى اختيار أحد الحسابات الفرعية من الشجرة الجانبية لعرض تفاصيل الحركات. الحسابات الرئيسية (المجلدات) تستخدم للتنظيم وتراكم الأرصدة فقط.</p>
            </div>
          )}
       </div>
 
-      {/* Main Form Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[300] flex items-center justify-center p-4">
            <div className="bg-white dark:bg-zinc-900 w-full max-w-xl rounded-[3rem] border border-zinc-200 shadow-2xl p-10 animate-in zoom-in-95">
@@ -478,35 +485,42 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
         </div>
       )}
 
-      {/* Account Detail Popup */}
-      {isDetailModalOpen && detailAccount && (
+      {/* Account Details Popup Modal */}
+      {isDetailPopupOpen && detailAccount && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[400] flex items-center justify-center p-4 animate-in fade-in duration-300">
-           <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95">
-              <div className="p-6 bg-zinc-900 text-white flex justify-between items-center">
+           <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95">
+              <div className="p-6 bg-zinc-900 text-white flex justify-between items-center border-b border-white/10">
                  <div className="flex items-center gap-3">
-                    <Info className="w-6 h-6 text-primary" />
-                    <h3 className="text-xl font-black tracking-tight">بطاقة بيانات الحساب</h3>
+                    <div className="p-2.5 bg-primary/20 rounded-xl text-primary">
+                       {detailAccount.type === 'FOLDER' ? <Folder className="w-6 h-6" /> : <Calculator className="w-6 h-6" />}
+                    </div>
+                    <div>
+                       <h3 className="text-xl font-black tracking-tight">بطاقة بيانات الحساب</h3>
+                       <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Account Information</p>
+                    </div>
                  </div>
-                 <button onClick={() => setIsDetailModalOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-all"><X className="w-6 h-6" /></button>
+                 <button onClick={() => setIsDetailPopupOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-all">
+                    <X className="w-6 h-6 text-zinc-400" />
+                 </button>
               </div>
               <div className="p-8 space-y-6">
                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border dark:border-zinc-700">
+                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border dark:border-zinc-700">
                        <span className="text-[10px] font-black text-zinc-400 uppercase block mb-1">رقم الحساب</span>
                        <p className="font-mono font-black text-lg text-primary">{detailAccount.code}</p>
                     </div>
-                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border dark:border-zinc-700">
-                       <span className="text-[10px] font-black text-zinc-400 uppercase block mb-1">نوع الحساب</span>
+                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border dark:border-zinc-700">
+                       <span className="text-[10px] font-black text-zinc-400 uppercase block mb-1">نوع البند</span>
                        <p className="font-black text-sm">{detailAccount.type === 'FOLDER' ? 'مجموعة رئيسية' : 'حساب فرعي'}</p>
                     </div>
                  </div>
-                 <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border dark:border-zinc-700">
-                    <span className="text-[10px] font-black text-zinc-400 uppercase block mb-1">الاسم الكامل</span>
+                 <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border dark:border-zinc-700">
+                    <span className="text-[10px] font-black text-zinc-400 uppercase block mb-1">الاسم الكامل الرسمي</span>
                     <p className="font-black text-xl text-readable leading-tight italic">"{detailAccount.name}"</p>
                  </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-zinc-900 text-white rounded-2xl border border-zinc-700 shadow-lg">
-                       <span className="text-[10px] font-black text-zinc-500 uppercase block mb-1 tracking-widest">الرصيد الجاري</span>
+                       <span className="text-[10px] font-black text-zinc-500 uppercase block mb-1 tracking-widest">الرصيد الجاري المتاح</span>
                        <div className="flex items-baseline gap-1">
                           <p className={`font-mono font-black text-2xl ${calculateBalance(detailAccount) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                              {Math.abs(calculateBalance(detailAccount)).toLocaleString()}
@@ -514,8 +528,8 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                           <span className="text-[9px] font-bold text-zinc-500 uppercase">{settings?.currencySymbol}</span>
                        </div>
                     </div>
-                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border dark:border-zinc-700 flex flex-col justify-center items-center">
-                       <span className="text-[10px] font-black text-zinc-400 uppercase block mb-1 tracking-widest">عدد الحركات</span>
+                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border dark:border-zinc-700 flex flex-col justify-center items-center">
+                       <span className="text-[10px] font-black text-zinc-400 uppercase block mb-1 tracking-widest">إجمالي الحركات</span>
                        <div className="flex items-center gap-2">
                           <History className="w-4 h-4 text-zinc-300" />
                           <p className="font-black text-2xl text-readable">{getAccountMovements(detailAccount).length}</p>
@@ -524,73 +538,90 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                  </div>
               </div>
               <div className="p-6 bg-zinc-50 dark:bg-zinc-950 border-t dark:border-zinc-800 flex gap-2">
-                 <button onClick={() => setIsDetailModalOpen(false)} className="flex-1 py-4 bg-zinc-900 text-white rounded-2xl font-black text-sm shadow-xl hover:bg-black transition-all">إغلاق المعاينة</button>
+                 <button onClick={() => setIsDetailPopupOpen(false)} className="flex-1 py-4 bg-zinc-900 text-white rounded-2xl font-black text-sm shadow-xl hover:bg-black transition-all">إغلاق المعاينة</button>
               </div>
            </div>
         </div>
       )}
 
-      {/* Movement Detail (Drill Down) Popup */}
-      {selectedMoveDetail && (
+      {/* Movement Detail Drill Down Modal */}
+      {isMoveDetailOpen && selectedMove && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300">
-           <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95">
+           <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95 duration-300">
               <div className="p-6 bg-zinc-900 text-white flex justify-between items-center border-b border-white/10">
                  <div className="flex items-center gap-3">
-                    <FileStack className="w-6 h-6 text-primary" />
+                    <div className="p-2 bg-primary/20 rounded-xl">
+                       <FileStack className="w-6 h-6 text-primary" />
+                    </div>
                     <div>
                        <h3 className="text-xl font-black tracking-tight">تفاصيل الحركة المالية الكاملة</h3>
-                       <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{selectedMoveDetail.source} | #{selectedMoveDetail.number}</p>
+                       <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{selectedMove.source} | #{selectedMove.number}</p>
                     </div>
                  </div>
-                 <button onClick={() => setSelectedMoveDetail(null)} className="p-2 hover:bg-white/10 rounded-xl transition-all"><X className="w-6 h-6 text-zinc-400" /></button>
+                 <button onClick={() => setIsMoveDetailOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-all">
+                    <X className="w-6 h-6 text-zinc-400" />
+                 </button>
               </div>
               <div className="p-8 space-y-6">
                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border dark:border-zinc-700">
-                       <span className="text-[9px] font-black text-zinc-400 uppercase block mb-1 tracking-widest">تاريخ العملية</span>
-                       <p className="font-mono font-black text-lg text-readable">{selectedMoveDetail.date}</p>
+                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border dark:border-zinc-700">
+                       <span className="text-[9px] font-black text-zinc-400 uppercase block mb-1 tracking-widest">تاريخ العملية الموثق</span>
+                       <p className="font-mono font-black text-lg text-readable">{selectedMove.date}</p>
                     </div>
-                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border dark:border-zinc-700">
-                       <span className="text-[9px] font-black text-zinc-400 uppercase block mb-1 tracking-widest">نوع السند / العملية</span>
-                       <p className="font-black text-lg text-primary">{selectedMoveDetail.source}</p>
+                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border dark:border-zinc-700">
+                       <span className="text-[9px] font-black text-zinc-400 uppercase block mb-1 tracking-widest">نوع المستند / القيد</span>
+                       <p className="font-black text-lg text-primary">{selectedMove.source}</p>
                     </div>
                  </div>
                  <div className="p-5 bg-primary/5 rounded-[2rem] border-2 border-primary/20 space-y-4 shadow-inner">
                     <div className="flex items-center gap-2 border-b border-primary/10 pb-2">
                        <ArrowLeftRight className="w-4 h-4 text-primary" />
-                       <span className="text-[10px] font-black text-primary uppercase tracking-widest">تحليل الطرف المقابل</span>
+                       <span className="text-[10px] font-black text-primary uppercase tracking-widest">تحليل الطرف المقابل (Contra Account)</span>
                     </div>
                     <div className="flex justify-between items-center">
                        <div className="flex flex-col">
                           <span className="text-[11px] font-bold text-zinc-500">الحساب المقابل:</span>
-                          <p className="text-xl font-black text-readable italic">"{selectedMoveDetail.counterAccount}"</p>
+                          <p className="text-xl font-black text-readable italic">"{selectedMove.counterAccount}"</p>
                        </div>
                        <div className="flex flex-col text-left">
                           <span className="text-[11px] font-bold text-zinc-500">تم بواسطة:</span>
                           <div className="flex items-center gap-1 justify-end text-zinc-900 dark:text-zinc-100">
                              <UserCircle className="w-3.5 h-3.5 opacity-50" />
-                             <span className="font-black text-xs">{selectedMoveDetail.user || settings?.managerName || 'غير معرف'}</span>
+                             <span className="font-black text-xs">{selectedMove.user || settings?.managerName || 'غير معرف'}</span>
                           </div>
                        </div>
                     </div>
                  </div>
                  <div className="grid grid-cols-2 gap-4">
-                    <div className={`p-5 rounded-2xl border-2 flex flex-col items-center justify-center ${selectedMoveDetail.debit > 0 ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-zinc-50 border-zinc-100 opacity-40'}`}>
-                       <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">مدين (+)</span>
-                       <p className="text-3xl font-mono font-black text-emerald-600">{selectedMoveDetail.debit.toLocaleString()}</p>
+                    <div className={`p-5 rounded-2xl border-2 flex flex-col items-center justify-center ${selectedMove.debit > 0 ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-zinc-50 border-zinc-100 opacity-40'}`}>
+                       <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">مدين (+) DEBIT</span>
+                       <p className="text-3xl font-mono font-black text-emerald-600">{selectedMove.debit.toLocaleString()}</p>
                     </div>
-                    <div className={`p-5 rounded-2xl border-2 flex flex-col items-center justify-center ${selectedMoveDetail.credit > 0 ? 'bg-rose-500/5 border-rose-500/20' : 'bg-zinc-50 border-zinc-100 opacity-40'}`}>
-                       <span className="text-[9px] font-black text-rose-600 uppercase tracking-widest mb-1">دائن (-)</span>
-                       <p className="text-3xl font-mono font-black text-rose-600">{selectedMoveDetail.credit.toLocaleString()}</p>
+                    <div className={`p-5 rounded-2xl border-2 flex flex-col items-center justify-center ${selectedMove.credit > 0 ? 'bg-rose-500/5 border-rose-500/20' : 'bg-zinc-50 border-zinc-100 opacity-40'}`}>
+                       <span className="text-[9px] font-black text-rose-600 uppercase tracking-widest mb-1">دائن (-) CREDIT</span>
+                       <p className="text-3xl font-mono font-black text-rose-600">{selectedMove.credit.toLocaleString()}</p>
                     </div>
                  </div>
                  <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border dark:border-zinc-700">
-                    <span className="text-[9px] font-black text-zinc-400 uppercase block mb-1 tracking-widest">البيان الرسمي الكامل</span>
-                    <p className="text-sm font-bold text-readable italic leading-relaxed">"{selectedMoveDetail.statement}"</p>
+                    <span className="text-[9px] font-black text-zinc-400 uppercase block mb-1 tracking-widest">البيان الرسمي الكامل (Statement)</span>
+                    <p className="text-sm font-bold text-readable italic leading-relaxed">"{selectedMove.statement}"</p>
                  </div>
               </div>
-              <div className="p-6 bg-zinc-50 dark:bg-zinc-950 border-t dark:border-zinc-800 flex justify-end">
-                 <button onClick={() => setSelectedMoveDetail(null)} className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-black text-sm shadow-xl hover:bg-black transition-all">إغلاق نافذة التفاصيل</button>
+              <div className="p-6 bg-zinc-50 dark:bg-zinc-950 border-t dark:border-zinc-800 flex justify-end gap-3 no-print">
+                 <button onClick={() => window.print()} className="px-6 py-3 bg-zinc-900 text-white rounded-xl font-black text-xs flex items-center gap-2 shadow-lg"><Printer className="w-4 h-4"/> طباعة</button>
+                 <button onClick={() => {
+                   const data = [{
+                     'التاريخ': selectedMove.date,
+                     'البيان': selectedMove.statement,
+                     'الحساب المقابل': selectedMove.counterAccount,
+                     'مدين': selectedMove.debit,
+                     'دائن': selectedMove.credit,
+                     'المصدر': selectedMove.source,
+                     'المستخدم': selectedMove.user
+                   }];
+                   exportToCSV(data, `حركة_${selectedMove.number}`);
+                 }} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-xs flex items-center gap-2 shadow-lg"><FileSpreadsheet className="w-4 h-4"/> تصدير Excel</button>
+                 <button onClick={() => setIsMoveDetailOpen(false)} className="flex-1 py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-xl font-black text-xs">إغلاق</button>
               </div>
            </div>
         </div>
