@@ -110,7 +110,230 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
 
     let currentAccounts: AccountNode[] = savedAccountsRaw ? JSON.parse(savedAccountsRaw) : defaultRoots;
     setAccounts(currentAccounts);
-    if (sJou) setJournal(JSON.parse(sJou));
+    
+    let currentJournal: CashEntry[] = sJou ? JSON.parse(sJou) : [];
+    const currentSales: SalesInvoice[] = sSal ? JSON.parse(sSal) : [];
+    const currentSalesReturns: any[] = sSalRet ? JSON.parse(sSalRet) : [];
+    const currentPurchases: PurchaseInvoice[] = sPur ? JSON.parse(sPur) : [];
+    const currentPurchaseReturns: any[] = sPurRet ? JSON.parse(sPurRet) : [];
+    const currentStock: StockEntry[] = sSto ? JSON.parse(sSto) : [];
+    const currentInventory: InventoryItem[] = sInv ? JSON.parse(sInv) : [];
+    const currentCategories: AccountingCategory[] = sCat ? JSON.parse(sCat) : [];
+    
+    let changed = false;
+    
+    // 1. مزامنة المبيعات -> حساب 41
+    currentSales.forEach(s => {
+       if (!currentJournal.some(j => j.voucherNumber === s.invoiceNumber && j.type === 'بيع')) {
+          const total = s.items.reduce((sum, it) => sum + it.total, 0);
+          currentJournal.push({
+             id: crypto.randomUUID(),
+             date: s.date,
+             statement: `مبيعات فاتورة #${s.invoiceNumber}`,
+             receivedSYP: s.paymentType === 'نقداً' ? total : 0,
+             paidSYP: 0,
+             receivedUSD: 0,
+             paidUSD: 0,
+             notes: s.notes,
+             type: 'بيع',
+             voucherNumber: s.invoiceNumber,
+             partyName: s.customerName,
+             cashAccount: s.cashAccount,
+             // @ts-ignore
+             linkedAccountId: '41',
+             linkedAccountCode: '41'
+          });
+          changed = true;
+       }
+
+       // مزامنة الحسم الممنوح -> حساب 43
+       if (s.discountAmount > 0 && !currentJournal.some(j => j.voucherNumber === s.invoiceNumber && j.type === 'حسم' && j.linkedAccountCode === '43')) {
+          currentJournal.push({
+             id: crypto.randomUUID(),
+             date: s.date,
+             statement: `حسم ممنوح فاتورة #${s.invoiceNumber}`,
+             receivedSYP: 0,
+             paidSYP: s.discountAmount,
+             receivedUSD: 0,
+             paidUSD: 0,
+             notes: 'حسم تسوية مبيعات',
+             type: 'حسم',
+             voucherNumber: s.invoiceNumber,
+             partyName: s.customerName,
+             // @ts-ignore
+             linkedAccountId: '43',
+             linkedAccountCode: '43'
+          });
+          changed = true;
+       }
+    });
+
+    // 2. مزامنة مرتجع المبيعات -> حساب 42
+    currentSalesReturns.forEach(r => {
+       if (!currentJournal.some(j => j.voucherNumber === r.invoiceNumber && j.type === 'مرتجع' && j.linkedAccountCode === '42')) {
+          currentJournal.push({
+             id: crypto.randomUUID(),
+             date: r.date,
+             statement: `مرتجع مبيعات فاتورة #${r.invoiceNumber}`,
+             receivedSYP: 0,
+             paidSYP: Number(r.totalReturnAmount) || 0,
+             receivedUSD: 0,
+             paidUSD: 0,
+             notes: r.notes || '',
+             type: 'مرتجع',
+             voucherNumber: r.invoiceNumber,
+             partyName: r.customerName,
+             // @ts-ignore
+             linkedAccountId: '42',
+             linkedAccountCode: '42'
+          });
+          changed = true;
+       }
+    });
+
+    // 3. مزامنة المشتريات -> حساب 31
+    currentPurchases.forEach(p => {
+       if (!currentJournal.some(j => j.voucherNumber === p.invoiceNumber && j.type === 'شراء')) {
+          const total = p.items.reduce((sum, it) => sum + it.total, 0);
+          currentJournal.push({
+             id: crypto.randomUUID(),
+             date: p.date,
+             statement: `مشتريات فاتورة #${p.invoiceNumber}`,
+             receivedSYP: 0,
+             paidSYP: p.paymentType === 'نقداً' ? total : 0,
+             receivedUSD: 0,
+             paidUSD: 0,
+             notes: p.notes,
+             type: 'شراء',
+             voucherNumber: p.invoiceNumber,
+             partyName: p.supplierName,
+             cashAccount: p.cashAccount,
+             // @ts-ignore
+             linkedAccountId: '31',
+             linkedAccountCode: '31'
+          });
+          changed = true;
+       }
+
+       // مزامنة مصاريف النقل -> حساب 33
+       if (p.transportExpenses > 0 && !currentJournal.some(j => j.voucherNumber === p.invoiceNumber && j.linkedAccountCode === '33')) {
+          currentJournal.push({
+             id: crypto.randomUUID(),
+             date: p.date,
+             statement: `مصاريف نقل مشتريات فاتورة #${p.invoiceNumber}`,
+             receivedSYP: 0,
+             paidSYP: p.transportExpenses,
+             receivedUSD: 0,
+             paidUSD: 0,
+             notes: '',
+             type: 'دفع',
+             voucherNumber: p.invoiceNumber,
+             partyName: p.supplierName,
+             // @ts-ignore
+             linkedAccountId: '33',
+             linkedAccountCode: '33'
+          });
+          changed = true;
+       }
+
+       // مزامنة الحسم المكتسب -> حساب 34
+       if (p.discountAmount > 0 && !currentJournal.some(j => j.voucherNumber === p.invoiceNumber && j.type === 'حسم' && j.linkedAccountCode === '34')) {
+          currentJournal.push({
+             id: crypto.randomUUID(),
+             date: p.date,
+             statement: `حسم مكتسب فاتورة #${p.invoiceNumber}`,
+             receivedSYP: p.discountAmount,
+             paidSYP: 0,
+             receivedUSD: 0,
+             paidUSD: 0,
+             notes: 'حسم تسوية مشتريات',
+             type: 'حسم',
+             voucherNumber: p.invoiceNumber,
+             partyName: p.supplierName,
+             // @ts-ignore
+             linkedAccountId: '34',
+             linkedAccountCode: '34'
+          });
+          changed = true;
+       }
+    });
+
+    // 4. مزامنة مرتجع المشتريات -> حساب 32
+    currentPurchaseReturns.forEach(r => {
+       if (!currentJournal.some(j => j.voucherNumber === r.invoiceNumber && j.type === 'مرتجع' && j.linkedAccountCode === '32')) {
+          currentJournal.push({
+             id: crypto.randomUUID(),
+             date: r.date,
+             statement: `مرتجع مشتريات فاتورة #${r.invoiceNumber}`,
+             receivedSYP: Number(r.totalReturnAmount) || 0,
+             paidSYP: 0,
+             receivedUSD: 0,
+             paidUSD: 0,
+             notes: r.notes || '',
+             type: 'مرتجع',
+             voucherNumber: r.invoiceNumber,
+             partyName: r.supplierName,
+             // @ts-ignore
+             linkedAccountId: '32',
+             linkedAccountCode: '32'
+          });
+          changed = true;
+       }
+    });
+
+    // 5. مزامنة بضاعة أول المدة -> حساب 71
+    currentInventory.forEach(item => {
+       if (item.openingStock > 0 && !currentJournal.some(j => j.statement.includes(`رصيد افتتاحي: ${item.name}`) && j.linkedAccountCode === '71')) {
+          currentJournal.push({
+             id: crypto.randomUUID(),
+             date: new Date().toISOString().split('T')[0],
+             statement: `رصيد افتتاحي: ${item.name} (${item.openingStock} ${item.unit})`,
+             receivedSYP: item.openingStock * item.price,
+             paidSYP: 0,
+             receivedUSD: 0,
+             paidUSD: 0,
+             notes: 'بضاعة أول المدة من إدارة البنود',
+             type: 'افتتاحي',
+             // @ts-ignore
+             linkedAccountId: '71',
+             linkedAccountCode: '71'
+          });
+          changed = true;
+       }
+    });
+
+    // 6. مزامنة إدارة البنود (Stock Entries) -> الأقسام المرتبطة
+    currentStock.forEach(entry => {
+       if (!currentJournal.some(j => j.id === entry.id || (j.voucherNumber === entry.invoiceNumber && j.statement.includes(entry.itemName)))) {
+          const cat = currentCategories.find(c => c.name === entry.department);
+          if (cat && cat.linkedAccountId) {
+             const total = entry.quantity * entry.price;
+             currentJournal.push({
+                id: entry.id, // استخدام نفس ID الحركة لضمان عدم التكرار
+                date: entry.date,
+                statement: `${entry.movementType}: ${entry.itemName} (${entry.quantity} ${entry.unit})`,
+                receivedSYP: entry.movementType === 'إدخال' ? 0 : total,
+                paidSYP: entry.movementType === 'إدخال' ? total : 0,
+                receivedUSD: 0,
+                paidUSD: 0,
+                notes: entry.notes || '',
+                type: 'قيد',
+                voucherNumber: entry.invoiceNumber,
+                partyName: entry.partyName || 'مخزن',
+                // @ts-ignore
+                linkedAccountId: cat.linkedAccountId,
+                linkedAccountCode: currentAccounts.find(a => a.id === cat.linkedAccountId)?.code || ''
+             });
+             changed = true;
+          }
+       }
+    });
+
+    if (changed) {
+       localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(currentJournal));
+    }
+
+    setJournal(currentJournal);
     if (sOp) setOpeningEntries(JSON.parse(sOp));
     if (sSal) setSales(JSON.parse(sSal));
     if (sSalRet) setSalesReturns(JSON.parse(sSalRet));
@@ -126,42 +349,60 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
   const calculateBalance = (account: AccountNode): number => {
     if (account.type === 'FOLDER') {
       const children = accounts.filter(a => a.parentId === account.id);
-      // وظيفة معادلة صافي المشتريات (ID 3): (31 + 33) - (32 + 34)
+      
+      // معادلة صافي المشتريات (ID 3): إجمالي المشتريات + مصاريف نقل - مرتجع المشتريات - الحسم المكتسب
       if (account.id === '3') {
-         const b31 = calculateBalance(children.find(c => c.code === '31') || { id: '0' } as any);
-         const b32 = calculateBalance(children.find(c => c.code === '32') || { id: '0' } as any);
-         const b33 = calculateBalance(children.find(c => c.code === '33') || { id: '0' } as any);
-         const b34 = calculateBalance(children.find(c => c.code === '34') || { id: '0' } as any);
+         const b31 = calculateBalance(children.find(c => c.code === '31') || { id: '0', code: '31' } as any);
+         const b32 = calculateBalance(children.find(c => c.code === '32') || { id: '0', code: '32' } as any);
+         const b33 = calculateBalance(children.find(c => c.code === '33') || { id: '0', code: '33' } as any);
+         const b34 = calculateBalance(children.find(c => c.code === '34') || { id: '0', code: '34' } as any);
          return (Math.abs(b31) + Math.abs(b33)) - (Math.abs(b32) + Math.abs(b34));
       }
-      // وظيفة معادلة صافي المبيعات (ID 4): 41 - (42 + 43)
+      
+      // معادلة صافي المبيعات (ID 4): إجمالي المبيعات - مرتجع المبيعات - الحسم الممنوح
       if (account.id === '4') {
-         const b41 = calculateBalance(children.find(c => c.code === '41') || { id: '0' } as any);
-         const b42 = calculateBalance(children.find(c => c.code === '42') || { id: '0' } as any);
-         const b43 = calculateBalance(children.find(c => c.code === '43') || { id: '0' } as any);
+         const b41 = calculateBalance(children.find(c => c.code === '41') || { id: '0', code: '41' } as any);
+         const b42 = calculateBalance(children.find(c => c.code === '42') || { id: '0', code: '42' } as any);
+         const b43 = calculateBalance(children.find(c => c.code === '43') || { id: '0', code: '43' } as any);
          return Math.abs(b41) - (Math.abs(b42) + Math.abs(b43));
       }
+
       return children.reduce((s, c) => s + Math.abs(calculateBalance(c)), 0);
     }
     
+    const code = account.code;
+
+    // حساب بضاعة آخر المدة ديناميكياً (72 / 1241)
+    if (code === '72' || code === '1241') {
+       return inventory.reduce((sum, item) => {
+          const mvs = stockEntries.filter(e => e.itemCode === item.code);
+          const bal = (item.openingStock || 0) + mvs.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0) - mvs.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0) + mvs.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
+          return sum + (bal * item.price);
+       }, 0);
+    }
+
     let debitTotal = 0;
     let creditTotal = 0;
     const name = account.name;
-    const code = account.code;
 
+    // 1. الأرصدة الافتتاحية من السجل
     const ops = openingEntries.filter(e => e.accountName === name);
     debitTotal += ops.reduce((s, c) => s + Number(c.debit), 0);
     creditTotal += ops.reduce((s, c) => s + Number(c.credit), 0);
 
-    const isBox = code === '131' || code === '132';
+    // 2. حركات القيود (Journal Lines) - المصدر الوحيد للحركات
     const journalMoves = journal.filter(j => {
-       if (isBox) {
-         if (code === '131') return j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف'));
-         return j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف'));
-       }
+       // الربط عبر الكود المباشر أو عبر الاسم أو عبر الحساب النقدي
+       // @ts-ignore
+       if (j.linkedAccountId === account.id || j.linkedAccountCode === code) return true;
+       
+       if (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) return true;
+       if (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))) return true;
+       
        return j.partyName === name;
     });
     
+    const isBox = code === '131' || code === '132';
     if (isBox) {
        debitTotal += journalMoves.reduce((s, c) => s + Number(c.receivedSYP + (c.receivedUSD || 0)), 0);
        creditTotal += journalMoves.reduce((s, c) => s + Number(c.paidSYP + (c.paidUSD || 0)), 0);
@@ -170,35 +411,75 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        creditTotal += journalMoves.reduce((s, c) => s + Number(c.receivedSYP + (c.receivedUSD || 0)), 0);
     }
 
-    if (code === '41') debitTotal += sales.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0); 
-    if (code === '31') debitTotal += purchases.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0); 
-
+    // إضافة رصيد أول المدة للزبائن والموردين من بطاقة الحفلة
     const party = parties.find(p => p.name === name);
     if (party) {
        if (party.type === 'عميل' || account.parentId === '121') {
           debitTotal += (party.openingBalance || 0);
-          debitTotal += sales.filter(s => s.customerName === name).reduce((sum, inv) => sum + inv.items.reduce((acc, it) => acc + it.total, 0), 0);
        } else if (party.type === 'مورد' || account.parentId === '221') {
           creditTotal += (party.openingBalance || 0);
-          creditTotal += purchases.filter(p => p.supplierName === name).reduce((sum, inv) => sum + inv.items.reduce((acc, it) => acc + it.total, 0), 0);
        }
     }
 
-    const isDebitNature = code.startsWith('1') || code.startsWith('5') || code.startsWith('3');
+    const isDebitNature = code.startsWith('1') || code.startsWith('5') || code.startsWith('3') || code === '42' || code === '43';
     return isDebitNature ? (debitTotal - creditTotal) : (creditTotal - debitTotal);
   };
 
-  const getAccountMovements = (account: AccountNode) => {
+  const getAccountMovements = (account: AccountNode): any[] => {
+    if (account.type === 'FOLDER') {
+      const children = accounts.filter(a => a.parentId === account.id);
+      let allMoves: any[] = [];
+      children.forEach(child => {
+        allMoves = [...allMoves, ...getAccountMovements(child)];
+      });
+      return allMoves.sort((a, b) => a.date.localeCompare(b.date));
+    }
+
     const moves: any[] = [];
     const name = account.name;
     const code = account.code;
 
+    // حركات بضاعة آخر المدة الافتراضية (72 / 1241)
+    if (code === '72' || code === '1241') {
+       inventory.forEach(item => {
+          const mvs = stockEntries.filter(e => e.itemCode === item.code);
+          const bal = (item.openingStock || 0) + mvs.filter(e => e.movementType === 'إدخال').reduce((s, c) => s + c.quantity, 0) - mvs.filter(e => e.movementType === 'صرف').reduce((s, c) => s + c.quantity, 0) + mvs.filter(e => e.movementType === 'مرتجع').reduce((s, c) => s + c.quantity, 0);
+          if (bal !== 0) {
+             moves.push({
+                date: new Date().toISOString().split('T')[0],
+                number: 'INV',
+                statement: `رصيد جرد حالي: ${item.name} (${bal} ${item.unit})`,
+                debit: code === '1241' ? (bal * item.price) : 0,
+                credit: code === '72' ? (bal * item.price) : 0,
+                source: 'جرد مستمر',
+                counterAccount: code === '1241' ? 'المتاجرة' : 'المخزون السلعي',
+                user: 'النظام',
+                accountName: name
+             });
+          }
+       });
+    }
+
+    // 1. القيود الافتتاحية
     openingEntries.filter(e => e.accountName === name).forEach(e => {
-        moves.push({ date: e.date, number: 'OP', statement: `قيد افتتاح: ${e.notes || 'رصيد أول مدة'}`, debit: e.debit, credit: e.credit, source: 'السجل الافتتاحي', counterAccount: 'رأس المال / أصول', user: settings?.managerName || 'النظام' });
+        moves.push({ 
+          date: e.date, 
+          number: 'OP', 
+          statement: `قيد افتتاح: ${e.notes || 'رصيد أول مدة'}`, 
+          debit: e.debit, 
+          credit: e.credit, 
+          source: 'السجل الافتتاحي', 
+          counterAccount: 'رأس المال / أصول', 
+          user: settings?.managerName || 'النظام',
+          accountName: name 
+        });
     });
 
+    // 2. حركات اليومية (Journal Lines)
     const isBox = code === '131' || code === '132';
     journal.filter(j => {
+       // @ts-ignore
+       if (j.linkedAccountId === account.id || j.linkedAccountCode === code) return true;
        if (isBox) {
          if (code === '131') return j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف'));
          return j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف'));
@@ -206,26 +487,17 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        return j.partyName === name && j.type !== 'حسم';
     }).forEach(j => {
        moves.push({ 
-          date: j.date, number: j.voucherNumber || 'VOU', statement: j.statement, 
+          date: j.date, 
+          number: j.voucherNumber || 'VOU', 
+          statement: j.statement, 
           debit: isBox ? (j.receivedSYP + (j.receivedUSD || 0)) : (j.paidSYP + (j.paidUSD || 0)), 
           credit: isBox ? (j.paidSYP + (j.paidUSD || 0)) : (j.receivedSYP + (j.receivedUSD || 0)), 
-          source: j.type === 'قبض' ? 'سند قبض' : j.type === 'دفع' ? 'سند دفع' : 'سند يومية', 
+          source: j.type === 'قبض' ? 'سند قبض' : j.type === 'دفع' ? 'سند دفع' : (j.type || 'سند يومية'), 
           counterAccount: isBox ? (j.partyName || 'حساب متنوع') : 'الصندوق / المصرف',
-          user: settings?.managerName || 'النظام'
+          user: settings?.managerName || 'النظام',
+          accountName: name
        });
     });
-
-    if (code === '41') sales.forEach(s => moves.push({ date: s.date, number: s.invoiceNumber, statement: `إجمالي مبيعات فاتورة #${s.invoiceNumber}`, debit: s.items.reduce((sum, it) => sum + it.total, 0), credit: 0, source: 'فاتورة مبيعات', counterAccount: s.customerName, user: settings?.managerName || 'النظام' }));
-    
-    const isParty = account.parentId === '121' || account.parentId === '221';
-    if (isParty) {
-       sales.filter(s => s.customerName === name).forEach(s => {
-          moves.push({ date: s.date, number: s.invoiceNumber, statement: `سحب بضاعة فاتورة #${s.invoiceNumber}`, debit: s.items.reduce((sum, it) => sum + it.total, 0), credit: 0, source: 'فاتورة مبيعات', counterAccount: 'المبيعات', user: settings?.managerName || 'النظام' });
-       });
-       purchases.filter(p => p.supplierName === name).forEach(p => {
-          moves.push({ date: p.date, number: p.invoiceNumber, statement: `توريد بضاعة فاتورة #${p.invoiceNumber}`, debit: 0, credit: (p.items.reduce((sum, it) => sum + it.total, 0) + (p.transportExpenses || 0)), source: 'فاتورة مشتريات', counterAccount: 'المشتريات', user: settings?.managerName || 'النظام' });
-       });
-    }
 
     return moves.sort((a, b) => a.date.localeCompare(b.date));
   };
@@ -407,6 +679,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                           <tr className="bg-zinc-900 text-white text-[10px] font-black uppercase text-zinc-500 border-b dark:border-zinc-800 sticky top-0 z-10 h-14 print:bg-zinc-100 print:text-black">
                              <th className="p-4 border-l border-zinc-800 w-24 text-center">التاريخ</th>
                              <th className="p-4 border-l border-zinc-800">البيان الرسمي</th>
+                             <th className="p-4 border-l border-zinc-800 w-32 text-center">الحساب الفرعي</th>
                              <th className="p-4 border-l border-zinc-800 w-32 text-center">الحساب المقابل</th>
                              <th className="p-4 border-l border-zinc-800 w-20 text-center">العملية</th>
                              <th className="p-4 border-l border-zinc-800 w-20 text-center">رقم المستند</th>
@@ -422,6 +695,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                              <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 h-16 transition-colors group cursor-pointer" onClick={() => { setSelectedMove(m); setIsMoveDetailOpen(true); }}>
                                 <td className="p-4 font-mono text-zinc-400 border-l border-zinc-50 dark:border-zinc-800 text-[10px] text-center">{m.date}</td>
                                 <td className="p-4 text-readable border-l border-zinc-50 dark:border-zinc-800 text-xs leading-tight group-hover:text-primary">{m.statement}</td>
+                                <td className="p-4 text-zinc-500 text-[10px] font-black border-l border-zinc-50 dark:border-zinc-800 text-center">{m.accountName || '-'}</td>
                                 <td className="p-4 text-zinc-500 text-[10px] font-black italic border-l border-zinc-50 dark:border-zinc-800 text-center">{m.counterAccount || '-'}</td>
                                 <td className="p-4 text-center border-l border-zinc-50 dark:border-zinc-800">
                                    <span className="text-[8px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-black uppercase">{m.source}</span>
