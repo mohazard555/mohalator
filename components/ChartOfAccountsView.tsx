@@ -400,12 +400,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        if (j.linkedAccountCode === code || j.linkedAccountId === account.id) match = true;
        else if (j.categoryId && linkedCatIds.has(j.categoryId)) match = true;
        else if (j.partyName === name) match = true;
-       else if (code === '41' && (j.type === 'بيع' || j.statement.includes('مبيعات'))) match = true;
-       else if (code === '31' && (j.type === 'شراء' || j.statement.includes('مشتريات'))) match = true;
-       else if (code === '42' && j.type === 'مرتجع' && j.statement.includes('مبيعات')) match = true;
-       else if (code === '32' && j.type === 'مرتجع' && j.statement.includes('مشتريات')) match = true;
-       else if (code === '43' && j.type === 'حسم' && j.statement.includes('مبيعات')) match = true;
-       else if (code === '34' && j.type === 'حسم' && j.statement.includes('مشتريات')) match = true;
        else if (isBox) {
           if (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) match = true;
           if (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))) match = true;
@@ -492,12 +486,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        if (j.linkedAccountCode === code || j.linkedAccountId === account.id) match = true;
        else if (j.categoryId && linkedCatIds.has(j.categoryId)) match = true;
        else if (j.partyName === name) match = true;
-       else if (code === '41' && (j.type === 'بيع' || j.statement.includes('مبيعات'))) match = true;
-       else if (code === '31' && (j.type === 'شراء' || j.statement.includes('مشتريات'))) match = true;
-       else if (code === '42' && j.type === 'مرتجع' && j.statement.includes('مبيعات')) match = true;
-       else if (code === '32' && j.type === 'مرتجع' && j.statement.includes('مشتريات')) match = true;
-       else if (code === '43' && j.type === 'حسم' && j.statement.includes('مبيعات')) match = true;
-       else if (code === '34' && j.type === 'حسم' && j.statement.includes('مشتريات')) match = true;
        else if (isBox) {
           if (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) match = true;
           if (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))) match = true;
