@@ -35,39 +35,57 @@ export const PdfExportService = {
     const opt = {
       margin: margin,
       filename: fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`,
-      image: { type: 'jpeg', quality: 1.0 }, // أعلى جودة للصور
+      image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
-        scale: 3, // دقة عالية للنصوص الصغيرة
+        scale: 3, 
         useCORS: true, 
-        letterRendering: false, // هام جداً: تركه false يمنع تقطيع الحروف العربية
-        logging: false,
-        backgroundColor: '#ffffff',
-        fontStyle: 'normal'
+        letterRendering: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+        backgroundColor: '#ffffff'
       },
       jsPDF: { 
         unit: 'mm', 
         format: format, 
         orientation: orientation,
-        compress: true,
-        precision: 16 // دقة الحسابات الرياضية للمسافات
+        compress: true
       },
-      // التحكم في فواصل الصفحات بناءً على CSS
       pagebreak: { 
         mode: ['css', 'legacy'], 
-        before: '.pdf-page-break',
-        avoid: 'tr' // تجنب قطع سطر الجدول في المنتصف
+        avoid: ['tr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
       }
     };
 
     try {
-      // إجبار العنصر على وضع RTL قبل اللقطة لضمان اتجاه المحاذاة
-      const originalDir = element.style.direction;
+      // الانتظار حتى تحميل الخطوط لضمان ظهور النص العربي بشكل صحيح
+      if (document.fonts) {
+        await document.fonts.ready;
+      }
+
+      // إعداد العنصر للتصدير: إجبار RTL والمحاذاة لليمين والخط العربي
+      const originalStyles = {
+        direction: element.style.direction,
+        textAlign: element.style.textAlign,
+        fontFamily: element.style.fontFamily
+      };
+
       element.style.direction = 'rtl';
+      element.style.textAlign = 'right';
+      element.style.fontFamily = "'Cairo', sans-serif";
+      
+      // إضافة كلاس مؤقت للمساعدة في التنسيق إذا لزم الأمر
+      element.classList.add('export-container-fix');
       
       const result = await html2pdf().set(opt).from(element).save();
       
       // إعادة الحالة الأصلية
-      element.style.direction = originalDir;
+      element.style.direction = originalStyles.direction;
+      element.style.textAlign = originalStyles.textAlign;
+      element.style.fontFamily = originalStyles.fontFamily;
+      element.classList.remove('export-container-fix');
+      
       return result;
     } catch (error) {
       console.error('PDF Export Critical Error:', error);
