@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Search, Package, Plus, Trash2, Edit2, FileDown, Printer, Box, Save, X, Warehouse as WarehouseIcon, Calendar, Coins, Hash, FileSpreadsheet, FileText, Upload } from 'lucide-react';
 import { StockEntry, InventoryItem, WarehouseEntity, AppSettings } from '../types';
 import { exportToCSV } from '../utils/export';
-import * as XLSX from 'https://esm.sh/xlsx';
+import * as XLSX from 'xlsx';
 
 declare var html2pdf: any;
 

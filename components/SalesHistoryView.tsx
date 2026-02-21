@@ -6,7 +6,7 @@ import { exportToCSV } from '../utils/export';
 import { PdfExportService } from '../utils/PdfExportService';
 import { ImageExportService } from '../utils/ImageExportService';
 import { tafqeet } from '../utils/tafqeet';
-import * as XLSX from 'https://esm.sh/xlsx';
+import * as XLSX from 'xlsx';
 
 interface SalesHistoryViewProps {
   onBack: () => void;

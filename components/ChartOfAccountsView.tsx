@@ -122,7 +122,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     
     let changed = false;
     
-    // 1. مزامنة المبيعات -> حساب 41
+    // 1. مزامنة المبيعات -> حساب 41 (كامل القيمة)
     currentSales.forEach(s => {
        if (!currentJournal.some(j => j.voucherNumber === s.invoiceNumber && j.type === 'بيع')) {
           const total = s.items.reduce((sum, it) => sum + it.total, 0);
@@ -130,7 +130,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
              id: crypto.randomUUID(),
              date: s.date,
              statement: `مبيعات فاتورة #${s.invoiceNumber}`,
-             receivedSYP: s.paymentType === 'نقداً' ? total : 0,
+             receivedSYP: total, // تسجيل كامل القيمة كإيراد (Credit)
              paidSYP: 0,
              receivedUSD: 0,
              paidUSD: 0,
@@ -191,7 +191,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        }
     });
 
-    // 3. مزامنة المشتريات -> حساب 31
+    // 3. مزامنة المشتريات -> حساب 31 (كامل القيمة)
     currentPurchases.forEach(p => {
        if (!currentJournal.some(j => j.voucherNumber === p.invoiceNumber && j.type === 'شراء')) {
           const total = p.items.reduce((sum, it) => sum + it.total, 0);
@@ -200,7 +200,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
              date: p.date,
              statement: `مشتريات فاتورة #${p.invoiceNumber}`,
              receivedSYP: 0,
-             paidSYP: p.paymentType === 'نقداً' ? total : 0,
+             paidSYP: total, // تسجيل كامل القيمة كمشتريات (Debit)
              receivedUSD: 0,
              paidUSD: 0,
              notes: p.notes,
@@ -288,8 +288,8 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
              id: crypto.randomUUID(),
              date: new Date().toISOString().split('T')[0],
              statement: `رصيد افتتاحي: ${item.name} (${item.openingStock} ${item.unit})`,
-             receivedSYP: item.openingStock * item.price,
-             paidSYP: 0,
+             receivedSYP: 0,
+             paidSYP: item.openingStock * item.price,
              receivedUSD: 0,
              paidUSD: 0,
              notes: 'بضاعة أول المدة من إدارة البنود',
@@ -350,20 +350,20 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     if (account.type === 'FOLDER') {
       const children = accounts.filter(a => a.parentId === account.id);
       
-      // معادلة صافي المشتريات (ID 3): إجمالي المشتريات + مصاريف نقل - مرتجع المشتريات - الحسم المكتسب
-      if (account.id === '3') {
-         const b31 = calculateBalance(children.find(c => c.code === '31') || { id: '0', code: '31' } as any);
-         const b32 = calculateBalance(children.find(c => c.code === '32') || { id: '0', code: '32' } as any);
-         const b33 = calculateBalance(children.find(c => c.code === '33') || { id: '0', code: '33' } as any);
-         const b34 = calculateBalance(children.find(c => c.code === '34') || { id: '0', code: '34' } as any);
+      // معادلة صافي المشتريات (CODE 3): إجمالي المشتريات + مصاريف نقل - مرتجع المشتريات - الحسم المكتسب
+      if (account.code === '3') {
+         const b31 = calculateBalance(children.find(c => c.code === '31') || { id: '0', code: '31', type: 'ACCOUNT' } as any);
+         const b32 = calculateBalance(children.find(c => c.code === '32') || { id: '0', code: '32', type: 'ACCOUNT' } as any);
+         const b33 = calculateBalance(children.find(c => c.code === '33') || { id: '0', code: '33', type: 'ACCOUNT' } as any);
+         const b34 = calculateBalance(children.find(c => c.code === '34') || { id: '0', code: '34', type: 'ACCOUNT' } as any);
          return (Math.abs(b31) + Math.abs(b33)) - (Math.abs(b32) + Math.abs(b34));
       }
       
-      // معادلة صافي المبيعات (ID 4): إجمالي المبيعات - مرتجع المبيعات - الحسم الممنوح
-      if (account.id === '4') {
-         const b41 = calculateBalance(children.find(c => c.code === '41') || { id: '0', code: '41' } as any);
-         const b42 = calculateBalance(children.find(c => c.code === '42') || { id: '0', code: '42' } as any);
-         const b43 = calculateBalance(children.find(c => c.code === '43') || { id: '0', code: '43' } as any);
+      // معادلة صافي المبيعات (CODE 4): إجمالي المبيعات - مرتجع المبيعات - الحسم الممنوح
+      if (account.code === '4') {
+         const b41 = calculateBalance(children.find(c => c.code === '41') || { id: '0', code: '41', type: 'ACCOUNT' } as any);
+         const b42 = calculateBalance(children.find(c => c.code === '42') || { id: '0', code: '42', type: 'ACCOUNT' } as any);
+         const b43 = calculateBalance(children.find(c => c.code === '43') || { id: '0', code: '43', type: 'ACCOUNT' } as any);
          return Math.abs(b41) - (Math.abs(b42) + Math.abs(b43));
       }
 
@@ -371,6 +371,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     }
     
     const code = account.code;
+    const name = account.name;
 
     // حساب بضاعة آخر المدة ديناميكياً (72 / 1241)
     if (code === '72' || code === '1241') {
@@ -383,45 +384,52 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
 
     let debitTotal = 0;
     let creditTotal = 0;
-    const name = account.name;
 
-    // 1. الأرصدة الافتتاحية من السجل
-    const ops = openingEntries.filter(e => e.accountName === name);
-    debitTotal += ops.reduce((s, c) => s + Number(c.debit), 0);
-    creditTotal += ops.reduce((s, c) => s + Number(c.credit), 0);
-
-    // 2. حركات القيود (Journal Lines) - المصدر الوحيد للحركات
-    const journalMoves = journal.filter(j => {
-       // الربط عبر الكود المباشر أو عبر الاسم أو عبر الحساب النقدي
-       // @ts-ignore
-       if (j.linkedAccountId === account.id || j.linkedAccountCode === code) return true;
-       
-       if (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) return true;
-       if (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))) return true;
-       
-       return j.partyName === name;
+    // 1. الأرصدة الافتتاحية
+    openingEntries.filter(e => e.accountName === name).forEach(e => {
+       debitTotal += Number(e.debit || 0);
+       creditTotal += Number(e.credit || 0);
     });
-    
-    const isBox = code === '131' || code === '132';
-    if (isBox) {
-       debitTotal += journalMoves.reduce((s, c) => s + Number(c.receivedSYP + (c.receivedUSD || 0)), 0);
-       creditTotal += journalMoves.reduce((s, c) => s + Number(c.paidSYP + (c.paidUSD || 0)), 0);
-    } else {
-       debitTotal += journalMoves.reduce((s, c) => s + Number(c.paidSYP + (c.paidUSD || 0)), 0);
-       creditTotal += journalMoves.reduce((s, c) => s + Number(c.receivedSYP + (c.receivedUSD || 0)), 0);
-    }
 
-    // إضافة رصيد أول المدة للزبائن والموردين من بطاقة الحفلة
+    // 2. حركات اليومية
+    const linkedCatIds = new Set(categories.filter(c => c.linkedAccountId === account.id).map(c => c.id));
+    const isBox = code === '131' || code === '132';
+
+    journal.forEach(j => {
+       let match = false;
+       if (j.linkedAccountCode === code || j.linkedAccountId === account.id) match = true;
+       else if (j.categoryId && linkedCatIds.has(j.categoryId)) match = true;
+       else if (j.partyName === name) match = true;
+       else if (code === '41' && (j.type === 'بيع' || j.statement.includes('مبيعات'))) match = true;
+       else if (code === '31' && (j.type === 'شراء' || j.statement.includes('مشتريات'))) match = true;
+       else if (code === '42' && j.type === 'مرتجع' && j.statement.includes('مبيعات')) match = true;
+       else if (code === '32' && j.type === 'مرتجع' && j.statement.includes('مشتريات')) match = true;
+       else if (code === '43' && j.type === 'حسم' && j.statement.includes('مبيعات')) match = true;
+       else if (code === '34' && j.type === 'حسم' && j.statement.includes('مشتريات')) match = true;
+       else if (isBox) {
+          if (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) match = true;
+          if (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))) match = true;
+       }
+
+       if (match) {
+          if (isBox) {
+             debitTotal += (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0));
+             creditTotal += (Number(j.paidSYP || 0) + Number(j.paidUSD || 0));
+          } else {
+             debitTotal += (Number(j.paidSYP || 0) + Number(j.paidUSD || 0));
+             creditTotal += (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0));
+          }
+       }
+    });
+
+    // رصيد أول المدة للزبائن والموردين
     const party = parties.find(p => p.name === name);
     if (party) {
-       if (party.type === 'عميل' || account.parentId === '121') {
-          debitTotal += (party.openingBalance || 0);
-       } else if (party.type === 'مورد' || account.parentId === '221') {
-          creditTotal += (party.openingBalance || 0);
-       }
+       if (party.type === 'عميل' || account.parentId === '121') debitTotal += (party.openingBalance || 0);
+       else if (party.type === 'مورد' || account.parentId === '221') creditTotal += (party.openingBalance || 0);
     }
 
-    const isDebitNature = code.startsWith('1') || code.startsWith('5') || code.startsWith('3') || code === '42' || code === '43';
+    const isDebitNature = code.startsWith('1') || code.startsWith('5') || code.startsWith('3') || code === '42' || code === '43' || code === '71';
     return isDebitNature ? (debitTotal - creditTotal) : (creditTotal - debitTotal);
   };
 
@@ -475,28 +483,39 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
         });
     });
 
-    // 2. حركات اليومية (Journal Lines)
+    // 2. حركات اليومية
+    const linkedCatIds = new Set(categories.filter(c => c.linkedAccountId === account.id).map(c => c.id));
     const isBox = code === '131' || code === '132';
-    journal.filter(j => {
-       // @ts-ignore
-       if (j.linkedAccountId === account.id || j.linkedAccountCode === code) return true;
-       if (isBox) {
-         if (code === '131') return j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف'));
-         return j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف'));
+
+    journal.forEach(j => {
+       let match = false;
+       if (j.linkedAccountCode === code || j.linkedAccountId === account.id) match = true;
+       else if (j.categoryId && linkedCatIds.has(j.categoryId)) match = true;
+       else if (j.partyName === name) match = true;
+       else if (code === '41' && (j.type === 'بيع' || j.statement.includes('مبيعات'))) match = true;
+       else if (code === '31' && (j.type === 'شراء' || j.statement.includes('مشتريات'))) match = true;
+       else if (code === '42' && j.type === 'مرتجع' && j.statement.includes('مبيعات')) match = true;
+       else if (code === '32' && j.type === 'مرتجع' && j.statement.includes('مشتريات')) match = true;
+       else if (code === '43' && j.type === 'حسم' && j.statement.includes('مبيعات')) match = true;
+       else if (code === '34' && j.type === 'حسم' && j.statement.includes('مشتريات')) match = true;
+       else if (isBox) {
+          if (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) match = true;
+          if (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))) match = true;
        }
-       return j.partyName === name && j.type !== 'حسم';
-    }).forEach(j => {
-       moves.push({ 
-          date: j.date, 
-          number: j.voucherNumber || 'VOU', 
-          statement: j.statement, 
-          debit: isBox ? (j.receivedSYP + (j.receivedUSD || 0)) : (j.paidSYP + (j.paidUSD || 0)), 
-          credit: isBox ? (j.paidSYP + (j.paidUSD || 0)) : (j.receivedSYP + (j.receivedUSD || 0)), 
-          source: j.type === 'قبض' ? 'سند قبض' : j.type === 'دفع' ? 'سند دفع' : (j.type || 'سند يومية'), 
-          counterAccount: isBox ? (j.partyName || 'حساب متنوع') : 'الصندوق / المصرف',
-          user: settings?.managerName || 'النظام',
-          accountName: name
-       });
+
+       if (match) {
+          moves.push({ 
+             date: j.date, 
+             number: j.voucherNumber || 'VOU', 
+             statement: j.statement, 
+             debit: isBox ? (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0)) : (Number(j.paidSYP || 0) + Number(j.paidUSD || 0)), 
+             credit: isBox ? (Number(j.paidSYP || 0) + Number(j.paidUSD || 0)) : (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0)), 
+             source: j.type === 'قبض' ? 'سند قبض' : j.type === 'دفع' ? 'سند دفع' : (j.type || 'سند يومية'), 
+             counterAccount: isBox ? (j.partyName || 'حساب متنوع') : 'الصندوق / المصرف',
+             user: settings?.managerName || 'النظام',
+             accountName: name
+          });
+       }
     });
 
     return moves.sort((a, b) => a.date.localeCompare(b.date));
@@ -673,37 +692,46 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                        <button onClick={() => setSelectedAccount(null)} className="p-3 bg-zinc-100 dark:bg-zinc-800 rounded-2xl text-zinc-400 hover:text-rose-500 transition-all shadow-sm"><X className="w-6 h-6" /></button>
                     </div>
                  </div>
-                 <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
-                    <table className="w-full text-right border-collapse">
+                 <div className="max-h-[500px] overflow-y-auto custom-scrollbar print:max-h-none print:overflow-visible">
+                    {/* Print-only Header */}
+                    <div className="hidden print:block mb-8 border-b-4 border-zinc-900 pb-6 text-center">
+                       <h1 className="text-4xl font-black mb-2">كشف حركات الحساب التفصيلي</h1>
+                       <div className="flex justify-center gap-8 text-xl font-bold">
+                          <span>الحساب: {selectedAccount.name}</span>
+                          <span>الكود: {selectedAccount.code}</span>
+                          <span>التاريخ: {new Date().toLocaleDateString('ar-SA')}</span>
+                       </div>
+                    </div>
+                    <table className="w-full text-right border-collapse print:text-[12px]">
                        <thead>
-                          <tr className="bg-zinc-900 text-white text-[10px] font-black uppercase text-zinc-500 border-b dark:border-zinc-800 sticky top-0 z-10 h-14 print:bg-zinc-100 print:text-black">
-                             <th className="p-4 border-l border-zinc-800 w-24 text-center">التاريخ</th>
-                             <th className="p-4 border-l border-zinc-800">البيان الرسمي</th>
-                             <th className="p-4 border-l border-zinc-800 w-32 text-center">الحساب الفرعي</th>
-                             <th className="p-4 border-l border-zinc-800 w-32 text-center">الحساب المقابل</th>
-                             <th className="p-4 border-l border-zinc-800 w-20 text-center">العملية</th>
-                             <th className="p-4 border-l border-zinc-800 w-20 text-center">رقم المستند</th>
-                             <th className="p-4 text-center border-l border-zinc-800 bg-emerald-900/20">مدين (+)</th>
-                             <th className="p-4 text-center border-l border-zinc-800 bg-rose-900/20">دائن (-)</th>
+                          <tr className="bg-zinc-900 text-white text-[10px] font-black uppercase text-zinc-500 border-b dark:border-zinc-800 sticky top-0 z-10 h-14 print:bg-white print:text-black print:border-b-2 print:border-zinc-900">
+                             <th className="p-4 border-l border-zinc-800 w-24 text-center print:border-zinc-300">التاريخ</th>
+                             <th className="p-4 border-l border-zinc-800 print:border-zinc-300">البيان الرسمي</th>
+                             <th className="p-4 border-l border-zinc-800 w-32 text-center print:border-zinc-300">الحساب الفرعي</th>
+                             <th className="p-4 border-l border-zinc-800 w-32 text-center print:border-zinc-300">الحساب المقابل</th>
+                             <th className="p-4 border-l border-zinc-800 w-20 text-center print:border-zinc-300">العملية</th>
+                             <th className="p-4 border-l border-zinc-800 w-20 text-center print:border-zinc-300">رقم المستند</th>
+                             <th className="p-4 text-center border-l border-zinc-800 bg-emerald-900/20 print:bg-transparent print:border-zinc-300">مدين (+)</th>
+                             <th className="p-4 text-center border-l border-zinc-800 bg-rose-900/20 print:bg-transparent print:border-zinc-300">دائن (-)</th>
                              <th className="p-4 text-center w-24">المستخدم</th>
                           </tr>
                        </thead>
-                       <tbody className="divide-y dark:divide-zinc-800 font-bold text-zinc-700 dark:text-zinc-300">
+                       <tbody className="divide-y dark:divide-zinc-800 font-bold text-zinc-700 dark:text-zinc-300 print:divide-zinc-300">
                           {accountMoves.length === 0 ? (
-                            <tr><td colSpan={8} className="p-32 text-center italic text-zinc-400 font-black text-2xl uppercase tracking-tighter">لا توجد حركات مسجلة حالياً لهذا الحساب</td></tr>
+                            <tr><td colSpan={9} className="p-32 text-center italic text-zinc-400 font-black text-2xl uppercase tracking-tighter">لا توجد حركات مسجلة حالياً لهذا الحساب</td></tr>
                           ) : accountMoves.map((m, i) => (
-                             <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 h-16 transition-colors group cursor-pointer" onClick={() => { setSelectedMove(m); setIsMoveDetailOpen(true); }}>
-                                <td className="p-4 font-mono text-zinc-400 border-l border-zinc-50 dark:border-zinc-800 text-[10px] text-center">{m.date}</td>
-                                <td className="p-4 text-readable border-l border-zinc-50 dark:border-zinc-800 text-xs leading-tight group-hover:text-primary">{m.statement}</td>
-                                <td className="p-4 text-zinc-500 text-[10px] font-black border-l border-zinc-50 dark:border-zinc-800 text-center">{m.accountName || '-'}</td>
-                                <td className="p-4 text-zinc-500 text-[10px] font-black italic border-l border-zinc-50 dark:border-zinc-800 text-center">{m.counterAccount || '-'}</td>
-                                <td className="p-4 text-center border-l border-zinc-50 dark:border-zinc-800">
-                                   <span className="text-[8px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-black uppercase">{m.source}</span>
+                             <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 h-16 transition-colors group cursor-pointer print:h-10" onClick={() => { setSelectedMove(m); setIsMoveDetailOpen(true); }}>
+                                <td className="p-4 font-mono text-zinc-400 border-l border-zinc-50 dark:border-zinc-800 text-[10px] text-center print:text-black print:border-zinc-300">{m.date}</td>
+                                <td className="p-4 text-readable border-l border-zinc-50 dark:border-zinc-800 text-xs leading-tight group-hover:text-primary print:text-black print:border-zinc-300">{m.statement}</td>
+                                <td className="p-4 text-zinc-500 text-[10px] font-black border-l border-zinc-50 dark:border-zinc-800 text-center print:text-black print:border-zinc-300">{m.accountName || '-'}</td>
+                                <td className="p-4 text-zinc-500 text-[10px] font-black italic border-l border-zinc-50 dark:border-zinc-800 text-center print:text-black print:border-zinc-300">{m.counterAccount || '-'}</td>
+                                <td className="p-4 text-center border-l border-zinc-50 dark:border-zinc-800 print:border-zinc-300">
+                                   <span className="text-[8px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-black uppercase print:bg-transparent print:border print:border-zinc-300">{m.source}</span>
                                 </td>
-                                <td className="p-4 text-center font-mono text-zinc-400 text-[10px] border-l border-zinc-50 dark:border-zinc-800">#{m.number}</td>
-                                <td className="p-4 text-center font-mono text-emerald-600 border-l border-zinc-50 dark:border-zinc-800 text-base">{m.debit > 0 ? m.debit.toLocaleString() : '-'}</td>
-                                <td className="p-4 text-center font-mono text-rose-600 border-l border-zinc-50 dark:border-zinc-800 text-base">{m.credit > 0 ? m.credit.toLocaleString() : '-'}</td>
-                                <td className="p-4 text-center text-[9px] text-zinc-400 border-l border-zinc-50 dark:border-zinc-800">{m.user || '-'}</td>
+                                <td className="p-4 text-center font-mono text-zinc-400 text-[10px] border-l border-zinc-50 dark:border-zinc-800 print:text-black print:border-zinc-300">#{m.number}</td>
+                                <td className="p-4 text-center font-mono text-emerald-600 border-l border-zinc-50 dark:border-zinc-800 text-base print:text-black print:border-zinc-300">{m.debit > 0 ? m.debit.toLocaleString() : '-'}</td>
+                                <td className="p-4 text-center font-mono text-rose-600 border-l border-zinc-50 dark:border-zinc-800 text-base print:text-black print:border-zinc-300">{m.credit > 0 ? m.credit.toLocaleString() : '-'}</td>
+                                <td className="p-4 text-center text-[9px] text-zinc-400 border-l border-zinc-50 dark:border-zinc-800 print:text-black">{m.user || '-'}</td>
                              </tr>
                           ))}
                        </tbody>

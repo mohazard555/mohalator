@@ -1,5 +1,5 @@
 
-import * as XLSX from 'https://esm.sh/xlsx';
+import * as XLSX from 'xlsx';
 
 /**
  * خدمة التصدير الاحترافية إلى ملفات Excel (XLSX)

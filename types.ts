@@ -257,6 +257,8 @@ export interface CashEntry {
   amount?: number;
   amountLiteral?: string;
   categoryId?: string; 
+  linkedAccountId?: string;
+  linkedAccountCode?: string;
   cashAccount?: 'الصندوق' | 'المصرف';
 }
 
