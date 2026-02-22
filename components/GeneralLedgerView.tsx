@@ -45,28 +45,23 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
   const [isExportingImage, setIsExportingImage] = useState(false);
 
   useEffect(() => {
-    loadLedger();
-    const savedSett = localStorage.getItem('sheno_settings');
-    const savedChart = localStorage.getItem('sheno_chart_accounts');
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+    
+    loadLedger(prefix);
+    const savedSett = localStorage.getItem(`${prefix}_settings`);
+    const savedChart = localStorage.getItem(`${prefix}_chart_accounts`);
     if (savedSett) setSettings(JSON.parse(savedSett));
     if (savedChart) setChartAccounts(JSON.parse(savedChart));
   }, []);
 
-  const loadLedger = () => {
-    const journalRaw = localStorage.getItem('sheno_cash_journal');
-    const openingRaw = localStorage.getItem('sheno_opening_entries');
-    const salesRaw = localStorage.getItem('sheno_sales_invoices');
-    const salesReturnsRaw = localStorage.getItem('sheno_sales_returns');
-    const purchaseRaw = localStorage.getItem('sheno_purchases');
-    const purchaseReturnsRaw = localStorage.getItem('sheno_purchase_returns');
-    const catRaw = localStorage.getItem('sheno_accounting_categories');
+  const loadLedger = (prefix: string) => {
+    const journalRaw = localStorage.getItem(`${prefix}_cash_journal`);
+    const openingRaw = localStorage.getItem(`${prefix}_opening_entries`);
+    const catRaw = localStorage.getItem(`${prefix}_accounting_categories`);
     
     const journal: CashEntry[] = journalRaw ? JSON.parse(journalRaw) : [];
     const opening: OpeningEntry[] = openingRaw ? JSON.parse(openingRaw) : [];
-    const salesInvoices: SalesInvoice[] = salesRaw ? JSON.parse(salesRaw) : [];
-    const salesReturns: any[] = salesReturnsRaw ? JSON.parse(salesReturnsRaw) : [];
-    const purchaseInvoices: PurchaseInvoice[] = purchaseRaw ? JSON.parse(purchaseRaw) : [];
-    const purchaseReturns: any[] = purchaseReturnsRaw ? JSON.parse(purchaseReturnsRaw) : [];
     const cats: AccountingCategory[] = catRaw ? JSON.parse(catRaw) : [];
 
     const ledger: LedgerTransaction[] = [];
@@ -79,56 +74,20 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
       });
     });
 
-    // 2. المبيعات
-    salesInvoices.forEach(inv => {
-       const gross = inv.items.reduce((s,i) => s + i.total, 0);
-       ledger.push({
-         id: inv.id, date: inv.date, statement: `فاتورة مبيعات رقم ${inv.invoiceNumber}`,
-         debit: gross, credit: 0, type: 'مبيع', ref: inv.invoiceNumber, account: inv.customerName
-       });
-       if (inv.discountAmount > 0) {
-          ledger.push({
-            id: inv.id + '-disc', date: inv.date, statement: `حسم ممنوح للفاتورة #${inv.invoiceNumber}`,
-            debit: 0, credit: inv.discountAmount, type: 'حسم', ref: inv.invoiceNumber, account: inv.customerName
-          });
-       }
-    });
-
-    // 3. المشتريات
-    purchaseInvoices.forEach(inv => {
-       const gross = inv.items.reduce((s,i) => s + i.total, 0) + (inv.transportExpenses || 0);
-       ledger.push({
-         id: inv.id, date: inv.date, statement: `فاتورة مشتريات رقم ${inv.invoiceNumber}`,
-         debit: 0, credit: gross, type: 'شراء', ref: inv.invoiceNumber, account: inv.supplierName
-       });
-       if (inv.discountAmount > 0) {
-          ledger.push({
-            id: inv.id + '-disc', date: inv.date, statement: `حسم مكتسب من فاتورة #${inv.invoiceNumber}`,
-            debit: inv.discountAmount, credit: 0, type: 'حسم', ref: inv.invoiceNumber, account: inv.supplierName
-          });
-       }
-    });
-
-    // 4. المرتجعات
-    salesReturns.forEach(ret => {
-       ledger.push({
-         id: ret.id, date: ret.date, statement: `مرتجع مبيع فاتورة #${ret.invoiceNumber}`,
-         debit: 0, credit: ret.totalReturnAmount, type: 'مرتجع', ref: ret.invoiceNumber, account: ret.customerName
-       });
-    });
-    purchaseReturns.forEach(ret => {
-       ledger.push({
-         id: ret.id, date: ret.date, statement: `مرتجع شراء فاتورة #${ret.invoiceNumber}`,
-         debit: ret.totalReturnAmount, credit: 0, type: 'مرتجع', ref: ret.invoiceNumber, account: ret.supplierName
-       });
-    });
-
-    // 5. حركات اليومية
-    journal.filter(j => j.type !== 'حسم').forEach(j => {
+    // 2. حركات اليومية (المصدر الوحيد للحقيقة)
+    journal.forEach(j => {
       let accountName = j.partyName || 'الصندوق العام';
       if (j.categoryId) {
         const catMatch = cats.find(c => c.id === j.categoryId);
         if (catMatch) accountName = catMatch.name;
+      } else if (j.linkedAccountCode) {
+        // إذا كان هناك كود حساب مرتبط، نحاول جلب اسمه من الشجرة
+        const savedChart = localStorage.getItem(`${prefix}_chart_accounts`);
+        if (savedChart) {
+           const accounts: AccountNode[] = JSON.parse(savedChart);
+           const acc = accounts.find(a => a.code === j.linkedAccountCode || a.id === j.linkedAccountId);
+           if (acc) accountName = acc.name;
+        }
       }
 
       ledger.push({
@@ -162,8 +121,36 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
       if (selectedAccountId) {
         const selectedNode = chartAccounts.find(a => a.id === selectedAccountId);
         if (selectedNode?.type === 'FOLDER') {
-          const childNames = getAllChildNames(selectedNode.id);
-          matchAccount = childNames.includes(t.account) || t.account === selectedNode.name;
+          // جلب كافة الحركات المرتبطة بالكود أو المعرف في اليومية
+          const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+          const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+          const journalRaw = localStorage.getItem(`${prefix}_cash_journal`);
+          const journal: CashEntry[] = journalRaw ? JSON.parse(journalRaw) : [];
+          
+          // التحقق من انتماء الحساب لهذا المجلد أو أحد فروعه
+          const isChildOfFolder = (accId: string): boolean => {
+             const acc = chartAccounts.find(a => a.id === accId);
+             if (!acc) return false;
+             if (acc.parentId === selectedNode.id) return true;
+             if (acc.parentId) return isChildOfFolder(acc.parentId);
+             return false;
+          };
+
+          // البحث عن الحركة الأصلية في اليومية للتحقق من الربط المحاسبي
+          const journalEntry = journal.find(j => j.id === t.id);
+          if (journalEntry) {
+             if (journalEntry.linkedAccountId === selectedNode.id || journalEntry.linkedAccountCode === selectedNode.code) matchAccount = true;
+             else if (journalEntry.linkedAccountId && isChildOfFolder(journalEntry.linkedAccountId)) matchAccount = true;
+             else if (journalEntry.partyName === selectedNode.name) matchAccount = true;
+             else {
+                // إذا لم نجد ربط مباشر، نعتمد على الاسم (للحالات القديمة)
+                const childNames = getAllChildNames(selectedNode.id);
+                matchAccount = childNames.includes(t.account) || t.account === selectedNode.name;
+             }
+          } else {
+             const childNames = getAllChildNames(selectedNode.id);
+             matchAccount = childNames.includes(t.account) || t.account === selectedNode.name;
+          }
         } else {
           matchAccount = t.account === accountFilter;
         }

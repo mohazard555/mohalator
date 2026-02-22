@@ -122,22 +122,24 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     
     let changed = false;
     
-    // 1. مزامنة المبيعات -> حساب 41 (كامل القيمة)
+    // 1. مزامنة المبيعات -> حساب 41 (كامل القيمة) والعميل
     currentSales.forEach(s => {
-       if (!currentJournal.some(j => j.voucherNumber === s.invoiceNumber && j.type === 'بيع')) {
-          const total = s.items.reduce((sum, it) => sum + it.total, 0);
+       const total = s.items.reduce((sum, it) => sum + it.total, 0);
+       
+       // قيد المبيعات (دائن)
+       if (!currentJournal.some(j => j.voucherNumber === s.invoiceNumber && j.linkedAccountCode === '41')) {
           currentJournal.push({
              id: crypto.randomUUID(),
              date: s.date,
              statement: `مبيعات فاتورة #${s.invoiceNumber}`,
-             receivedSYP: total, // تسجيل كامل القيمة كإيراد (Credit)
+             receivedSYP: total,
              paidSYP: 0,
              receivedUSD: 0,
              paidUSD: 0,
-             notes: s.notes,
+             notes: s.notes || '',
              type: 'بيع',
              voucherNumber: s.invoiceNumber,
-             partyName: s.customerName,
+             partyName: null,
              cashAccount: s.cashAccount,
              // @ts-ignore
              linkedAccountId: '41',
@@ -146,67 +148,127 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
           changed = true;
        }
 
-       // مزامنة الحسم الممنوح -> حساب 43
-       if (s.discountAmount > 0 && !currentJournal.some(j => j.voucherNumber === s.invoiceNumber && j.type === 'حسم' && j.linkedAccountCode === '43')) {
+       // قيد العميل (مدين)
+       if (!currentJournal.some(j => j.voucherNumber === s.invoiceNumber && j.type === 'بيع' && j.partyName === s.customerName && !j.linkedAccountId)) {
           currentJournal.push({
              id: crypto.randomUUID(),
              date: s.date,
-             statement: `حسم ممنوح فاتورة #${s.invoiceNumber}`,
+             statement: `مبيعات فاتورة #${s.invoiceNumber} (قيد مدين)`,
              receivedSYP: 0,
-             paidSYP: s.discountAmount,
+             paidSYP: total,
              receivedUSD: 0,
              paidUSD: 0,
-             notes: 'حسم تسوية مبيعات',
-             type: 'حسم',
+             notes: s.notes,
+             type: 'بيع',
              voucherNumber: s.invoiceNumber,
              partyName: s.customerName,
-             // @ts-ignore
-             linkedAccountId: '43',
-             linkedAccountCode: '43'
+             linkedAccountId: undefined
           });
           changed = true;
        }
+
+       // مزامنة الحسم الممنوح -> حساب 43 (مدين) والعميل (دائن)
+       if (s.discountAmount > 0) {
+          // قيد الحسم (مدين)
+          if (!currentJournal.some(j => j.voucherNumber === s.invoiceNumber && j.type === 'حسم' && j.linkedAccountCode === '43')) {
+             currentJournal.push({
+                id: crypto.randomUUID(),
+                date: s.date,
+                statement: `حسم ممنوح فاتورة #${s.invoiceNumber}`,
+                receivedSYP: 0,
+                paidSYP: s.discountAmount,
+                receivedUSD: 0,
+                paidUSD: 0,
+                notes: 'حسم تسوية مبيعات',
+                type: 'حسم',
+                voucherNumber: s.invoiceNumber,
+                partyName: null,
+                // @ts-ignore
+                linkedAccountId: '43',
+                linkedAccountCode: '43'
+             });
+             changed = true;
+          }
+          // قيد العميل (دائن)
+          if (!currentJournal.some(j => j.voucherNumber === s.invoiceNumber && j.type === 'حسم' && j.partyName === s.customerName)) {
+             currentJournal.push({
+                id: crypto.randomUUID(),
+                date: s.date,
+                statement: `حسم ممنوح فاتورة #${s.invoiceNumber} (تخفيض رصيد)`,
+                receivedSYP: s.discountAmount,
+                paidSYP: 0,
+                receivedUSD: 0,
+                paidUSD: 0,
+                notes: 'حسم تسوية مبيعات',
+                type: 'حسم',
+                voucherNumber: s.invoiceNumber,
+                partyName: s.customerName
+             });
+             changed = true;
+          }
+       }
     });
 
-    // 2. مزامنة مرتجع المبيعات -> حساب 42
+    // 2. مزامنة مرتجع المبيعات -> حساب 42 (مدين) والعميل (دائن)
     currentSalesReturns.forEach(r => {
+       const amount = Number(r.totalReturnAmount) || 0;
+       // قيد المرتجع (مدين)
        if (!currentJournal.some(j => j.voucherNumber === r.invoiceNumber && j.type === 'مرتجع' && j.linkedAccountCode === '42')) {
           currentJournal.push({
              id: crypto.randomUUID(),
              date: r.date,
              statement: `مرتجع مبيعات فاتورة #${r.invoiceNumber}`,
              receivedSYP: 0,
-             paidSYP: Number(r.totalReturnAmount) || 0,
+             paidSYP: amount,
              receivedUSD: 0,
              paidUSD: 0,
              notes: r.notes || '',
              type: 'مرتجع',
              voucherNumber: r.invoiceNumber,
-             partyName: r.customerName,
+             partyName: null,
              // @ts-ignore
              linkedAccountId: '42',
              linkedAccountCode: '42'
           });
           changed = true;
        }
+       // قيد العميل (دائن)
+       if (!currentJournal.some(j => j.voucherNumber === r.invoiceNumber && j.type === 'مرتجع' && j.partyName === r.customerName)) {
+          currentJournal.push({
+             id: crypto.randomUUID(),
+             date: r.date,
+             statement: `مرتجع مبيعات فاتورة #${r.invoiceNumber} (تخفيض رصيد)`,
+             receivedSYP: amount,
+             paidSYP: 0,
+             receivedUSD: 0,
+             paidUSD: 0,
+             notes: r.notes || '',
+             type: 'مرتجع',
+             voucherNumber: r.invoiceNumber,
+             partyName: r.customerName
+          });
+          changed = true;
+       }
     });
 
-    // 3. مزامنة المشتريات -> حساب 31 (كامل القيمة)
+    // 3. مزامنة المشتريات -> حساب 31 (مدين) والمورد (دائن)
     currentPurchases.forEach(p => {
-       if (!currentJournal.some(j => j.voucherNumber === p.invoiceNumber && j.type === 'شراء')) {
-          const total = p.items.reduce((sum, it) => sum + it.total, 0);
+       const total = p.items.reduce((sum, it) => sum + it.total, 0);
+       
+       // قيد المشتريات (مدين)
+       if (!currentJournal.some(j => j.voucherNumber === p.invoiceNumber && j.linkedAccountCode === '31')) {
           currentJournal.push({
              id: crypto.randomUUID(),
              date: p.date,
              statement: `مشتريات فاتورة #${p.invoiceNumber}`,
              receivedSYP: 0,
-             paidSYP: total, // تسجيل كامل القيمة كمشتريات (Debit)
+             paidSYP: total,
              receivedUSD: 0,
              paidUSD: 0,
-             notes: p.notes,
+             notes: p.notes || '',
              type: 'شراء',
              voucherNumber: p.invoiceNumber,
-             partyName: p.supplierName,
+             partyName: null,
              cashAccount: p.cashAccount,
              // @ts-ignore
              linkedAccountId: '31',
@@ -215,67 +277,144 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
           changed = true;
        }
 
-       // مزامنة مصاريف النقل -> حساب 33
-       if (p.transportExpenses > 0 && !currentJournal.some(j => j.voucherNumber === p.invoiceNumber && j.linkedAccountCode === '33')) {
+       // قيد المورد (دائن)
+       if (!currentJournal.some(j => j.voucherNumber === p.invoiceNumber && j.type === 'شراء' && j.partyName === p.supplierName && !j.linkedAccountId)) {
           currentJournal.push({
              id: crypto.randomUUID(),
              date: p.date,
-             statement: `مصاريف نقل مشتريات فاتورة #${p.invoiceNumber}`,
-             receivedSYP: 0,
-             paidSYP: p.transportExpenses,
-             receivedUSD: 0,
-             paidUSD: 0,
-             notes: '',
-             type: 'دفع',
-             voucherNumber: p.invoiceNumber,
-             partyName: p.supplierName,
-             // @ts-ignore
-             linkedAccountId: '33',
-             linkedAccountCode: '33'
-          });
-          changed = true;
-       }
-
-       // مزامنة الحسم المكتسب -> حساب 34
-       if (p.discountAmount > 0 && !currentJournal.some(j => j.voucherNumber === p.invoiceNumber && j.type === 'حسم' && j.linkedAccountCode === '34')) {
-          currentJournal.push({
-             id: crypto.randomUUID(),
-             date: p.date,
-             statement: `حسم مكتسب فاتورة #${p.invoiceNumber}`,
-             receivedSYP: p.discountAmount,
+             statement: `مشتريات فاتورة #${p.invoiceNumber} (قيد دائن)`,
+             receivedSYP: total,
              paidSYP: 0,
              receivedUSD: 0,
              paidUSD: 0,
-             notes: 'حسم تسوية مشتريات',
-             type: 'حسم',
+             notes: p.notes,
+             type: 'شراء',
              voucherNumber: p.invoiceNumber,
-             partyName: p.supplierName,
-             // @ts-ignore
-             linkedAccountId: '34',
-             linkedAccountCode: '34'
+             partyName: p.supplierName
           });
           changed = true;
        }
+
+       // مزامنة مصاريف النقل -> حساب 33 (مدين) والمورد أو الصندوق (دائن)
+       if (p.transportExpenses > 0) {
+          // قيد المصاريف (مدين)
+          if (!currentJournal.some(j => j.voucherNumber === p.invoiceNumber && j.linkedAccountCode === '33')) {
+             currentJournal.push({
+                id: crypto.randomUUID(),
+                date: p.date,
+                statement: `مصاريف نقل مشتريات فاتورة #${p.invoiceNumber}`,
+                receivedSYP: 0,
+                paidSYP: p.transportExpenses,
+                receivedUSD: 0,
+                paidUSD: 0,
+                notes: '',
+                type: 'دفع',
+                voucherNumber: p.invoiceNumber,
+                partyName: null,
+                // @ts-ignore
+                linkedAccountId: '33',
+                linkedAccountCode: '33'
+             });
+             changed = true;
+          }
+          // قيد المورد (دائن) - إذا كانت المصاريف على المورد
+          if (!currentJournal.some(j => j.voucherNumber === p.invoiceNumber && j.statement.includes('نقل') && j.partyName === p.supplierName)) {
+             currentJournal.push({
+                id: crypto.randomUUID(),
+                date: p.date,
+                statement: `مصاريف نقل مشتريات فاتورة #${p.invoiceNumber} (تضاف للمورد)`,
+                receivedSYP: p.transportExpenses,
+                paidSYP: 0,
+                receivedUSD: 0,
+                paidUSD: 0,
+                notes: '',
+                type: 'دفع',
+                voucherNumber: p.invoiceNumber,
+                partyName: p.supplierName
+             });
+             changed = true;
+          }
+       }
+
+       // مزامنة الحسم المكتسب -> حساب 34 (دائن) والمورد (مدين)
+       if (p.discountAmount > 0) {
+          // قيد الحسم (دائن)
+          if (!currentJournal.some(j => j.voucherNumber === p.invoiceNumber && j.type === 'حسم' && j.linkedAccountCode === '34')) {
+             currentJournal.push({
+                id: crypto.randomUUID(),
+                date: p.date,
+                statement: `حسم مكتسب فاتورة #${p.invoiceNumber}`,
+                receivedSYP: p.discountAmount,
+                paidSYP: 0,
+                receivedUSD: 0,
+                paidUSD: 0,
+                notes: 'حسم تسوية مشتريات',
+                type: 'حسم',
+                voucherNumber: p.invoiceNumber,
+                partyName: null,
+                // @ts-ignore
+                linkedAccountId: '34',
+                linkedAccountCode: '34'
+             });
+             changed = true;
+          }
+          // قيد المورد (مدين)
+          if (!currentJournal.some(j => j.voucherNumber === p.invoiceNumber && j.type === 'حسم' && j.partyName === p.supplierName)) {
+             currentJournal.push({
+                id: crypto.randomUUID(),
+                date: p.date,
+                statement: `حسم مكتسب فاتورة #${p.invoiceNumber} (تخفيض رصيد)`,
+                receivedSYP: 0,
+                paidSYP: p.discountAmount,
+                receivedUSD: 0,
+                paidUSD: 0,
+                notes: 'حسم تسوية مشتريات',
+                type: 'حسم',
+                voucherNumber: p.invoiceNumber,
+                partyName: p.supplierName
+             });
+             changed = true;
+          }
+       }
     });
 
-    // 4. مزامنة مرتجع المشتريات -> حساب 32
+    // 4. مزامنة مرتجع المشتريات -> حساب 32 (دائن) والمورد (مدين)
     currentPurchaseReturns.forEach(r => {
+       const amount = Number(r.totalReturnAmount) || 0;
+       // قيد المرتجع (دائن)
        if (!currentJournal.some(j => j.voucherNumber === r.invoiceNumber && j.type === 'مرتجع' && j.linkedAccountCode === '32')) {
           currentJournal.push({
              id: crypto.randomUUID(),
              date: r.date,
              statement: `مرتجع مشتريات فاتورة #${r.invoiceNumber}`,
-             receivedSYP: Number(r.totalReturnAmount) || 0,
+             receivedSYP: amount,
              paidSYP: 0,
              receivedUSD: 0,
              paidUSD: 0,
              notes: r.notes || '',
              type: 'مرتجع',
              voucherNumber: r.invoiceNumber,
-             partyName: r.supplierName,
+             partyName: null,
              // @ts-ignore
              linkedAccountId: '32',
              linkedAccountCode: '32'
+          });
+          changed = true;
+       }
+       // قيد المورد (مدين)
+       if (!currentJournal.some(j => j.voucherNumber === r.invoiceNumber && j.type === 'مرتجع' && j.partyName === r.supplierName)) {
+          currentJournal.push({
+             id: crypto.randomUUID(),
+             date: r.date,
+             statement: `مرتجع مشتريات فاتورة #${r.invoiceNumber} (تخفيض رصيد)`,
+             receivedSYP: 0,
+             paidSYP: amount,
+             receivedUSD: 0,
+             paidUSD: 0,
+             notes: r.notes || '',
+             type: 'مرتجع',
+             voucherNumber: r.invoiceNumber,
+             partyName: r.supplierName
           });
           changed = true;
        }
@@ -352,25 +491,25 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
       
       // معادلة صافي المشتريات (CODE 3): إجمالي المشتريات + مصاريف نقل - مرتجع المشتريات - الحسم المكتسب
       if (account.code === '3') {
-         const b31 = calculateBalance(children.find(c => c.code === '31') || { id: '0', code: '31', type: 'ACCOUNT' } as any);
-         const b32 = calculateBalance(children.find(c => c.code === '32') || { id: '0', code: '32', type: 'ACCOUNT' } as any);
-         const b33 = calculateBalance(children.find(c => c.code === '33') || { id: '0', code: '33', type: 'ACCOUNT' } as any);
-         const b34 = calculateBalance(children.find(c => c.code === '34') || { id: '0', code: '34', type: 'ACCOUNT' } as any);
+         const b31 = calculateBalance(children.find(c => c.code === '31') || { id: '31', code: '31', type: 'ACCOUNT' } as any);
+         const b32 = calculateBalance(children.find(c => c.code === '32') || { id: '32', code: '32', type: 'ACCOUNT' } as any);
+         const b33 = calculateBalance(children.find(c => c.code === '33') || { id: '33', code: '33', type: 'ACCOUNT' } as any);
+         const b34 = calculateBalance(children.find(c => c.code === '34') || { id: '34', code: '34', type: 'ACCOUNT' } as any);
          return (Math.abs(b31) + Math.abs(b33)) - (Math.abs(b32) + Math.abs(b34));
       }
       
       // معادلة صافي المبيعات (CODE 4): إجمالي المبيعات - مرتجع المبيعات - الحسم الممنوح
       if (account.code === '4') {
-         const b41 = calculateBalance(children.find(c => c.code === '41') || { id: '0', code: '41', type: 'ACCOUNT' } as any);
-         const b42 = calculateBalance(children.find(c => c.code === '42') || { id: '0', code: '42', type: 'ACCOUNT' } as any);
-         const b43 = calculateBalance(children.find(c => c.code === '43') || { id: '0', code: '43', type: 'ACCOUNT' } as any);
+         const b41 = calculateBalance(children.find(c => c.code === '41') || { id: '41', code: '41', type: 'ACCOUNT' } as any);
+         const b42 = calculateBalance(children.find(c => c.code === '42') || { id: '42', code: '42', type: 'ACCOUNT' } as any);
+         const b43 = calculateBalance(children.find(c => c.code === '43') || { id: '43', code: '43', type: 'ACCOUNT' } as any);
          return Math.abs(b41) - (Math.abs(b42) + Math.abs(b43));
       }
 
       return children.reduce((s, c) => s + Math.abs(calculateBalance(c)), 0);
     }
     
-    const code = account.code;
+    const code = String(account.code || '').trim();
     const name = account.name;
 
     // حساب بضاعة آخر المدة ديناميكياً (72 / 1241)
@@ -397,7 +536,11 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
 
     journal.forEach(j => {
        let match = false;
-       if (j.linkedAccountCode === code || j.linkedAccountId === account.id) match = true;
+       const jCode = String(j.linkedAccountCode || '').trim();
+       const jId = String(j.linkedAccountId || '').trim();
+       const aId = String(account.id || '').trim();
+
+       if (jCode === code || jId === aId) match = true;
        else if (j.categoryId && linkedCatIds.has(j.categoryId)) match = true;
        else if (j.partyName === name) match = true;
        else if (isBox) {
@@ -423,8 +566,16 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        else if (party.type === 'مورد' || account.parentId === '221') creditTotal += (party.openingBalance || 0);
     }
 
-    const isDebitNature = code.startsWith('1') || code.startsWith('5') || code.startsWith('3') || code === '42' || code === '43' || code === '71';
-    return isDebitNature ? (debitTotal - creditTotal) : (creditTotal - debitTotal);
+    // تحديد طبيعة الحساب (مدين أو دائن)
+    const isDebitNature = 
+      code.startsWith('1') || // الموجودات
+      code.startsWith('5') || // المصاريف
+      code === '3' || code === '31' || code === '33' || // المشتريات ومصاريف النقل
+      code === '42' || code === '43' || // مرتجع المبيعات والحسم الممنوح
+      code === '71'; // بضاعة أول المدة
+      
+    const balance = isDebitNature ? (debitTotal - creditTotal) : (creditTotal - debitTotal);
+    return balance;
   };
 
   const getAccountMovements = (account: AccountNode): any[] => {

@@ -51,77 +51,44 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
     const movements: any[] = [];
     const targetSymbol = currencyMode === 'primary' ? settings?.currencySymbol : settings?.secondaryCurrencySymbol;
     
-    invoices.filter(inv => {
-      const matchName = inv.customerName === customerFilter;
-      const matchDate = (!startDate || inv.date >= startDate) && (!endDate || inv.date <= endDate);
-      const matchCurrency = inv.currencySymbol === targetSymbol;
-      return matchName && matchDate && matchCurrency;
-    }).forEach(inv => {
-      const itemsGrossTotal = inv.items.reduce((s, i) => s + i.total, 0);
-      
-      movements.push({
-        date: inv.date,
-        type: 'مبيع',
-        number: inv.invoiceNumber,
-        statement: `فاتورة مبيعات رقم ${inv.invoiceNumber}`,
-        soldItems: inv.items,
-        usedMaterials: inv.usedMaterials || [],
-        debit: itemsGrossTotal,
-        credit: 0,
-        ref: inv.id
-      });
-
-      if (inv.discountAmount && inv.discountAmount > 0) {
-        movements.push({
-          date: inv.date,
-          type: 'حسم',
-          number: inv.invoiceNumber,
-          statement: `حسم ممنوح للفاتورة رقم ${inv.invoiceNumber}`,
-          soldItems: [],
-          usedMaterials: [],
-          debit: 0,
-          credit: inv.discountAmount,
-          ref: inv.id
-        });
-      }
-    });
-
-    salesReturns.filter(ret => {
-      const matchName = ret.customerName === customerFilter;
-      const matchDate = (!startDate || ret.date >= startDate) && (!endDate || ret.date <= endDate);
-      const matchCurrency = ret.currencySymbol === targetSymbol || (!ret.currencySymbol && currencyMode === 'primary');
-      return matchName && matchDate && matchCurrency;
-    }).forEach(ret => {
-      movements.push({
-        date: ret.date,
-        type: 'مرتجع',
-        number: ret.invoiceNumber,
-        statement: `مرتجع مبيعات فاتورة رقم ${ret.invoiceNumber}`,
-        soldItems: ret.items,
-        usedMaterials: ret.returnedMaterialsList || [],
-        debit: 0,
-        credit: ret.totalReturnAmount,
-        ref: ret.id
-      });
-    });
-
     cashEntries.filter(entry => {
-      const matchName = entry.partyName === customerFilter || entry.statement.includes(customerFilter);
-      const matchType = entry.type === 'قبض' || entry.type === 'بيع';
+      const matchName = entry.partyName === customerFilter;
       const matchDate = (!startDate || entry.date >= startDate) && (!endDate || entry.date <= endDate);
-      const hasValue = currencyMode === 'primary' ? (entry.receivedSYP > 0) : (entry.receivedUSD > 0);
-      return matchName && matchType && matchDate && hasValue && entry.type !== 'حسم';
+      const hasValue = currencyMode === 'primary' ? (entry.receivedSYP > 0 || entry.paidSYP > 0) : (entry.receivedUSD > 0 || entry.paidUSD > 0);
+      return matchName && matchDate && hasValue;
     }).forEach(entry => {
-      const amount = currencyMode === 'primary' ? (entry.receivedSYP || 0) : (entry.receivedUSD || 0);
+      const debit = currencyMode === 'primary' ? (entry.paidSYP || 0) : (entry.paidUSD || 0);
+      const credit = currencyMode === 'primary' ? (entry.receivedSYP || 0) : (entry.receivedUSD || 0);
+      
+      // محاولة جلب تفاصيل المواد إذا كان القيد مرتبطاً بفاتورة
+      let soldItems: any[] = [];
+      let usedMaterials: any[] = [];
+      
+      if (entry.voucherNumber) {
+        if (entry.type === 'بيع') {
+          const inv = invoices.find(i => i.invoiceNumber === entry.voucherNumber);
+          if (inv) {
+            soldItems = inv.items;
+            usedMaterials = inv.usedMaterials || [];
+          }
+        } else if (entry.type === 'مرتجع') {
+          const ret = salesReturns.find(r => r.invoiceNumber === entry.voucherNumber);
+          if (ret) {
+            soldItems = ret.items;
+            usedMaterials = ret.returnedMaterialsList || [];
+          }
+        }
+      }
+
       movements.push({
         date: entry.date,
-        type: 'قبض',
+        type: entry.type || 'قيد',
         number: entry.voucherNumber || '---',
         statement: entry.statement,
-        soldItems: [],
-        usedMaterials: [],
-        debit: 0,
-        credit: amount,
+        soldItems,
+        usedMaterials,
+        debit,
+        credit,
         ref: entry.id
       });
     });

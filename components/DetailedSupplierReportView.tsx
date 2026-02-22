@@ -48,87 +48,57 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
     const movements: any[] = [];
     const targetSymbol = currencyMode === 'primary' ? settings?.currencySymbol : settings?.secondaryCurrencySymbol;
     
-    // 1. فواتير المشتريات (تزيد مديونية المورد)
-    purchases.filter(p => {
-      const matchName = p.supplierName === supplierFilter;
-      const matchDate = (!startDate || p.date >= startDate) && (!endDate || p.date <= endDate);
-      const matchCurrency = p.currencySymbol === targetSymbol;
-      return matchName && matchDate && matchCurrency;
-    }).forEach(inv => {
-      const itemsGross = inv.items.reduce((s, i) => s + i.total, 0) + (inv.transportExpenses || 0);
-
-      movements.push({
-        date: inv.date,
-        type: 'شراء',
-        number: inv.invoiceNumber,
-        statement: `فاتورة شراء رقم ${inv.invoiceNumber}`,
-        items: inv.items,
-        purchases: itemsGross, // القيمة الإجمالية قبل الحسم
-        returns: 0,
-        paid: 0,
-        discount: 0,
-        ref: inv.id
-      });
-
-      // 2. الحسم المكتسب من الفاتورة كبند تسوية مستقل (يقلل المديونية)
-      if (inv.discountAmount && inv.discountAmount > 0) {
-        movements.push({
-          date: inv.date,
-          type: 'حسم',
-          number: inv.invoiceNumber,
-          statement: `حسم مكتسب من فاتورة رقم ${inv.invoiceNumber}`,
-          items: [],
-          purchases: 0,
-          returns: 0,
-          paid: 0,
-          discount: inv.discountAmount,
-          ref: inv.id
-        });
-      }
-    });
-
-    // 3. مرتجع مشتريات (يقلل مديونية المورد)
-    purchaseReturns.filter(r => {
-      const matchName = r.supplierName === supplierFilter;
-      const matchDate = (!startDate || r.date >= startDate) && (!endDate || r.date <= endDate);
-      const matchCurrency = r.currencySymbol === targetSymbol || (!r.currencySymbol && currencyMode === 'primary');
-      return matchName && matchDate && matchCurrency;
-    }).forEach(ret => {
-      movements.push({
-        date: ret.date,
-        type: 'مرتجع',
-        number: ret.invoiceNumber,
-        statement: `مرتجع مشتريات للفاتورة رقم ${ret.invoiceNumber}`,
-        items: ret.items,
-        purchases: 0,
-        returns: ret.totalReturnAmount,
-        paid: 0,
-        discount: 0,
-        ref: ret.id
-      });
-    });
-
-    // 4. سندات الصرف / الدفعات النقدية الفعلية (تقلل مديونية المورد)
-    cashEntries.filter(e => {
-      const matchName = e.partyName === supplierFilter || e.statement.includes(supplierFilter);
-      const matchType = e.type === 'دفع' || e.type === 'شراء';
-      const matchDate = (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate);
-      // التحقق من وجود قيمة في حقل العملة المختار
-      const hasValue = currencyMode === 'primary' ? (e.paidSYP > 0) : (e.paidUSD > 0);
-      
-      return matchName && matchType && matchDate && hasValue;
+    cashEntries.filter(entry => {
+      const matchName = entry.partyName === supplierFilter;
+      const matchDate = (!startDate || entry.date >= startDate) && (!endDate || entry.date <= endDate);
+      const hasValue = currencyMode === 'primary' ? (entry.receivedSYP > 0 || entry.paidSYP > 0) : (entry.receivedUSD > 0 || entry.paidUSD > 0);
+      return matchName && matchDate && hasValue;
     }).forEach(entry => {
-      const amount = currencyMode === 'primary' ? (entry.paidSYP || 0) : (entry.paidUSD || 0);
+      const debit = currencyMode === 'primary' ? (entry.paidSYP || 0) : (entry.paidUSD || 0);
+      const credit = currencyMode === 'primary' ? (entry.receivedSYP || 0) : (entry.receivedUSD || 0);
+      
+      let items: any[] = [];
+      let purchasesVal = 0;
+      let returnsVal = 0;
+      let paidVal = 0;
+      let discountVal = 0;
+
+      if (entry.type === 'شراء' && entry.linkedAccountCode === '31') {
+        purchasesVal = debit;
+        const inv = purchases.find(p => p.invoiceNumber === entry.voucherNumber);
+        if (inv) items = inv.items;
+      } else if (entry.type === 'مرتجع' && entry.linkedAccountCode === '32') {
+        returnsVal = credit;
+        const ret = purchaseReturns.find(r => r.invoiceNumber === entry.voucherNumber);
+        if (ret) items = ret.items;
+      } else if (entry.type === 'حسم' && entry.linkedAccountCode === '34') {
+        discountVal = credit;
+      } else if (entry.type === 'دفع' || entry.type === 'شراء') {
+        // إذا كان القيد مرتبطاً بالطرف مباشرة (قيد مدين للمورد)
+        if (debit > 0) {
+           paidVal = debit;
+        } else {
+           // قيد دائن للمورد (شراء آجل)
+           purchasesVal = credit;
+           const inv = purchases.find(p => p.invoiceNumber === entry.voucherNumber);
+           if (inv) items = inv.items;
+        }
+      } else {
+        // قيود أخرى
+        if (debit > 0) paidVal = debit;
+        else purchasesVal = credit;
+      }
+
       movements.push({
         date: entry.date,
-        type: 'دفع',
+        type: entry.type || 'قيد',
         number: entry.voucherNumber || '---',
         statement: entry.statement,
-        items: [],
-        purchases: 0,
-        returns: 0,
-        paid: amount,
-        discount: 0,
+        items,
+        purchases: purchasesVal,
+        returns: returnsVal,
+        paid: paidVal,
+        discount: discountVal,
         ref: entry.id
       });
     });

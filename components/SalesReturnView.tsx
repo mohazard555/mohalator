@@ -27,9 +27,15 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
   const [historyStartDate, setHistoryStartDate] = useState('');
   const [historyEndDate, setHistoryEndDate] = useState('');
 
+  const getPrefix = () => {
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    return activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+  };
+
   useEffect(() => {
-    const savedReturns = localStorage.getItem('sheno_sales_returns');
-    const savedSettings = localStorage.getItem('sheno_settings');
+    const prefix = getPrefix();
+    const savedReturns = localStorage.getItem(`${prefix}_sales_returns`);
+    const savedSettings = localStorage.getItem(`${prefix}_settings`);
     if (savedReturns) setReturnHistory(JSON.parse(savedReturns));
     if (savedSettings) setSettings(JSON.parse(savedSettings));
 
@@ -50,15 +56,17 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
 
   const handleDeleteReturn = (id: string) => {
     if (window.confirm('هل أنت متأكد من حذف سجل المرتجع هذا نهائياً؟ سيتم إلغاء أثره المالي والمخزني.')) {
+      const prefix = getPrefix();
       const updatedReturns = returnHistory.filter(r => r.id !== id);
       setReturnHistory(updatedReturns);
-      localStorage.setItem('sheno_sales_returns', JSON.stringify(updatedReturns));
+      localStorage.setItem(`${prefix}_sales_returns`, JSON.stringify(updatedReturns));
       removeAssociatedMovements(id);
     }
   };
 
   const handleSearch = () => {
-    const saved = localStorage.getItem('sheno_sales_invoices');
+    const prefix = getPrefix();
+    const saved = localStorage.getItem(`${prefix}_sales_invoices`);
     if (saved) {
       const invoices: SalesInvoice[] = JSON.parse(saved);
       const match = invoices.find(inv => inv.invoiceNumber === invoiceSearch);
@@ -77,7 +85,8 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
   };
 
   const handleEditReturn = (ret: any) => {
-    const savedInvoices = localStorage.getItem('sheno_sales_invoices');
+    const prefix = getPrefix();
+    const savedInvoices = localStorage.getItem(`${prefix}_sales_invoices`);
     if (savedInvoices) {
       const invoices: SalesInvoice[] = JSON.parse(savedInvoices);
       const original = invoices.find(inv => inv.invoiceNumber === ret.invoiceNumber);
@@ -105,15 +114,16 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
   };
 
   const removeAssociatedMovements = (id: string) => {
-    const stock = localStorage.getItem('sheno_stock_entries');
+    const prefix = getPrefix();
+    const stock = localStorage.getItem(`${prefix}_stock_entries`);
     if (stock) {
       const entries: StockEntry[] = JSON.parse(stock);
-      localStorage.setItem('sheno_stock_entries', JSON.stringify(entries.filter(e => e.movementCode !== id)));
+      localStorage.setItem(`${prefix}_stock_entries`, JSON.stringify(entries.filter(e => e.movementCode !== id)));
     }
-    const cash = localStorage.getItem('sheno_cash_journal');
+    const cash = localStorage.getItem(`${prefix}_cash_journal`);
     if (cash) {
       const entries: CashEntry[] = JSON.parse(cash);
-      localStorage.setItem('sheno_cash_journal', JSON.stringify(entries.filter(e => e.voucherNumber !== id)));
+      localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(entries.filter(e => e.voucherNumber !== id)));
     }
   };
 
@@ -153,11 +163,12 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
       ? returnHistory.map(r => r.id === editingReturnId ? returnEntry : r)
       : [returnEntry, ...returnHistory];
 
+    const prefix = getPrefix();
     setReturnHistory(updatedHistory);
-    localStorage.setItem('sheno_sales_returns', JSON.stringify(updatedHistory));
+    localStorage.setItem(`${prefix}_sales_returns`, JSON.stringify(updatedHistory));
 
     // 1. تحديث حركات المستودع (الأصناف المرتجعة)
-    const savedStock = localStorage.getItem('sheno_stock_entries');
+    const savedStock = localStorage.getItem(`${prefix}_stock_entries`);
     let currentStockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
     
     const itemReturnMovements: StockEntry[] = returnEntry.items.map(item => ({
@@ -198,19 +209,35 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
        }));
     }
 
-    localStorage.setItem('sheno_stock_entries', JSON.stringify([...itemReturnMovements, ...materialReturnMovements, ...currentStockEntries]));
+    localStorage.setItem(`${prefix}_stock_entries`, JSON.stringify([...itemReturnMovements, ...materialReturnMovements, ...currentStockEntries]));
 
     // 3. تحديث المالية
-    const savedCash = localStorage.getItem('sheno_cash_journal');
+    const savedCash = localStorage.getItem(`${prefix}_cash_journal`);
     let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
     
+    // قيد المرتجع لحساب مرتجع المبيعات (42) - مدين
+    if (totalReturnItemsAmountLocal > 0) {
+       cashEntries.unshift({
+          id: crypto.randomUUID(),
+          date: returnDate,
+          statement: `مرتجع مبيعات فاتورة #${foundInvoice.invoiceNumber}`,
+          receivedSYP: 0, 
+          paidSYP: totalReturnItemsAmountLocal, 
+          receivedUSD: 0, paidUSD: 0,
+          notes: 'قيد آلي لمرتجع المبيعات',
+          type: 'مرتجع', voucherNumber: returnId,
+          linkedAccountCode: '42',
+          linkedAccountId: '42'
+       });
+    }
+
     if (foundInvoice.paymentType === 'نقداً') {
       if (totalReturnItemsAmountLocal > 0) {
         cashEntries.unshift({
           id: crypto.randomUUID(),
           date: returnDate,
           statement: `رد نقدي لمرتجع مبيع فاتورة ${foundInvoice.invoiceNumber}`,
-          receivedSYP: 0, paidSYP: totalReturnItemsAmountLocal, 
+          receivedSYP: totalReturnItemsAmountLocal, paidSYP: 0, 
           receivedUSD: 0, paidUSD: 0,
           partyName: foundInvoice.customerName,
           notes: `للزبون: ${foundInvoice.customerName}`, 
@@ -218,11 +245,12 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
         });
       }
     } else {
+      // قيد العميل (دائن) لتخفيض الذمة
       cashEntries.unshift({
         id: crypto.randomUUID(),
         date: returnDate,
         statement: `تسوية رصيد (مرتجع آجل) - فاتورة رقم ${foundInvoice.invoiceNumber}`,
-        receivedSYP: 0, paidSYP: 0, 
+        receivedSYP: totalReturnItemsAmountLocal, paidSYP: 0, 
         receivedUSD: 0, paidUSD: 0,
         partyName: foundInvoice.customerName,
         notes: 'تعديل آلي للذمة',
@@ -232,6 +260,7 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
     
     const discountDiff = adjustedDiscount - (foundInvoice.discountAmount || 0);
     if (discountDiff !== 0) {
+       // قيد الحسم الممنوح (43)
        cashEntries.unshift({
           id: crypto.randomUUID(),
           date: returnDate,
@@ -239,13 +268,27 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
           receivedSYP: discountDiff < 0 ? Math.abs(discountDiff) : 0, 
           paidSYP: discountDiff > 0 ? discountDiff : 0,
           receivedUSD: 0, paidUSD: 0,
+          notes: 'تعديل حسم ممنوح آلي',
+          type: 'حسم', voucherNumber: returnId,
+          linkedAccountCode: '43',
+          linkedAccountId: '43'
+       });
+
+       // قيد العميل المقابل للحسم
+       cashEntries.unshift({
+          id: crypto.randomUUID(),
+          date: returnDate,
+          statement: `تعديل حسم ممنوح (مرتجع) - أثر على العميل`,
+          receivedSYP: discountDiff > 0 ? discountDiff : 0, 
+          paidSYP: discountDiff < 0 ? Math.abs(discountDiff) : 0,
+          receivedUSD: 0, paidUSD: 0,
           partyName: foundInvoice.customerName,
           notes: 'تصحيح قيمة الحسم الممنوح بشكل مستقل',
           type: 'حسم', voucherNumber: returnId
        });
     }
 
-    localStorage.setItem('sheno_cash_journal', JSON.stringify(cashEntries));
+    localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(cashEntries));
     
     alert('تم حفظ المرتجع وتصحيح المخزون والمالية بنجاح.');
     setFoundInvoice(null);

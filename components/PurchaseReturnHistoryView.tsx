@@ -1,14 +1,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Printer, Search, FileDown, Calendar, RotateCcw, Package, FileText, ShoppingBag, MapPin, Phone } from 'lucide-react';
+import { ArrowRight, Printer, Search, FileDown, Calendar, RotateCcw, Package, FileText, ShoppingBag, MapPin, Phone, Edit2 } from 'lucide-react';
 import { exportToCSV } from '../utils/export';
 import { AppSettings } from '../types';
 
 interface PurchaseReturnHistoryViewProps {
   onBack: () => void;
+  onEdit: (ret: any) => void;
 }
 
-const PurchaseReturnHistoryView: React.FC<PurchaseReturnHistoryViewProps> = ({ onBack }) => {
+const PurchaseReturnHistoryView: React.FC<PurchaseReturnHistoryViewProps> = ({ onBack, onEdit }) => {
   const reportRef = useRef<HTMLDivElement>(null);
   const [returns, setReturns] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -141,13 +142,14 @@ const PurchaseReturnHistoryView: React.FC<PurchaseReturnHistoryViewProps> = ({ o
                   <th className="p-4 border-l border-amber-700 print:border-zinc-300">المورد</th>
                   <th className="p-4 border-l border-amber-700 print:border-zinc-300">المواد المعادة (الكمية / الوحدة)</th>
                   <th className="p-4 text-center w-40 font-black text-base bg-amber-700/10 print:bg-zinc-50">المبلغ المسترد</th>
+                  <th className="p-4 text-center w-20 no-print">إجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-bold print:text-zinc-900">
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={5} className="p-32 text-center italic text-zinc-300 font-black text-2xl uppercase tracking-tighter">لا يوجد سجلات مرتجعات مشتريات تطابق البحث</td></tr>
+                  <tr><td colSpan={6} className="p-32 text-center italic text-zinc-300 font-black text-2xl uppercase tracking-tighter">لا يوجد سجلات مرتجعات مشتريات تطابق البحث</td></tr>
                 ) : filtered.map(ret => (
-                  <tr key={ret.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors h-14 print:hover:bg-white border-b print:border-zinc-100">
+                  <tr key={ret.id} className="group hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors h-14 print:hover:bg-white border-b print:border-zinc-100">
                     <td className="p-4 font-mono text-zinc-400 text-center border-l border-zinc-100 print:border-zinc-100">{ret.date}</td>
                     <td className="p-4 text-amber-700 font-black text-center font-mono border-l border-zinc-100 print:border-zinc-100">#{ret.invoiceNumber}</td>
                     <td className="p-4 text-readable border-l border-zinc-100 print:border-zinc-100">{ret.supplierName}</td>
@@ -164,6 +166,11 @@ const PurchaseReturnHistoryView: React.FC<PurchaseReturnHistoryViewProps> = ({ o
                     </td>
                     <td className="p-4 text-center font-black text-emerald-600 font-mono text-xl bg-emerald-50/10 print:bg-transparent">
                       {ret.totalReturnAmount.toLocaleString()}
+                    </td>
+                    <td className="p-4 text-center no-print">
+                      <button onClick={() => onEdit(ret)} className="p-2 text-zinc-400 hover:text-amber-500 transition-colors bg-zinc-50 dark:bg-zinc-800 rounded-lg opacity-0 group-hover:opacity-100">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}

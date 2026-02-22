@@ -39,50 +39,46 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
   }, []);
 
   const calculateDetailedBalance = (party: Party) => {
-    const primarySymbol = settings?.currencySymbol || 'ل.س';
-    const secondarySymbol = settings?.secondaryCurrencySymbol || '$';
+    const getStats = (isPrimary: boolean) => {
+      let debitTotal = 0;
+      let creditTotal = 0;
 
-    const getStats = (symbol: string, isPrimary: boolean) => {
-      let totalGross = 0;
-      let totalDiscount = 0;
-      let totalJournalPayments = 0;
-
-      if (party.type === PartyType.CUSTOMER || party.type === PartyType.BOTH) {
-         const partySales = invoices.filter(inv => inv.customerName === party.name && inv.currencySymbol === symbol);
-         totalGross = partySales.reduce((s, inv) => s + inv.items.reduce((sum, it) => sum + it.total, 0), 0);
-         totalDiscount = partySales.reduce((s, inv) => s + (inv.discountAmount || 0), 0);
-      }
-      
-      if (party.type === PartyType.SUPPLIER || party.type === PartyType.BOTH) {
-         const partyPurch = purchases.filter(p => p.supplierName === party.name && p.currencySymbol === symbol);
-         totalGross += partyPurch.reduce((s, p) => s + (p.items.reduce((sum, it) => sum + it.total, 0) + (p.transportExpenses || 0)), 0);
-         totalDiscount += partyPurch.reduce((s, p) => s + (p.discountAmount || 0), 0);
-      }
-
-      const partyPayments = cashEntries.filter(entry => {
-        const matchName = entry.partyName === party.name || entry.statement.includes(party.name);
-        if (entry.type === 'حسم') return false; // تجاهل الحسم من دفتر اليومية النقدية
+      const partyEntries = cashEntries.filter(entry => {
+        const matchName = entry.partyName === party.name;
         if (isPrimary) return matchName && (entry.receivedSYP > 0 || entry.paidSYP > 0);
         else return matchName && (entry.receivedUSD > 0 || entry.paidUSD > 0);
       });
 
-      totalJournalPayments = partyPayments.reduce((s, p) => {
-         if (party.type === PartyType.CUSTOMER) return s + (isPrimary ? p.receivedSYP : p.receivedUSD);
-         else return s + (isPrimary ? p.paidSYP : p.paidUSD);
-      }, 0);
+      partyEntries.forEach(p => {
+        if (isPrimary) {
+          debitTotal += (p.paidSYP || 0);
+          creditTotal += (p.receivedSYP || 0);
+        } else {
+          debitTotal += (p.paidUSD || 0);
+          creditTotal += (p.receivedUSD || 0);
+        }
+      });
 
       const opening = isPrimary ? (party.openingBalance || 0) : 0;
-      // الرصيد = (الافتتاحي + المبيعات الإجمالية) - (المرتجع + الدفعات النقدية + الحسم)
-      // ملاحظة: المرتجع غير مضمن هنا لتبسيط المثال، لكن الحسم مضمن كعنصر تخفيض رصيد
-      const netBalance = (party.type === PartyType.CUSTOMER) 
-          ? (opening + totalGross - totalJournalPayments - totalDiscount)
-          : (opening + totalGross - totalJournalPayments - totalDiscount);
+      
+      // رصيد الحساب = (الافتتاحي + المدين) - الدائن
+      // للزبائن: الافتتاحي مدين عادة
+      // للموردين: الافتتاحي دائن عادة
+      let netBalance = 0;
+      if (party.type === PartyType.CUSTOMER) {
+        netBalance = opening + debitTotal - creditTotal;
+      } else if (party.type === PartyType.SUPPLIER) {
+        netBalance = creditTotal + opening - debitTotal; // الرصيد دائن للمورد
+      } else {
+        // للطرفين (BOTH) - نفترض طبيعة العميل أو نحسب الصافي
+        netBalance = opening + debitTotal - creditTotal;
+      }
 
-      return { totalGross, totalJournalPayments, totalDiscount, netBalance };
+      return { totalGross: debitTotal, totalJournalPayments: creditTotal, totalDiscount: 0, netBalance };
     };
 
-    const primary = getStats(primarySymbol, true);
-    const secondary = getStats(secondarySymbol, false);
+    const primary = getStats(true);
+    const secondary = getStats(false);
 
     let unifiedNet = 0;
     if (activeCurrencyView === 'primary') unifiedNet = primary.netBalance + (secondary.netBalance * exchangeRate);

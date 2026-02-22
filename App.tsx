@@ -271,7 +271,7 @@ const App: React.FC = () => {
             case AppView.SALES_HISTORY: return <SalesHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} onEdit={(inv) => { setEditingInvoice(inv); setCurrentView(AppView.SALES_INVOICE); }} />;
             case AppView.SALES_RETURN_HISTORY: return <SalesReturnHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} onEdit={(ret) => { setEditingReturn(ret); setCurrentView(AppView.SALES_RETURN); }} />;
             case AppView.PURCHASE_HISTORY: return <PurchaseHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
-            case AppView.PURCHASE_RETURN_HISTORY: return <PurchaseReturnHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.PURCHASE_RETURN_HISTORY: return <PurchaseReturnHistoryView onBack={() => setCurrentView(AppView.DASHBOARD)} onEdit={(ret) => { setEditingReturn(ret); setCurrentView(AppView.PURCHASE_RETURN); }} />;
             case AppView.PROFESSIONAL_INVOICE: return <ProfessionalInvoiceView onBack={() => setCurrentView(AppView.DASHBOARD)} settings={settings} />;
             case AppView.INVENTORY: return <InventoryView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.CASH_JOURNAL: return <CashJournalView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
@@ -281,7 +281,7 @@ const App: React.FC = () => {
             case AppView.DETAILED_ITEM_MOVEMENT: return <DetailedItemMovementView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.CUSTOMER_INVOICE_COSTS: return <CustomerInvoiceCostsView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.SALES_RETURN: return <SalesReturnView onBack={() => { setEditingReturn(null); setCurrentView(AppView.DASHBOARD); }} initialReturn={editingReturn || undefined} />;
-            case AppView.PURCHASE_RETURN: return <PurchaseReturnView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
+            case AppView.PURCHASE_RETURN: return <PurchaseReturnView onBack={() => { setEditingReturn(null); setCurrentView(AppView.DASHBOARD); }} initialReturn={editingReturn || undefined} />;
             case AppView.DETAILED_SALES_REPORT: return <DetailedSalesReportView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.DETAILED_SUPPLIER_REPORT: return <DetailedSupplierReportView onBack={() => setCurrentView(AppView.DASHBOARD)} />;
             case AppView.RECEIPT_VOUCHER: return <VoucherListView onBack={() => setCurrentView(AppView.DASHBOARD)} type="قبض" />;
