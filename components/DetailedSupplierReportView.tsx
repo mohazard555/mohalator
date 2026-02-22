@@ -113,12 +113,14 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
     acc.returns += curr.returns;
     acc.paid += curr.paid;
     acc.discount += curr.discount;
+    acc.debit += (curr.paid + curr.returns + curr.discount);
+    acc.credit += curr.purchases;
     return acc;
-  }, { purchases: 0, returns: 0, paid: 0, discount: 0 });
+  }, { purchases: 0, returns: 0, paid: 0, discount: 0, debit: 0, credit: 0 });
 
-  const openingBalance = (supplierFilter && currencyMode === 'primary') ? (parties.find(p => p.name === supplierFilter)?.openingBalance || 0) : 0;
-  
-  const finalBalance = openingBalance + totals.purchases - (totals.returns + totals.paid + totals.discount);
+  // الرصيد يحسب دائماً كالتالي: مجموع المدين - مجموع الدائن
+  // القيود الافتتاحية أصبحت جزءاً من دفتر القيود
+  const finalBalance = totals.debit - totals.credit;
 
   const handleExportPDF = () => {
     if (!reportRef.current) return;
@@ -274,14 +276,14 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
             </tr>
           </thead>
           <tbody className="text-zinc-800">
-            {supplierFilter && openingBalance !== 0 && (
+            {supplierFilter && reportMovements.some(m => m.type === 'افتتاحي') && (
               <tr className="h-10 bg-zinc-50/50 font-black border-b italic">
-                <td className="p-1 border text-center text-zinc-400">{startDate || '---'}</td>
+                <td className="p-1 border text-center text-zinc-400">{reportMovements.find(m => m.type === 'افتتاحي')?.date || '---'}</td>
                 <td className="p-1 border text-center">قيد</td>
                 <td className="p-1 border pr-4">رصيد افتتاحي (أول المدة)</td>
                 {showItems && <td className="p-1 border text-center text-zinc-300">---</td>}
-                <td className="p-1 border text-center text-rose-700">{openingBalance > 0 ? openingBalance.toLocaleString() : '0'}</td>
-                <td className="p-1 border text-center text-emerald-700">{openingBalance < 0 ? Math.abs(openingBalance).toLocaleString() : '0'}</td>
+                <td className="p-1 border text-center text-rose-700">{reportMovements.find(m => m.type === 'افتتاحي')?.debit > 0 ? reportMovements.find(m => m.type === 'افتتاحي')?.debit.toLocaleString() : '0'}</td>
+                <td className="p-1 border text-center text-emerald-700">{reportMovements.find(m => m.type === 'افتتاحي')?.credit > 0 ? reportMovements.find(m => m.type === 'افتتاحي')?.credit.toLocaleString() : '0'}</td>
               </tr>
             )}
 

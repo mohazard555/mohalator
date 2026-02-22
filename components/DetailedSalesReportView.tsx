@@ -99,8 +99,10 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
   const movements = customerFilter ? getCustomerMovements() : [];
   const totalDebit = movements.reduce((s, c) => s + c.debit, 0);
   const totalCredit = movements.reduce((s, c) => s + c.credit, 0);
-  const partyOpening = (customerFilter && currencyMode === 'primary') ? (parties.find(p => p.name === customerFilter)?.openingBalance || 0) : 0;
-  const finalBalance = partyOpening + totalDebit - totalCredit;
+  
+  // الرصيد يحسب دائماً كالتالي: مجموع المدين - مجموع الدائن
+  // القيود الافتتاحية أصبحت جزءاً من دفتر القيود
+  const finalBalance = totalDebit - totalCredit;
 
   const handleExportPDF = () => {
     if (!reportRef.current) return;
@@ -261,15 +263,15 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
             </tr>
           </thead>
           <tbody className="text-zinc-800">
-            {customerFilter && partyOpening !== 0 && (
+            {customerFilter && movements.some(m => m.type === 'افتتاحي') && (
               <tr className="h-10 bg-zinc-50 font-black border-b italic">
-                <td className="p-1 border text-center text-zinc-400">{startDate || '---'}</td>
+                <td className="p-1 border text-center text-zinc-400">{movements.find(m => m.type === 'افتتاحي')?.date || '---'}</td>
                 <td className="p-1 border text-center">قيد</td>
                 {showStatement && <td className="p-1 border pr-4">رصيد افتتاحي (أول المدة)</td>}
                 {showSoldItems && <td className="p-1 border text-center text-zinc-300">---</td>}
                 {showUsedMaterials && <td className="p-1 border text-center text-zinc-300">---</td>}
-                <td className="p-1 border text-center text-rose-800">{partyOpening > 0 ? partyOpening.toLocaleString() : '0'}</td>
-                <td className="p-1 border text-center text-emerald-700">{partyOpening < 0 ? Math.abs(partyOpening).toLocaleString() : '0'}</td>
+                <td className="p-1 border text-center text-rose-800">{movements.find(m => m.type === 'افتتاحي')?.debit > 0 ? movements.find(m => m.type === 'افتتاحي')?.debit.toLocaleString() : '0'}</td>
+                <td className="p-1 border text-center text-emerald-700">{movements.find(m => m.type === 'افتتاحي')?.credit > 0 ? movements.find(m => m.type === 'افتتاحي')?.credit.toLocaleString() : '0'}</td>
               </tr>
             )}
 

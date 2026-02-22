@@ -27,12 +27,18 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
     loadAllData();
   }, []);
 
+  const getPrefix = () => {
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    return activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+  };
+
   const loadAllData = () => {
-    const savedParties = localStorage.getItem('sheno_parties');
-    const savedSales = localStorage.getItem('sheno_sales_invoices');
-    const savedPurchases = localStorage.getItem('sheno_purchases');
-    const savedJournal = localStorage.getItem('sheno_cash_journal');
-    const savedSettings = localStorage.getItem('sheno_settings');
+    const prefix = getPrefix();
+    const savedParties = localStorage.getItem(`${prefix}_parties`);
+    const savedSales = localStorage.getItem(`${prefix}_sales_invoices`);
+    const savedPurchases = localStorage.getItem(`${prefix}_purchases`);
+    const savedJournal = localStorage.getItem(`${prefix}_cash_journal`);
+    const savedSettings = localStorage.getItem(`${prefix}_settings`);
 
     if (savedParties) setParties(JSON.parse(savedParties));
     if (savedSales) setSales(JSON.parse(savedSales));
@@ -42,23 +48,23 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
   };
 
   const calculatePartyBalance = (party: Party) => {
-    let balance = party.openingBalance || 0;
-    const partySales = sales.filter(s => s.customerName === party.name);
-    balance += partySales.reduce((s, c) => s + c.totalAmount, 0);
-    const partyPurchases = purchases.filter(p => p.supplierName === party.name);
-    balance -= partyPurchases.reduce((s, c) => s + c.totalAmount, 0);
-    const partyCash = journal.filter(j => j.partyName === party.name || j.statement.includes(party.name));
-    partyCash.forEach(j => {
-      balance -= (j.receivedSYP || 0);
-      balance -= (j.receivedUSD || 0);
-      balance += (j.paidSYP || 0);
-      balance += (j.paidUSD || 0);
+    let debitTotal = 0;
+    let creditTotal = 0;
+
+    // الرصيد يحسب دائماً من دفتر القيود: مجموع المدين - مجموع الدائن
+    const partyEntries = journal.filter(j => j.partyName === party.name);
+    
+    partyEntries.forEach(j => {
+      debitTotal += (j.paidSYP || 0) + (j.paidUSD || 0);
+      creditTotal += (j.receivedSYP || 0) + (j.receivedUSD || 0);
     });
-    return balance;
+
+    return debitTotal - creditTotal;
   };
 
   const syncToChartOfAccounts = (party: Party, isDelete: boolean = false, oldName?: string) => {
-    const savedChart = localStorage.getItem('sheno_chart_accounts');
+    const prefix = getPrefix();
+    const savedChart = localStorage.getItem(`${prefix}_chart_accounts`);
     if (!savedChart) return;
     
     let chart: AccountNode[] = JSON.parse(savedChart);
@@ -67,7 +73,6 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
     if (isDelete) {
       chart = chart.filter(acc => acc.name !== party.name);
     } else {
-      // البحث عن الحساب باستخدام الاسم القديم في حالة التعديل أو الاسم الحالي
       const searchName = oldName || party.name;
       const existingIdx = chart.findIndex(acc => acc.name === searchName);
       
@@ -84,12 +89,13 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
       else chart.push(accountData);
     }
 
-    localStorage.setItem('sheno_chart_accounts', JSON.stringify(chart));
+    localStorage.setItem(`${prefix}_chart_accounts`, JSON.stringify(chart));
   };
 
   const handleSave = () => {
     if (!formData.name) return;
     
+    const prefix = getPrefix();
     let updated: Party[];
     const partyToSave = { ...formData, id: editingId || crypto.randomUUID() } as Party;
     let oldName = undefined;
@@ -102,22 +108,58 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
       updated = [...parties, partyToSave];
     }
 
+    // تحديث القيد الافتتاحي في دفتر القيود
+    const savedJournal = localStorage.getItem(`${prefix}_cash_journal`);
+    let currentJournal: CashEntry[] = savedJournal ? JSON.parse(savedJournal) : [];
+    
+    // حذف القيد الافتتاحي القديم للطرف (سواء كان تعديل أو تغيير اسم)
+    const searchName = oldName || partyToSave.name;
+    currentJournal = currentJournal.filter(j => !(j.partyName === searchName && j.type === 'افتتاحي'));
+
+    // إضافة القيد الافتتاحي الجديد إذا كان أكبر من صفر
+    if (partyToSave.openingBalance !== 0) {
+      const isDebit = partyToSave.openingBalance > 0; // مدين إذا كان موجب (للزبائن عادة)
+      currentJournal.unshift({
+        id: crypto.randomUUID(),
+        date: new Date().toISOString().split('T')[0],
+        statement: `رصيد افتتاحي - ${partyToSave.name}`,
+        receivedSYP: isDebit ? 0 : Math.abs(partyToSave.openingBalance),
+        paidSYP: isDebit ? Math.abs(partyToSave.openingBalance) : 0,
+        receivedUSD: 0,
+        paidUSD: 0,
+        partyName: partyToSave.name,
+        type: 'افتتاحي',
+        voucherNumber: `OP-${partyToSave.id}`
+      });
+    }
+
+    localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(currentJournal));
+    localStorage.setItem(`${prefix}_parties`, JSON.stringify(updated));
     setParties(updated);
-    localStorage.setItem('sheno_parties', JSON.stringify(updated));
+    setJournal(currentJournal);
     syncToChartOfAccounts(partyToSave, false, oldName);
     
     setIsAdding(false);
     setEditingId(null);
     setFormData({ name: '', code: '', phone: '', address: '', type: PartyType.CUSTOMER, openingBalance: 0 });
-    loadAllData();
   };
 
   const handleDelete = (id: string) => {
     const party = parties.find(p => p.id === id);
     if (party && window.confirm('حذف هذا الحساب نهائياً من النظام والدليل؟')) {
+      const prefix = getPrefix();
       const updated = parties.filter(x => x.id !== id);
       setParties(updated);
-      localStorage.setItem('sheno_parties', JSON.stringify(updated));
+      localStorage.setItem(`${prefix}_parties`, JSON.stringify(updated));
+      
+      // حذف حركات الطرف من دفتر القيود
+      const savedJournal = localStorage.getItem(`${prefix}_cash_journal`);
+      if (savedJournal) {
+        const filteredJournal = JSON.parse(savedJournal).filter((j: CashEntry) => j.partyName !== party.name);
+        localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(filteredJournal));
+        setJournal(filteredJournal);
+      }
+
       syncToChartOfAccounts(party, true);
     }
   };

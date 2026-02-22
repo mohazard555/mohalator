@@ -41,16 +41,16 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
     const stockMoves: StockEntry[] = sStockMoves ? JSON.parse(sStockMoves) : [];
     const periodic: PeriodicInventory[] = sPeriodic ? JSON.parse(sPeriodic) : [];
 
-    // 1. إجمالي المبيعات = مجموع بنود الفواتير (Gross)
-    const grossSales = sales.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0);
+    // 1. إجمالي المبيعات = مجموع القيود المدينة لحساب المبيعات (41)
+    const grossSales = journal.filter(j => j.linkedAccountCode === '41').reduce((s, c) => s + c.paidSYP, 0);
     
-    // 2. صافي المبيعات (لاحتساب الربح) = الإجمالي - المرتجع - الحسم الممنوح
-    const totalReturns = returns.reduce((s, c) => s + (Number(c.totalReturnAmount) || 0), 0);
-    const totalDiscounts = sales.reduce((s, c) => s + (Number(c.discountAmount) || 0), 0);
+    // 2. صافي المبيعات = المبيعات - المرتجع - الحسم
+    const totalReturns = journal.filter(j => j.linkedAccountCode === '42').reduce((s, c) => s + c.paidSYP, 0);
+    const totalDiscounts = journal.filter(j => j.linkedAccountCode === '43').reduce((s, c) => s + c.paidSYP, 0);
     const netSales = grossSales - totalReturns - totalDiscounts;
 
-    // 3. إجمالي المشتريات
-    const totalPurchases = purchases.reduce((s, c) => s + c.items.reduce((sum, it) => sum + it.total, 0), 0);
+    // 3. إجمالي المشتريات = مجموع القيود الدائنة لحساب المشتريات (31)
+    const totalPurchases = journal.filter(j => j.linkedAccountCode === '31').reduce((s, c) => s + c.paidSYP, 0);
 
     // 4. قيمة مواد المخزن (الجرد الحالي)
     const inventoryValue = inventoryList.reduce((sum, item) => {
@@ -66,7 +66,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
     const openingStockVal = periodic.find(i => i.type === 'OPENING')?.totalValue || 0;
     const cogs = openingStockVal + totalPurchases - inventoryValue;
     const grossProfit = netSales - cogs;
-    const expenses = journal.filter(j => j.paidSYP > 0 && !j.statement.includes('شراء')).reduce((s, c) => s + c.paidSYP, 0);
+    const expenses = journal.filter(j => j.paidSYP > 0 && !['31', '42', '43'].includes(j.linkedAccountCode || '') && !j.partyName).reduce((s, c) => s + c.paidSYP, 0);
     const netProfit = grossProfit - expenses;
 
     setStats({

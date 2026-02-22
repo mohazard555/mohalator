@@ -157,7 +157,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
       }
       const cash = localStorage.getItem(`${prefix}_cash_journal`);
       if (cash) {
-        localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(JSON.parse(cash).filter((e:CashEntry) => !e.statement.includes(`رقم ${invNum}`))));
+        localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(JSON.parse(cash).filter((e:CashEntry) => e.voucherNumber !== invNum)));
       }
     }
   };
@@ -187,19 +187,151 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
       discountAmount: discount
     };
 
+    // 1. تحديث المالية (دفتر القيود) - المصدر الوحيد للحقيقة
+    const savedCash = localStorage.getItem(`${prefix}_cash_journal`);
+    let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
+    
+    // عكس القيود القديمة في حال التعديل
     if (editingId) {
-      const stock = localStorage.getItem(`${prefix}_stock_entries`);
-      if (stock) localStorage.setItem(`${prefix}_stock_entries`, JSON.stringify(JSON.parse(stock).filter((e:StockEntry) => e.invoiceNumber !== invoice.invoiceNumber)));
-      const cash = localStorage.getItem(`${prefix}_cash_journal`);
-      if (cash) localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(JSON.parse(cash).filter((e:CashEntry) => !e.statement.includes(`رقم ${invoice.invoiceNumber}`))));
+      cashEntries = cashEntries.filter(e => e.voucherNumber !== invoice.invoiceNumber);
     }
 
-    const updated = editingId ? purchases.map(p => p.id === editingId ? invoice : p) : [invoice, ...purchases];
-    setPurchases(updated);
-    localStorage.setItem(`${prefix}_purchases`, JSON.stringify(updated));
+    const isPrimary = selectedCurrencyType === 'primary';
 
+    // أ. قيد المشتريات (حساب 31) - مدين بكامل القيمة قبل الحسم
+    cashEntries.unshift({
+      id: crypto.randomUUID(),
+      date: invoice.date,
+      statement: `مشتريات فاتورة #${invoice.invoiceNumber}`,
+      receivedSYP: 0,
+      paidSYP: isPrimary ? subTotal : 0,
+      receivedUSD: 0,
+      paidUSD: !isPrimary ? subTotal : 0,
+      type: 'شراء',
+      voucherNumber: invoice.invoiceNumber,
+      linkedAccountCode: '31',
+      linkedAccountId: '31'
+    });
+
+    // ب. قيد المورد - دائن بكامل القيمة قبل الحسم
+    cashEntries.unshift({
+      id: crypto.randomUUID(),
+      date: invoice.date,
+      statement: `مشتريات فاتورة #${invoice.invoiceNumber} (قيد دائن)`,
+      receivedSYP: isPrimary ? subTotal : 0,
+      paidSYP: 0,
+      receivedUSD: !isPrimary ? subTotal : 0,
+      paidUSD: 0,
+      partyName: invoice.supplierName,
+      type: 'شراء',
+      voucherNumber: invoice.invoiceNumber
+    });
+
+    // ج. قيد الحسم المكتسب (حساب 34) - دائن (إذا وجد)
+    if (discount > 0) {
+      cashEntries.unshift({
+        id: crypto.randomUUID(),
+        date: invoice.date,
+        statement: `حسم مكتسب فاتورة #${invoice.invoiceNumber}`,
+        receivedSYP: isPrimary ? discount : 0,
+        paidSYP: 0,
+        receivedUSD: !isPrimary ? discount : 0,
+        paidUSD: 0,
+        type: 'حسم',
+        voucherNumber: invoice.invoiceNumber,
+        linkedAccountCode: '34',
+        linkedAccountId: '34'
+      });
+
+      // د. قيد المورد - مدين بقيمة الحسم
+      cashEntries.unshift({
+        id: crypto.randomUUID(),
+        date: invoice.date,
+        statement: `حسم مكتسب فاتورة #${invoice.invoiceNumber} (تخفيض رصيد)`,
+        receivedSYP: 0,
+        paidSYP: isPrimary ? discount : 0,
+        receivedUSD: 0,
+        paidUSD: !isPrimary ? discount : 0,
+        partyName: invoice.supplierName,
+        type: 'حسم',
+        voucherNumber: invoice.invoiceNumber
+      });
+    }
+
+    // هـ. قيد مصاريف النقل (حساب 33) - مدين
+    if (transport > 0) {
+      cashEntries.unshift({
+        id: crypto.randomUUID(),
+        date: invoice.date,
+        statement: `مصاريف نقل مشتريات للفاتورة رقم ${invoice.invoiceNumber}`,
+        receivedSYP: 0,
+        paidSYP: isPrimary ? transport : 0,
+        receivedUSD: 0,
+        paidUSD: !isPrimary ? transport : 0,
+        type: 'دفع',
+        voucherNumber: invoice.invoiceNumber,
+        linkedAccountCode: '33',
+        linkedAccountId: '33'
+      });
+
+      // و. قيد المورد - دائن بقيمة النقل (باعتبارها تضاف لحساب المورد)
+      cashEntries.unshift({
+        id: crypto.randomUUID(),
+        date: invoice.date,
+        statement: `مصاريف نقل مشتريات للفاتورة رقم ${invoice.invoiceNumber} (تضاف للمورد)`,
+        receivedSYP: isPrimary ? transport : 0,
+        paidSYP: 0,
+        receivedUSD: !isPrimary ? transport : 0,
+        paidUSD: 0,
+        partyName: invoice.supplierName,
+        type: 'دفع',
+        voucherNumber: invoice.invoiceNumber
+      });
+    }
+
+    // ز. قيد الدفعة النقدية (إذا وجدت)
+    if (invoice.paidAmount > 0) {
+      const source = invoice.paymentType === 'نقداً' ? (invoice.cashAccount || 'الصندوق') : 'آجل';
+      
+      // قيد الصندوق/الحساب - دائن
+      cashEntries.unshift({
+        id: crypto.randomUUID(),
+        date: invoice.date,
+        statement: `دفعة مقابل فاتورة مشتريات رقم ${invoice.invoiceNumber} - المصدر: ${source}`,
+        receivedSYP: 0, 
+        paidSYP: isPrimary ? invoice.paidAmount : 0, 
+        receivedUSD: 0, 
+        paidUSD: !isPrimary ? invoice.paidAmount : 0,
+        notes: invoice.notes, 
+        type: 'شراء',
+        voucherNumber: invoice.invoiceNumber,
+        cashAccount: invoice.cashAccount || 'الصندوق'
+      });
+
+      // قيد المورد - مدين
+      cashEntries.unshift({
+        id: crypto.randomUUID(),
+        date: invoice.date,
+        statement: `دفعة مقابل فاتورة مشتريات رقم ${invoice.invoiceNumber} (تخفيض رصيد)`,
+        receivedSYP: 0,
+        paidSYP: isPrimary ? invoice.paidAmount : 0,
+        receivedUSD: 0,
+        paidUSD: !isPrimary ? invoice.paidAmount : 0,
+        partyName: invoice.supplierName,
+        type: 'شراء',
+        voucherNumber: invoice.invoiceNumber
+      });
+    }
+
+    localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(cashEntries));
+
+    // 2. تحديث حركات المخزون
     const savedStock = localStorage.getItem(`${prefix}_stock_entries`);
     let stockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
+    if (editingId) {
+      stockEntries = stockEntries.filter(e => e.invoiceNumber !== invoice.invoiceNumber);
+    }
+
     const stockMoves: StockEntry[] = invoice.items.map(i => ({
       id: crypto.randomUUID(), date: invoice.date,
       day: new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(new Date(invoice.date)),
@@ -211,40 +343,9 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
     }));
     localStorage.setItem(`${prefix}_stock_entries`, JSON.stringify([...stockMoves, ...stockEntries]));
 
-    const savedCash = localStorage.getItem(`${prefix}_cash_journal`);
-    let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
-    const isPrimary = selectedCurrencyType === 'primary';
-
-    if (invoice.paidAmount > 0) {
-      const source = invoice.paymentType === 'نقداً' ? (invoice.cashAccount || 'الصندوق') : 'آجل';
-      cashEntries.unshift({
-        id: crypto.randomUUID(), date: invoice.date,
-        statement: `دفعة مقابل فاتورة مشتريات رقم ${invoice.invoiceNumber} - المصدر: ${source}`,
-        receivedSYP: 0, 
-        paidSYP: isPrimary ? invoice.paidAmount : 0, 
-        receivedUSD: 0, 
-        paidUSD: !isPrimary ? invoice.paidAmount : 0,
-        notes: invoice.notes, 
-        partyName: invoice.supplierName,
-        type: 'شراء',
-        cashAccount: invoice.cashAccount || 'الصندوق'
-      });
-    }
-
-    if (transport > 0) {
-      cashEntries.unshift({
-        id: crypto.randomUUID(), date: invoice.date,
-        statement: `مصاريف نقل مشتريات للفاتورة رقم ${invoice.invoiceNumber} - المورد: ${invoice.supplierName}`,
-        receivedSYP: 0,
-        paidSYP: isPrimary ? transport : 0,
-        receivedUSD: 0,
-        paidUSD: !isPrimary ? transport : 0,
-        notes: 'مصاريف نقل بضاعة', type: 'دفع',
-        cashAccount: invoice.cashAccount || 'الصندوق'
-      });
-    }
-
-    localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(cashEntries));
+    const updated = editingId ? purchases.map(p => p.id === editingId ? invoice : p) : [invoice, ...purchases];
+    setPurchases(updated);
+    localStorage.setItem(`${prefix}_purchases`, JSON.stringify(updated));
 
     setIsAdding(false);
     setEditingId(null);

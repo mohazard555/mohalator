@@ -24,12 +24,18 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
   const [cashEntries, setCashEntries] = useState<CashEntry[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
 
+  const getPrefix = () => {
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    return activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+  };
+
   useEffect(() => {
-    const savedInvoices = localStorage.getItem('sheno_sales_invoices');
-    const savedPurchases = localStorage.getItem('sheno_purchases');
-    const savedCash = localStorage.getItem('sheno_cash_journal');
-    const savedParties = localStorage.getItem('sheno_parties');
-    const savedSettings = localStorage.getItem('sheno_settings');
+    const prefix = getPrefix();
+    const savedInvoices = localStorage.getItem(`${prefix}_sales_invoices`);
+    const savedPurchases = localStorage.getItem(`${prefix}_purchases`);
+    const savedCash = localStorage.getItem(`${prefix}_cash_journal`);
+    const savedParties = localStorage.getItem(`${prefix}_parties`);
+    const savedSettings = localStorage.getItem(`${prefix}_settings`);
     
     if (savedInvoices) setInvoices(JSON.parse(savedInvoices));
     if (savedPurchases) setPurchases(JSON.parse(savedPurchases));
@@ -59,20 +65,9 @@ const CustomerBalancesView: React.FC<CustomerBalancesViewProps> = ({ onBack }) =
         }
       });
 
-      const opening = isPrimary ? (party.openingBalance || 0) : 0;
-      
-      // رصيد الحساب = (الافتتاحي + المدين) - الدائن
-      // للزبائن: الافتتاحي مدين عادة
-      // للموردين: الافتتاحي دائن عادة
-      let netBalance = 0;
-      if (party.type === PartyType.CUSTOMER) {
-        netBalance = opening + debitTotal - creditTotal;
-      } else if (party.type === PartyType.SUPPLIER) {
-        netBalance = creditTotal + opening - debitTotal; // الرصيد دائن للمورد
-      } else {
-        // للطرفين (BOTH) - نفترض طبيعة العميل أو نحسب الصافي
-        netBalance = opening + debitTotal - creditTotal;
-      }
+      // الرصيد يحسب دائماً كالتالي: مجموع المدين - مجموع الدائن
+      // ملاحظة: القيود الافتتاحية أصبحت جزءاً من دفتر القيود
+      const netBalance = debitTotal - creditTotal;
 
       return { totalGross: debitTotal, totalJournalPayments: creditTotal, totalDiscount: 0, netBalance };
     };
