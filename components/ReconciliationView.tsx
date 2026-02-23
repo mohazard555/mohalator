@@ -146,7 +146,7 @@ const ReconciliationView: React.FC<ReconciliationViewProps> = ({ onBack }) => {
       if (curr.type === 'شراء') acc.totalPurchases += curr.credit;
       if (curr.type === 'مرتجع') acc.totalReturns += (curr.debit + curr.credit);
       if (curr.type === 'حسم') acc.totalDiscounts += (curr.debit + curr.credit);
-      if (['قبض', 'دفع', 'بيع', 'شراء', 'يومية'].includes(curr.type)) acc.totalPayments += (curr.debit + curr.credit);
+      if (['قبض', 'دفع', 'يومية'].includes(curr.type)) acc.totalPayments += (curr.debit + curr.credit);
       return acc;
     }, { totalInvoices: 0, totalPurchases: 0, totalReturns: 0, totalPayments: 0, totalDiscounts: 0 });
 
@@ -309,7 +309,7 @@ const ReconciliationView: React.FC<ReconciliationViewProps> = ({ onBack }) => {
            </div>
 
            {/* Summary Cards */}
-           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-lg flex flex-col items-center text-center">
                  <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">إجمالي الفواتير</span>
                  <span className="text-2xl font-mono font-black text-readable">{(results.summary.totalInvoices || results.summary.totalPurchases).toLocaleString()}</span>
@@ -319,14 +319,14 @@ const ReconciliationView: React.FC<ReconciliationViewProps> = ({ onBack }) => {
                  <span className="text-2xl font-mono font-black text-rose-600">{results.summary.totalReturns.toLocaleString()}</span>
               </div>
               <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-lg flex flex-col items-center text-center">
+                 <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">إجمالي الخصم</span>
+                 <span className="text-2xl font-mono font-black text-amber-600">{results.summary.totalDiscounts.toLocaleString()}</span>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-lg flex flex-col items-center text-center">
                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2">إجمالي الدفعات</span>
                  <span className="text-2xl font-mono font-black text-emerald-600">{results.summary.totalPayments.toLocaleString()}</span>
               </div>
-              <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-lg flex flex-col items-center text-center">
-                 <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">الخصومات / الحسم</span>
-                 <span className="text-2xl font-mono font-black text-amber-600">{results.summary.totalDiscounts.toLocaleString()}</span>
-              </div>
-              <div className="bg-zinc-900 p-6 rounded-3xl shadow-xl flex flex-col items-center text-center border-b-4 border-primary print:bg-zinc-100 print:text-zinc-900 print:border-zinc-900">
+              <div className="bg-zinc-900 p-6 rounded-3xl shadow-xl flex flex-col items-center text-center border-b-4 border-primary print:bg-zinc-100 print:text-zinc-900 print:border-zinc-900 lg:col-span-2">
                  <span className="text-[10px] font-black text-primary uppercase tracking-widest mb-2 print:text-zinc-500">صافي رصيد المطابقة</span>
                  <span className="text-3xl font-mono font-black text-white print:text-zinc-900">{results.finalBalance.toLocaleString()}</span>
               </div>

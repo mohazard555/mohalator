@@ -568,7 +568,7 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                   <div className="bg-emerald-500/10 text-emerald-600 px-4 py-1 rounded-full text-[9px] font-black border border-emerald-500/20">مطابقة معتمدة</div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 xo-summary-grid">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 xo-summary-grid">
                   <div className="xo-card-print p-4 rounded-2xl flex flex-col items-center justify-center bg-zinc-50 border border-zinc-100 shadow-sm">
                      <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">رصيد أول المدة</span>
                      <span className="text-xl font-mono font-black text-zinc-900 leading-none">{opening.toLocaleString()}</span>
@@ -578,8 +578,12 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                      <span className="text-xl font-mono font-black text-zinc-900 leading-none">{gross.toLocaleString()}</span>
                   </div>
                   <div className="xo-card-print p-4 rounded-2xl flex flex-col items-center justify-center bg-rose-50/20 border border-rose-100 shadow-sm">
-                     <span className="text-[9px] font-black text-rose-700 uppercase tracking-widest mb-1">المرتجعات والخصم</span>
-                     <span className="text-xl font-mono font-black text-rose-600">{(returns + discounts).toLocaleString()}</span>
+                     <span className="text-[9px] font-black text-rose-700 uppercase tracking-widest mb-1">إجمالي المرتجعات</span>
+                     <span className="text-xl font-mono font-black text-rose-600">{returns.toLocaleString()}</span>
+                  </div>
+                  <div className="xo-card-print p-4 rounded-2xl flex flex-col items-center justify-center bg-amber-50/20 border border-amber-100 shadow-sm">
+                     <span className="text-[9px] font-black text-amber-700 uppercase tracking-widest mb-1">إجمالي الخصم</span>
+                     <span className="text-xl font-mono font-black text-amber-600">{discounts.toLocaleString()}</span>
                   </div>
                   <div className="xo-card-print p-4 rounded-2xl flex flex-col items-center justify-center bg-emerald-50/20 border border-emerald-100 shadow-sm">
                      <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest mb-1">إجمالي الدفعات</span>

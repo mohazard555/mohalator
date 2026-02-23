@@ -203,9 +203,15 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        const jId = String(j.linkedAccountId || '').trim();
        const aId = String(account.id || '').trim();
 
-       if (jCode === code || jId === aId) match = true;
-       else if (j.categoryId && linkedCatIds.has(j.categoryId)) match = true;
-       else if (j.partyName === name) match = true;
+       if (jCode === code || jId === aId) {
+          match = true;
+       } else if (j.categoryId && linkedCatIds.has(j.categoryId)) {
+          match = true;
+       } else if (j.partyName === name) {
+          if (!j.linkedAccountCode && !j.linkedAccountId) {
+             match = true;
+          }
+       }
        else if (isBox) {
           if (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) match = true;
           if (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))) match = true;
@@ -297,9 +303,15 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
 
     journal.forEach(j => {
        let match = false;
-       if (j.linkedAccountCode === code || j.linkedAccountId === account.id) match = true;
-       else if (j.categoryId && linkedCatIds.has(j.categoryId)) match = true;
-       else if (j.partyName === name) match = true;
+       if (j.linkedAccountCode === code || j.linkedAccountId === account.id) {
+          match = true;
+       } else if (j.categoryId && linkedCatIds.has(j.categoryId)) {
+          match = true;
+       } else if (j.partyName === name) {
+          if (!j.linkedAccountCode && !j.linkedAccountId) {
+             match = true;
+          }
+       }
        else if (isBox) {
           if (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) match = true;
           if (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))) match = true;
@@ -313,7 +325,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
              debit: isBox ? (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0)) : (Number(j.paidSYP || 0) + Number(j.paidUSD || 0)), 
              credit: isBox ? (Number(j.paidSYP || 0) + Number(j.paidUSD || 0)) : (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0)), 
              source: j.type === 'قبض' ? 'سند قبض' : j.type === 'دفع' ? 'سند دفع' : (j.type || 'سند يومية'), 
-             counterAccount: isBox ? (j.partyName || 'حساب متنوع') : 'الصندوق / المصرف',
+             counterAccount: isBox ? (j.partyName || 'حساب متنوع') : (j.linkedAccountCode === '42' || j.linkedAccountCode === '43' || j.linkedAccountCode === '32' || j.linkedAccountCode === '34' ? (j.partyName || 'حساب العميل/المورد') : 'الصندوق / المصرف'),
              user: settings?.managerName || 'النظام',
              accountName: name
           });
