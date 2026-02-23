@@ -16,6 +16,7 @@ const PurchaseReturnView: React.FC<PurchaseReturnViewProps> = ({ onBack, initial
   const [returnHistory, setReturnHistory] = useState<any[]>([]);
   const [editingReturnId, setEditingReturnId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   
   const [adjustedDiscount, setAdjustedDiscount] = useState(0);
 
@@ -116,145 +117,157 @@ const PurchaseReturnView: React.FC<PurchaseReturnViewProps> = ({ onBack, initial
   };
 
   const handleSaveReturn = () => {
-    if (!foundInvoice) return;
+    if (!foundInvoice || isSaving) return;
+    setIsSaving(true);
     
-    const prefix = getPrefix();
-    const totalReturnItemsAmountLocal = returnItems.reduce((s, i) => s + (i.quantity * i.price), 0);
-    const returnId = editingReturnId || crypto.randomUUID();
-    const returnDate = new Date().toISOString().split('T')[0];
-    
-    const returnEntry = {
-      id: returnId,
-      invoiceNumber: foundInvoice.invoiceNumber,
-      supplierName: foundInvoice.supplierName,
-      date: returnDate,
-      items: returnItems.filter(i => i.quantity > 0),
-      totalReturnAmount: totalReturnItemsAmountLocal,
-      discountAmount: adjustedDiscount,
-      totalAmountLiteral: tafqeet(totalReturnItemsAmountLocal, settings?.currency || "ليرة سورية"),
-      paymentType: foundInvoice.paymentType,
-      cashAccount: foundInvoice.cashAccount
-    };
+    try {
+      const prefix = getPrefix();
+      const totalReturnItemsAmountLocal = returnItems.reduce((s, i) => s + (i.quantity * i.price), 0);
+      const returnId = editingReturnId || crypto.randomUUID();
+      const returnDate = new Date().toISOString().split('T')[0];
+      
+      const returnEntry = {
+        id: returnId,
+        invoiceNumber: foundInvoice.invoiceNumber,
+        supplierName: foundInvoice.supplierName,
+        date: returnDate,
+        items: returnItems.filter(i => i.quantity > 0),
+        totalReturnAmount: totalReturnItemsAmountLocal,
+        discountAmount: adjustedDiscount,
+        totalAmountLiteral: tafqeet(totalReturnItemsAmountLocal, settings?.currency || "ليرة سورية"),
+        paymentType: foundInvoice.paymentType,
+        cashAccount: foundInvoice.cashAccount
+      };
 
-    if (editingReturnId) removeAssociatedMovements(editingReturnId);
+      if (editingReturnId) removeAssociatedMovements(editingReturnId);
 
-    const updatedHistory = editingReturnId 
-      ? returnHistory.map(r => r.id === editingReturnId ? returnEntry : r)
-      : [returnEntry, ...returnHistory];
+      // Update History
+      const savedReturns = localStorage.getItem(`${prefix}_purchase_returns`);
+      let currentReturns: any[] = savedReturns ? JSON.parse(savedReturns) : [];
+      
+      const updatedHistory = editingReturnId 
+        ? currentReturns.map(r => r.id === editingReturnId ? returnEntry : r)
+        : [returnEntry, ...currentReturns];
 
-    setReturnHistory(updatedHistory);
-    localStorage.setItem(`${prefix}_purchase_returns`, JSON.stringify(updatedHistory));
+      setReturnHistory(updatedHistory);
+      localStorage.setItem(`${prefix}_purchase_returns`, JSON.stringify(updatedHistory));
 
-    // 1. تحديث حركات المستودع (الأصناف المرتجعة - صرف من المستودع)
-    const savedStock = localStorage.getItem(`${prefix}_stock_entries`);
-    let currentStockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
-    
-    const itemReturnMovements: StockEntry[] = returnEntry.items.map(item => ({
-      id: crypto.randomUUID(),
-      date: returnDate,
-      day: new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(new Date()),
-      department: 'مرتجع مشتريات',
-      itemCode: item.code,
-      itemName: item.name,
-      unit: item.unit,
-      price: item.price,
-      warehouse: 'المستودع الرئيسي',
-      movementType: 'صرف',
-      quantity: item.quantity,
-      invoiceNumber: foundInvoice.invoiceNumber,
-      statement: `مرتجع مشتريات فاتورة ${foundInvoice.invoiceNumber}`,
-      movementCode: returnId
-    }));
+      // 1. تحديث حركات المستودع (الأصناف المرتجعة - صرف من المستودع)
+      const savedStock = localStorage.getItem(`${prefix}_stock_entries`);
+      let currentStockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
+      
+      const itemReturnMovements: StockEntry[] = returnEntry.items.map(item => ({
+        id: crypto.randomUUID(),
+        date: returnDate,
+        day: new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(new Date()),
+        department: 'مرتجع مشتريات',
+        itemCode: item.code,
+        itemName: item.name,
+        unit: item.unit,
+        price: item.price,
+        warehouse: 'المستودع الرئيسي',
+        movementType: 'صرف',
+        quantity: item.quantity,
+        invoiceNumber: foundInvoice.invoiceNumber,
+        statement: `مرتجع مشتريات فاتورة ${foundInvoice.invoiceNumber}`,
+        movementCode: returnId
+      }));
 
-    localStorage.setItem(`${prefix}_stock_entries`, JSON.stringify([...itemReturnMovements, ...currentStockEntries]));
+      localStorage.setItem(`${prefix}_stock_entries`, JSON.stringify([...itemReturnMovements, ...currentStockEntries]));
 
-    // 2. تحديث المالية
-    const savedCash = localStorage.getItem(`${prefix}_cash_journal`);
-    let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
-    
-    // قيد المرتجع (دائن لحساب مرتجع المشتريات 32، مدين للمورد أو الصندوق)
-    if (totalReturnItemsAmountLocal > 0) {
-       // قيد حساب مرتجع المشتريات (دائن)
-       cashEntries.unshift({
-          id: crypto.randomUUID(),
-          date: returnDate,
-          statement: `مرتجع مشتريات فاتورة #${foundInvoice.invoiceNumber}`,
-          receivedSYP: totalReturnItemsAmountLocal, 
-          paidSYP: 0, 
-          receivedUSD: 0, paidUSD: 0,
-          notes: 'قيد آلي لمرتجع المشتريات',
-          type: 'مرتجع', voucherNumber: returnId,
-          linkedAccountCode: '32',
-          linkedAccountId: '32'
-       });
+      // 2. تحديث المالية
+      const savedCash = localStorage.getItem(`${prefix}_cash_journal`);
+      let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
+      
+      // قيد المرتجع (دائن لحساب مرتجع المشتريات 32، مدين للمورد أو الصندوق)
+      if (totalReturnItemsAmountLocal > 0) {
+         // قيد حساب مرتجع المشتريات (دائن)
+         cashEntries.unshift({
+            id: crypto.randomUUID(),
+            date: returnDate,
+            statement: `مرتجع مشتريات فاتورة #${foundInvoice.invoiceNumber}`,
+            receivedSYP: totalReturnItemsAmountLocal, 
+            paidSYP: 0, 
+            receivedUSD: 0, paidUSD: 0,
+            notes: 'قيد آلي لمرتجع المشتريات',
+            type: 'مرتجع', voucherNumber: returnId,
+            linkedAccountCode: '32',
+            linkedAccountId: '32'
+         });
 
-       // قيد الطرف المقابل (مدين)
-       if (foundInvoice.paymentType === 'نقداً') {
-          cashEntries.unshift({
-             id: crypto.randomUUID(),
-             date: returnDate,
-             statement: `استلام نقدي لمرتجع مشتريات فاتورة ${foundInvoice.invoiceNumber}`,
-             receivedSYP: totalReturnItemsAmountLocal, 
-             paidSYP: 0, 
-             receivedUSD: 0, paidUSD: 0,
-             partyName: foundInvoice.supplierName,
-             notes: `من المورد: ${foundInvoice.supplierName}`, 
-             type: 'مرتجع', voucherNumber: returnId,
-             cashAccount: foundInvoice.cashAccount
-          });
-       } else {
-          cashEntries.unshift({
-             id: crypto.randomUUID(),
-             date: returnDate,
-             statement: `تخفيض مديونية (مرتجع آجل) - فاتورة رقم ${foundInvoice.invoiceNumber}`,
-             receivedSYP: 0, 
-             paidSYP: totalReturnItemsAmountLocal, 
-             receivedUSD: 0, paidUSD: 0,
-             partyName: foundInvoice.supplierName,
-             notes: 'تعديل آلي للذمة',
-             type: 'مرتجع', voucherNumber: returnId
-          });
-       }
+         // قيد الطرف المقابل (مدين)
+         if (foundInvoice.paymentType === 'نقداً') {
+            cashEntries.unshift({
+               id: crypto.randomUUID(),
+               date: returnDate,
+               statement: `استلام نقدي لمرتجع مشتريات فاتورة ${foundInvoice.invoiceNumber}`,
+               receivedSYP: totalReturnItemsAmountLocal, 
+               paidSYP: 0, 
+               receivedUSD: 0, paidUSD: 0,
+               partyName: foundInvoice.supplierName,
+               notes: `من المورد: ${foundInvoice.supplierName}`, 
+               type: 'مرتجع', voucherNumber: returnId,
+               cashAccount: foundInvoice.cashAccount
+            });
+         } else {
+            cashEntries.unshift({
+               id: crypto.randomUUID(),
+               date: returnDate,
+               statement: `تخفيض مديونية (مرتجع آجل) - فاتورة رقم ${foundInvoice.invoiceNumber}`,
+               receivedSYP: 0, 
+               paidSYP: totalReturnItemsAmountLocal, 
+               receivedUSD: 0, paidUSD: 0,
+               partyName: foundInvoice.supplierName,
+               notes: 'تعديل آلي للذمة',
+               type: 'مرتجع', voucherNumber: returnId
+            });
+         }
+      }
+      
+      // معالجة الحسم المكتسب (حساب 34)
+      const discountDiff = adjustedDiscount - (foundInvoice.discountAmount || 0);
+      if (discountDiff !== 0) {
+         // قيد الحسم (دائن لحساب 34)
+         cashEntries.unshift({
+            id: crypto.randomUUID(),
+            date: returnDate,
+            statement: `تعديل حسم مكتسب (مرتجع) للفاتورة رقم ${foundInvoice.invoiceNumber}`,
+            receivedSYP: discountDiff > 0 ? discountDiff : 0, 
+            paidSYP: discountDiff < 0 ? Math.abs(discountDiff) : 0,
+            receivedUSD: 0, paidUSD: 0,
+            notes: 'تعديل حسم مكتسب آلي',
+            type: 'حسم', voucherNumber: returnId,
+            linkedAccountCode: '34',
+            linkedAccountId: '34'
+         });
+
+         // قيد المورد (مدين)
+         cashEntries.unshift({
+            id: crypto.randomUUID(),
+            date: returnDate,
+            statement: `تعديل حسم مكتسب (مرتجع) للفاتورة رقم ${foundInvoice.invoiceNumber} (قيد تسوية)`,
+            receivedSYP: 0, 
+            paidSYP: discountDiff,
+            receivedUSD: 0, paidUSD: 0,
+            partyName: foundInvoice.supplierName,
+            notes: 'تصحيح قيمة الحسم المكتسب بشكل مستقل',
+            type: 'حسم', voucherNumber: returnId
+         });
+      }
+
+      localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(cashEntries));
+      
+      alert('تم حفظ المرتجع وتصحيح المخزون والمالية بنجاح.');
+      setFoundInvoice(null);
+      setEditingReturnId(null);
+      setInvoiceSearch('');
+      if (initialReturn) onBack(); 
+    } catch (error) {
+      console.error('Error saving purchase return:', error);
+      alert('حدث خطأ أثناء حفظ المرتجع.');
+    } finally {
+      setIsSaving(false);
     }
-    
-    // معالجة الحسم المكتسب (حساب 34)
-    const discountDiff = adjustedDiscount - (foundInvoice.discountAmount || 0);
-    if (discountDiff !== 0) {
-       // قيد الحسم (دائن لحساب 34)
-       cashEntries.unshift({
-          id: crypto.randomUUID(),
-          date: returnDate,
-          statement: `تعديل حسم مكتسب (مرتجع) للفاتورة رقم ${foundInvoice.invoiceNumber}`,
-          receivedSYP: discountDiff > 0 ? discountDiff : 0, 
-          paidSYP: discountDiff < 0 ? Math.abs(discountDiff) : 0,
-          receivedUSD: 0, paidUSD: 0,
-          notes: 'تعديل حسم مكتسب آلي',
-          type: 'حسم', voucherNumber: returnId,
-          linkedAccountCode: '34',
-          linkedAccountId: '34'
-       });
-
-       // قيد المورد (مدين)
-       cashEntries.unshift({
-          id: crypto.randomUUID(),
-          date: returnDate,
-          statement: `تعديل حسم مكتسب (مرتجع) للفاتورة رقم ${foundInvoice.invoiceNumber} (قيد تسوية)`,
-          receivedSYP: 0, 
-          paidSYP: discountDiff,
-          receivedUSD: 0, paidUSD: 0,
-          partyName: foundInvoice.supplierName,
-          notes: 'تصحيح قيمة الحسم المكتسب بشكل مستقل',
-          type: 'حسم', voucherNumber: returnId
-       });
-    }
-
-    localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(cashEntries));
-    
-    alert('تم حفظ المرتجع وتصحيح المخزون والمالية بنجاح.');
-    setFoundInvoice(null);
-    setEditingReturnId(null);
-    setInvoiceSearch('');
-    if (initialReturn) onBack(); 
   };
 
   return (
@@ -381,8 +394,13 @@ const PurchaseReturnView: React.FC<PurchaseReturnViewProps> = ({ onBack, initial
                 </div>
              </div>
              <div className="flex gap-3">
-                <button onClick={handleSaveReturn} className="bg-primary hover:bg-primary/90 text-white px-16 py-5 rounded-[2rem] font-black shadow-2xl shadow-primary/20 flex items-center gap-3 transition-all active:scale-95 text-xl">
-                   <Save className="w-7 h-7" /> ترحيل وتثبيت المرتجع
+                <button 
+                  onClick={handleSaveReturn} 
+                  disabled={isSaving}
+                  className={`bg-primary hover:bg-primary/90 text-white px-16 py-5 rounded-[2rem] font-black shadow-2xl shadow-primary/20 flex items-center gap-3 transition-all active:scale-95 text-xl ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                   {isSaving ? <RotateCcw className="w-7 h-7 animate-spin" /> : <Save className="w-7 h-7" />}
+                   {isSaving ? 'جاري الحفظ...' : 'ترحيل وتثبيت المرتجع'}
                 </button>
                 <button onClick={() => { setFoundInvoice(null); setEditingReturnId(null); setInvoiceSearch(''); }} className="bg-zinc-800 text-zinc-400 px-12 py-5 rounded-[2rem] font-bold hover:text-white transition-all">إلغاء</button>
              </div>

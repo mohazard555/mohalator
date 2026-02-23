@@ -18,8 +18,11 @@ const PurchaseReturnHistoryView: React.FC<PurchaseReturnHistoryViewProps> = ({ o
   const [settings, setSettings] = useState<AppSettings | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('sheno_purchase_returns');
-    const savedSettings = localStorage.getItem('sheno_settings');
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+    
+    const saved = localStorage.getItem(`${prefix}_purchase_returns`);
+    const savedSettings = localStorage.getItem(`${prefix}_settings`);
     if (saved) setReturns(JSON.parse(saved));
     if (savedSettings) setSettings(JSON.parse(savedSettings));
   }, []);

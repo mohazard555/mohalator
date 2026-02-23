@@ -21,31 +21,38 @@ const SalesReturnHistoryView: React.FC<SalesReturnHistoryViewProps> = ({ onBack,
 
   useEffect(() => {
     loadData();
-    const savedSettings = localStorage.getItem('sheno_settings');
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+    const savedSettings = localStorage.getItem(`${prefix}_settings`);
     if (savedSettings) setSettings(JSON.parse(savedSettings));
   }, []);
 
   const loadData = () => {
-    const savedReturns = localStorage.getItem('sheno_sales_returns');
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+    const savedReturns = localStorage.getItem(`${prefix}_sales_returns`);
     if (savedReturns) setReturns(JSON.parse(savedReturns));
   };
 
   const handleDelete = (id: string) => {
     if (window.confirm('هل أنت متأكد من حذف سجل المرتجع هذا نهائياً؟ سيتم إلغاء أثره المالي والمخزني.')) {
+      const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+      const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+      
       const updatedReturns = returns.filter(r => r.id !== id);
       setReturns(updatedReturns);
-      localStorage.setItem('sheno_sales_returns', JSON.stringify(updatedReturns));
+      localStorage.setItem(`${prefix}_sales_returns`, JSON.stringify(updatedReturns));
 
-      const stock = localStorage.getItem('sheno_stock_entries');
+      const stock = localStorage.getItem(`${prefix}_stock_entries`);
       if (stock) {
         const entries: StockEntry[] = JSON.parse(stock);
-        localStorage.setItem('sheno_stock_entries', JSON.stringify(entries.filter(e => e.movementCode !== id)));
+        localStorage.setItem(`${prefix}_stock_entries`, JSON.stringify(entries.filter(e => e.movementCode !== id)));
       }
 
-      const cash = localStorage.getItem('sheno_cash_journal');
+      const cash = localStorage.getItem(`${prefix}_cash_journal`);
       if (cash) {
         const entries: CashEntry[] = JSON.parse(cash);
-        localStorage.setItem('sheno_cash_journal', JSON.stringify(entries.filter(e => e.voucherNumber !== id)));
+        localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(entries.filter(e => e.voucherNumber !== id)));
       }
     }
   };

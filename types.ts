@@ -250,7 +250,7 @@ export interface CashEntry {
   paidSYP: number;
   receivedUSD: number;
   paidUSD: number;
-  notes: string;
+  notes?: string;
   type?: 'قبض' | 'دفع' | 'بيع' | 'شراء' | 'مرتجع' | 'افتتاحي' | 'حسم' | 'قيد';
   voucherNumber?: string;
   partyName?: string;
