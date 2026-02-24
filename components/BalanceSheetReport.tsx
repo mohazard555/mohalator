@@ -36,6 +36,37 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      <style>{`
+        @media print {
+          .bg-zinc-900, .bg-zinc-800 {
+            background-color: white !important;
+            color: #0f172a !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+          .bg-zinc-400 {
+            background-color: white !important;
+            color: #0f172a !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+          .text-white {
+            color: #0f172a !important;
+          }
+          .border-primary {
+            border-color: #3b82f6 !important;
+          }
+          .bg-emerald-500 {
+            background-color: white !important;
+            color: #065f46 !important;
+            border: 1px solid #d1fae5 !important;
+          }
+          .divide-y > * + * {
+            border-color: #f1f5f9 !important;
+          }
+          .shadow-lg, .shadow-2xl {
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
       <div className="flex justify-end no-print">
          <button 
            onClick={handleExportExcel}

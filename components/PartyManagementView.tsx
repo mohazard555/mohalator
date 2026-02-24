@@ -187,6 +187,33 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
 
   return (
     <div className="space-y-6">
+      <style>{`
+        @media print {
+          .bg-zinc-900 {
+            background-color: white !important;
+            color: #0f172a !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+          .text-white {
+            color: #0f172a !important;
+          }
+          table {
+            background-color: white !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+          th, td {
+            border: 1px solid #e2e8f0 !important;
+            padding: 8px !important;
+          }
+          th {
+            background-color: #f8fafc !important;
+            color: #0f172a !important;
+          }
+          .bg-zinc-100 {
+            background-color: white !important;
+          }
+        }
+      `}</style>
       <div className="print-only mb-6 border-b-4 border-primary pb-6 flex justify-between items-center bg-white text-black p-4 rounded-xl">
         <div className="flex items-center gap-4">
           {settings?.logoUrl && <img src={settings.logoUrl} className="w-16 h-16 object-contain" alt="Logo" />}

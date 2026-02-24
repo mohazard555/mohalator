@@ -487,19 +487,23 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
                  box-shadow: none !important; 
                  padding: 10px !important;
                }
-               .xo-table-print { border: 1px solid #000000 !important; width: 100% !important; }
+               .xo-table-print { border: 1px solid #e2e8f0 !important; width: 100% !important; }
                .xo-table-print th { 
-                 background-color: #f3f4f6 !important; 
+                 background-color: #f8fafc !important; 
                  color: black !important; 
-                 border: 1px solid #000000 !important; 
+                 border: 1px solid #e2e8f0 !important; 
                  font-weight: 900 !important; 
                  padding: 8px !important;
                }
                .xo-table-print td { 
-                 border: 1px solid #dddddd !important; 
+                 border: 1px solid #e2e8f0 !important; 
                  color: black !important; 
                  background: white !important; 
                  padding: 6px !important;
+               }
+               .bg-zinc-900 {
+                 background-color: #f8fafc !important;
+                 color: black !important;
                }
                .no-print { display: none !important; }
                .text-rose-700, .text-emerald-700, .text-rose-600, .text-emerald-600 { 

@@ -46,7 +46,6 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
 
   const getSupplierMovements = () => {
     const movements: any[] = [];
-    const targetSymbol = currencyMode === 'primary' ? settings?.currencySymbol : settings?.secondaryCurrencySymbol;
     
     cashEntries.filter(entry => {
       const matchName = entry.partyName === supplierFilter;
@@ -54,39 +53,48 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
       const hasValue = currencyMode === 'primary' ? (entry.receivedSYP > 0 || entry.paidSYP > 0) : (entry.receivedUSD > 0 || entry.paidUSD > 0);
       return matchName && matchDate && hasValue;
     }).forEach(entry => {
-      const debit = currencyMode === 'primary' ? (entry.paidSYP || 0) : (entry.paidUSD || 0);
-      const credit = currencyMode === 'primary' ? (entry.receivedSYP || 0) : (entry.receivedUSD || 0);
+      let debit = currencyMode === 'primary' ? (entry.paidSYP || 0) : (entry.paidUSD || 0);
+      let credit = currencyMode === 'primary' ? (entry.receivedSYP || 0) : (entry.receivedUSD || 0);
+      const originalAmount = debit || credit;
       
       let items: any[] = [];
       let purchasesVal = 0;
       let returnsVal = 0;
       let paidVal = 0;
       let discountVal = 0;
+      let isCash = false;
 
-      if (entry.type === 'شراء' && entry.linkedAccountCode === '31') {
-        purchasesVal = debit;
-        const inv = purchases.find(p => p.invoiceNumber === entry.voucherNumber);
-        if (inv) items = inv.items;
-      } else if (entry.type === 'مرتجع' && entry.linkedAccountCode === '32') {
-        returnsVal = credit;
-        const ret = purchaseReturns.find(r => r.invoiceNumber === entry.voucherNumber);
-        if (ret) items = ret.items;
-      } else if (entry.type === 'حسم' && entry.linkedAccountCode === '34') {
-        discountVal = credit;
-      } else if (entry.type === 'دفع' || entry.type === 'شراء') {
-        // إذا كان القيد مرتبطاً بالطرف مباشرة (قيد مدين للمورد)
-        if (debit > 0) {
-           paidVal = debit;
-        } else {
-           // قيد دائن للمورد (شراء آجل)
-           purchasesVal = credit;
-           const inv = purchases.find(p => p.invoiceNumber === entry.voucherNumber);
-           if (inv) items = inv.items;
+      if (entry.voucherNumber) {
+        if (entry.type === 'شراء') {
+          const inv = purchases.find(p => p.invoiceNumber === entry.voucherNumber);
+          if (inv) {
+            items = inv.items;
+            isCash = inv.paymentType === 'نقداً';
+          }
+        } else if (entry.type === 'مرتجع') {
+          const ret = purchaseReturns.find(r => r.invoiceNumber === entry.voucherNumber);
+          if (ret) {
+            items = ret.items;
+            isCash = ret.paymentType === 'نقداً';
+          }
         }
-      } else {
-        // قيود أخرى
-        if (debit > 0) paidVal = debit;
-        else purchasesVal = credit;
+      }
+
+      // Logic: If cash, do not affect supplier balance
+      if (isCash || (entry.type === 'حسم' && (entry.statement?.includes('نقداً') || entry.notes?.includes('نقداً')))) {
+        debit = 0;
+        credit = 0;
+      }
+
+      // Categorize for totals
+      if (entry.type === 'شراء') {
+        purchasesVal = originalAmount;
+      } else if (entry.type === 'مرتجع') {
+        returnsVal = originalAmount;
+      } else if (entry.type === 'حسم') {
+        discountVal = originalAmount;
+      } else if (entry.type === 'دفع' || entry.type === 'قبض') {
+        paidVal = originalAmount;
       }
 
       movements.push({
@@ -99,6 +107,10 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
         returns: returnsVal,
         paid: paidVal,
         discount: discountVal,
+        debit, // Effect on balance
+        credit, // Effect on balance
+        originalAmount,
+        isCash,
         ref: entry.id
       });
     });
@@ -113,14 +125,13 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
     acc.returns += curr.returns;
     acc.paid += curr.paid;
     acc.discount += curr.discount;
-    acc.debit += (curr.paid + curr.returns + curr.discount);
-    acc.credit += curr.purchases;
+    acc.debit += curr.debit;
+    acc.credit += curr.credit;
     return acc;
   }, { purchases: 0, returns: 0, paid: 0, discount: 0, debit: 0, credit: 0 });
 
-  // الرصيد يحسب دائماً كالتالي: مجموع المدين - مجموع الدائن
-  // القيود الافتتاحية أصبحت جزءاً من دفتر القيود
-  const finalBalance = totals.debit - totals.credit;
+  // Supplier balance formula: Balance = Total Credit (Purchases) − Total Debit (Payments + Returns + Discounts)
+  const finalBalance = totals.credit - totals.debit;
 
   const handleExportPDF = () => {
     if (!reportRef.current) return;
@@ -140,6 +151,35 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
 
   return (
     <div className="space-y-4 text-right bg-zinc-50 dark:bg-zinc-950 p-4 md:p-8 rounded-3xl shadow-2xl min-h-screen text-readable border border-zinc-200 dark:border-zinc-800 print:bg-white print:border-none print:shadow-none" dir="rtl">
+      <style>{`
+        @media print {
+          .print-bg-white { background-color: white !important; background: white !important; color: black !important; }
+          .print-no-bg { background: none !important; background-color: transparent !important; }
+          
+          /* Specific overrides for the final balance box */
+          .bg-zinc-900.text-white {
+            background-color: white !important;
+            color: black !important;
+            border: 2px solid #e5e7eb !important;
+          }
+          .text-amber-400, .text-amber-500 {
+            color: #b45309 !important; /* Darker amber for print readability */
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .bg-amber-500\\/10 {
+            background-color: white !important;
+            border: 1px solid #f3f4f6 !important;
+          }
+          .relative.z-10 {
+            position: static !important;
+          }
+          .absolute { display: none !important; }
+          th { background-color: #f8fafc !important; color: #0f172a !important; border: 1px solid #e2e8f0 !important; }
+          td { border: 1px solid #e2e8f0 !important; }
+          table { border: 1px solid #e2e8f0 !important; }
+        }
+      `}</style>
       
       {previewImage && (
         <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 md:p-20 animate-in fade-in duration-300" onClick={() => setPreviewImage(null)}>
@@ -282,8 +322,8 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
                 <td className="p-1 border text-center">قيد</td>
                 <td className="p-1 border pr-4">رصيد افتتاحي (أول المدة)</td>
                 {showItems && <td className="p-1 border text-center text-zinc-300">---</td>}
-                <td className="p-1 border text-center text-rose-700">{reportMovements.find(m => m.type === 'افتتاحي')?.debit > 0 ? reportMovements.find(m => m.type === 'افتتاحي')?.debit.toLocaleString() : '0'}</td>
-                <td className="p-1 border text-center text-emerald-700">{reportMovements.find(m => m.type === 'افتتاحي')?.credit > 0 ? reportMovements.find(m => m.type === 'افتتاحي')?.credit.toLocaleString() : '0'}</td>
+                <td className="p-1 border text-center text-rose-700">{reportMovements.find(m => m.type === 'افتتاحي')?.credit > 0 ? reportMovements.find(m => m.type === 'افتتاحي')?.credit.toLocaleString() : '0'}</td>
+                <td className="p-1 border text-center text-emerald-700">{reportMovements.find(m => m.type === 'افتتاحي')?.debit > 0 ? reportMovements.find(m => m.type === 'افتتاحي')?.debit.toLocaleString() : '0'}</td>
               </tr>
             )}
 
@@ -319,10 +359,10 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
                     </td>
                   )}
                   <td className="p-1 border-zinc-200 font-mono text-center text-rose-800">
-                    {move.purchases > 0 ? move.purchases.toLocaleString() : ''}
+                    {move.credit > 0 ? move.credit.toLocaleString() : ''}
                   </td>
                   <td className="p-1 border-zinc-200 font-mono text-center text-emerald-800">
-                    { (move.paid + move.returns + move.discount) > 0 ? (move.paid + move.returns + move.discount).toLocaleString() : '' }
+                    {move.debit > 0 ? move.debit.toLocaleString() : ''}
                   </td>
                 </tr>
               ))
@@ -367,7 +407,7 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
            <div className="w-full md:w-96 bg-white border-2 border-zinc-200 p-6 rounded-[2rem] flex flex-col justify-center space-y-3">
               <span className="text-[10px] font-black text-zinc-400 uppercase border-b pb-1">المبلغ كتابةً / التفقيط</span>
               <div className="text-xs font-black italic text-zinc-700 leading-relaxed">
-                 {tafqeet(finalBalance, activeCurrencyName)}
+                 {tafqeet(Math.abs(finalBalance), activeCurrencyName)}
               </div>
            </div>
         </div>

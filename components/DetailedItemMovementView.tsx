@@ -104,6 +104,38 @@ const DetailedItemMovementView: React.FC<DetailedItemMovementViewProps> = ({ onB
           font-size: 13px !important;
           vertical-align: middle;
         }
+        @media print {
+          .bg-primary {
+            background-color: white !important;
+            color: #166534 !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+          .bg-zinc-900 {
+            background-color: white !important;
+            color: #0f172a !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+          .text-white {
+            color: #0f172a !important;
+          }
+          .bg-rose-50\\/20 {
+            background-color: white !important;
+          }
+          table {
+            background-color: white !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+          th, td {
+            border: 1px solid #e2e8f0 !important;
+          }
+          th {
+            background-color: #f8fafc !important;
+            color: #0f172a !important;
+          }
+          .border-white\\/20 {
+            border-color: #e2e8f0 !important;
+          }
+        }
       `}</style>
 
       {/* Header Bar */}

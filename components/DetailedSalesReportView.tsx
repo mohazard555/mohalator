@@ -49,7 +49,6 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
 
   const getCustomerMovements = () => {
     const movements: any[] = [];
-    const targetSymbol = currencyMode === 'primary' ? settings?.currencySymbol : settings?.secondaryCurrencySymbol;
     
     cashEntries.filter(entry => {
       const matchName = entry.partyName === customerFilter;
@@ -57,12 +56,13 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
       const hasValue = currencyMode === 'primary' ? (entry.receivedSYP > 0 || entry.paidSYP > 0) : (entry.receivedUSD > 0 || entry.paidUSD > 0);
       return matchName && matchDate && hasValue;
     }).forEach(entry => {
-      const debit = currencyMode === 'primary' ? (entry.paidSYP || 0) : (entry.paidUSD || 0);
-      const credit = currencyMode === 'primary' ? (entry.receivedSYP || 0) : (entry.receivedUSD || 0);
+      let debit = currencyMode === 'primary' ? (entry.paidSYP || 0) : (entry.paidUSD || 0);
+      let credit = currencyMode === 'primary' ? (entry.receivedSYP || 0) : (entry.receivedUSD || 0);
+      const originalAmount = debit || credit;
       
-      // محاولة جلب تفاصيل المواد إذا كان القيد مرتبطاً بفاتورة
       let soldItems: any[] = [];
       let usedMaterials: any[] = [];
+      let isCash = false;
       
       if (entry.voucherNumber) {
         if (entry.type === 'بيع') {
@@ -70,14 +70,22 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
           if (inv) {
             soldItems = inv.items;
             usedMaterials = inv.usedMaterials || [];
+            isCash = inv.paymentType === 'نقداً';
           }
         } else if (entry.type === 'مرتجع') {
           const ret = salesReturns.find(r => r.invoiceNumber === entry.voucherNumber);
           if (ret) {
             soldItems = ret.items;
             usedMaterials = ret.returnedMaterialsList || [];
+            isCash = ret.paymentType === 'نقداً';
           }
         }
+      }
+
+      // Logic: If cash, do not affect customer balance
+      if (isCash || (entry.type === 'حسم' && (entry.statement?.includes('نقداً') || entry.notes?.includes('نقداً')))) {
+        debit = 0;
+        credit = 0;
       }
 
       movements.push({
@@ -89,6 +97,8 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
         usedMaterials,
         debit,
         credit,
+        originalAmount,
+        isCash,
         ref: entry.id
       });
     });
@@ -122,6 +132,37 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
 
   return (
     <div className="space-y-4 text-right bg-zinc-50 dark:bg-zinc-950 p-4 md:p-8 rounded-3xl shadow-2xl min-h-screen text-readable border border-zinc-200 dark:border-zinc-800 print:bg-white print:border-none print:shadow-none" dir="rtl">
+      <style>{`
+        @media print {
+          .print-bg-white { background-color: white !important; background: white !important; color: black !important; }
+          .print-text-black { color: black !important; }
+          .print-no-bg { background: none !important; background-color: transparent !important; }
+          .print-border { border: 1px solid #e5e7eb !important; }
+          
+          /* Specific overrides for the summary boxes */
+          .bg-zinc-900.text-white {
+            background-color: white !important;
+            color: black !important;
+            border: 2px solid #e5e7eb !important;
+          }
+          .bg-rose-500\\/10, .bg-emerald-500\\/10, .bg-amber-500\\/10 {
+            background-color: white !important;
+            border: 1px solid #f3f4f6 !important;
+          }
+          .divide-white\\/10 {
+            border-color: #e5e7eb !important;
+          }
+          
+          /* Keep colors for numbers */
+          .text-rose-400, .text-emerald-400, .text-rose-700, .text-emerald-700, .text-rose-800, .text-amber-600 {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          th { background-color: #f8fafc !important; color: #0f172a !important; border: 1px solid #e2e8f0 !important; }
+          td { border: 1px solid #e2e8f0 !important; }
+          table { border: 1px solid #e2e8f0 !important; }
+        }
+      `}</style>
       
       {previewImage && (
         <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 md:p-20 animate-in fade-in duration-300" onClick={() => setPreviewImage(null)}>
@@ -342,28 +383,34 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
           </tbody>
         </table>
 
-        <div className="border-t-4 border-rose-900 mt-4 bg-zinc-900 text-white rounded-2xl overflow-hidden shadow-2xl">
-           <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x md:divide-x-reverse divide-white/10">
-              <div className="p-6 flex flex-col items-center">
-                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">إجمالي المبيعات (Gross)</span>
-                 <span className="text-2xl font-mono font-black">{totalDebit.toLocaleString()}</span>
+        <div className="border-t-4 border-rose-900 mt-4 bg-zinc-900 text-white rounded-2xl overflow-hidden shadow-2xl print-bg-white">
+           <div className="grid grid-cols-1 md:grid-cols-5 divide-y md:divide-y-0 md:divide-x md:divide-x-reverse divide-white/10">
+              <div className="p-4 flex flex-col items-center">
+                 <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">إجمالي المبيعات</span>
+                 <span className="text-xl font-mono font-black">{movements.filter(m => m.type === 'بيع').reduce((s,c) => s + c.originalAmount, 0).toLocaleString()}</span>
               </div>
-              <div className="p-6 flex flex-col items-center bg-rose-500/10">
-                 <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">إجمالي المرتجعات والخصومات</span>
-                 <span className="text-2xl font-mono font-black text-rose-400">
-                    {movements.filter(m => m.type === 'مرتجع' || m.type === 'حسم').reduce((s,c) => s + c.credit, 0).toLocaleString()}
+              <div className="p-4 flex flex-col items-center bg-rose-500/10">
+                 <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">إجمالي المرتجعات</span>
+                 <span className="text-xl font-mono font-black text-rose-400">
+                    {movements.filter(m => m.type === 'مرتجع').reduce((s,c) => s + (c.originalAmount || c.credit), 0).toLocaleString()}
                  </span>
               </div>
-              <div className="p-6 flex flex-col items-center bg-emerald-500/10">
-                 <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">إجمالي المقبوضات النقدية</span>
-                 <span className="text-2xl font-mono font-black text-emerald-400">
-                    {movements.filter(m => m.type === 'قبض').reduce((s,c) => s + c.credit, 0).toLocaleString()}
+              <div className="p-4 flex flex-col items-center bg-amber-500/10">
+                 <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-1">إجمالي الخصومات</span>
+                 <span className="text-xl font-mono font-black text-amber-600">
+                    {movements.filter(m => m.type === 'حسم').reduce((s,c) => s + (c.originalAmount || c.credit), 0).toLocaleString()}
                  </span>
               </div>
-              <div className="p-6 flex flex-col items-center bg-white text-zinc-900">
-                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">صافي الرصيد المتبقي</span>
-                 <span className={`text-4xl font-mono font-black ${finalBalance > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>{finalBalance.toLocaleString()}</span>
-                 <span className="text-[9px] font-bold text-zinc-400 mt-1 uppercase">{activeCurrencySymbol}</span>
+              <div className="p-4 flex flex-col items-center bg-emerald-500/10">
+                 <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">إجمالي المقبوضات</span>
+                 <span className="text-xl font-mono font-black text-emerald-400">
+                    {movements.filter(m => m.type === 'قبض').reduce((s,c) => s + (c.originalAmount || c.credit), 0).toLocaleString()}
+                 </span>
+              </div>
+              <div className="p-4 flex flex-col items-center bg-white text-zinc-900">
+                 <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">صافي الرصيد المتبقي</span>
+                 <span className={`text-3xl font-mono font-black ${finalBalance > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>{finalBalance.toLocaleString()}</span>
+                 <span className="text-[8px] font-bold text-zinc-400 mt-1 uppercase">{activeCurrencySymbol}</span>
               </div>
            </div>
         </div>
@@ -371,7 +418,7 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
         <div className="grid grid-cols-1 md:grid-cols-4 border-2 border-zinc-200 bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
            <div className="col-span-3 flex flex-col divide-y divide-zinc-100 text-[10px] font-bold">
               <div className="p-2.5 px-8 text-zinc-700 underline underline-offset-4 decoration-zinc-200">{tafqeet(totalDebit, activeCurrencyName)}</div>
-              <div className="p-2.5 px-8 text-rose-800 underline underline-offset-4 decoration-rose-200 font-black">{tafqeet(finalBalance, activeCurrencyName)}</div>
+              <div className="p-2.5 px-8 text-rose-800 underline underline-offset-4 decoration-rose-200 font-black">{tafqeet(Math.abs(finalBalance), activeCurrencyName)}</div>
            </div>
            <div className="col-span-1 border-r border-zinc-200 flex flex-col divide-y divide-zinc-100 font-black text-[10px] bg-zinc-50">
               <div className="p-2.5 pr-6 text-left border-l border-zinc-100">إجمالي مدين (مبيعات)</div>
