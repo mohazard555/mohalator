@@ -51,14 +51,20 @@ const PartyManagementView: React.FC<PartyManagementViewProps> = ({ onBack }) => 
     let debitTotal = 0;
     let creditTotal = 0;
 
-    // الرصيد يحسب دائماً من دفتر القيود: مجموع المدين - مجموع الدائن
+    // الرصيد يحسب دائماً من دفتر القيود
     const partyEntries = journal.filter(j => j.partyName === party.name);
     
     partyEntries.forEach(j => {
+      // paid = Debit, received = Credit
       debitTotal += (j.paidSYP || 0) + (j.paidUSD || 0);
       creditTotal += (j.receivedSYP || 0) + (j.receivedUSD || 0);
     });
 
+    // للزبائن: مدين - دائن
+    // للموردين: دائن - مدين
+    if (party.type === PartyType.SUPPLIER) {
+      return creditTotal - debitTotal;
+    }
     return debitTotal - creditTotal;
   };
 

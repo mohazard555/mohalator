@@ -199,7 +199,7 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
     <div className="space-y-6">
       <style>{`
         @media print {
-          .bg-zinc-900, .bg-zinc-800 {
+          .bg-zinc-900, .bg-zinc-800, .bg-zinc-950, .bg-zinc-50 {
             background-color: white !important;
             color: #0f172a !important;
             border: 1px solid #e2e8f0 !important;
@@ -207,14 +207,8 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
           .text-white {
             color: #0f172a !important;
           }
-          .bg-emerald-900\\/20 {
-            background-color: white !important;
-          }
-          .bg-rose-900\\/20 {
-            background-color: white !important;
-          }
-          .bg-zinc-900\\/30 {
-            background-color: white !important;
+          .bg-emerald-900\\/20, .bg-rose-900\\/20, .bg-zinc-900\\/30, .bg-zinc-50\\/30 {
+            background-color: transparent !important;
           }
           table {
             background-color: white !important;
@@ -226,6 +220,13 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
           th {
             background-color: #f8fafc !important;
             color: #0f172a !important;
+          }
+          .border-zinc-900, .border-zinc-200, .border-zinc-100 {
+            border-color: #e2e8f0 !important;
+          }
+          .shadow-2xl, .shadow-xl, .shadow-lg, .shadow-sm {
+            shadow: none !important;
+            box-shadow: none !important;
           }
         }
       `}</style>

@@ -125,6 +125,39 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
+      <style>{`
+        @media print {
+          .bg-zinc-900, .bg-zinc-800, .bg-zinc-950, .bg-zinc-50 {
+            background-color: white !important;
+            color: #0f172a !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+          .text-white {
+            color: #0f172a !important;
+          }
+          .bg-emerald-900\\/20, .bg-rose-900\\/20, .bg-emerald-50\\/10, .bg-rose-50\\/10 {
+            background-color: transparent !important;
+          }
+          table {
+            background-color: white !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+          th, td {
+            border: 1px solid #e2e8f0 !important;
+          }
+          th {
+            background-color: #f8fafc !important;
+            color: #0f172a !important;
+          }
+          .border-zinc-800, .border-zinc-700, .border-zinc-100 {
+            border-color: #e2e8f0 !important;
+          }
+          .shadow-2xl, .shadow-xl, .shadow-lg {
+            shadow: none !important;
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all shadow-sm">

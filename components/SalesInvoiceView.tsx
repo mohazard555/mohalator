@@ -278,100 +278,128 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     }
 
     const isPrimary = selectedCurrencyType === 'primary';
-    
-    // أ. قيد المبيعات (حساب 41) - دائن بكامل القيمة قبل الحسم
-    cashEntries.unshift({
-      id: crypto.randomUUID(),
-      date: invoice.date,
-      statement: `مبيعات فاتورة #${invoice.invoiceNumber}`,
-      receivedSYP: isPrimary ? itemsTotal : 0,
-      paidSYP: 0,
-      receivedUSD: !isPrimary ? itemsTotal : 0,
-      paidUSD: 0,
-      type: 'بيع',
-      voucherNumber: invoice.invoiceNumber,
-      linkedAccountCode: '41',
-      linkedAccountId: '41'
-    });
+    const isCash = invoice.paymentType === 'نقداً';
+    const netAmount = itemsTotal - discount;
 
-    // ب. قيد العميل - مدين بكامل القيمة قبل الحسم
-    cashEntries.unshift({
-      id: crypto.randomUUID(),
-      date: invoice.date,
-      statement: `مبيعات فاتورة #${invoice.invoiceNumber} (قيد مدين)`,
-      receivedSYP: 0,
-      paidSYP: isPrimary ? itemsTotal : 0,
-      receivedUSD: 0,
-      paidUSD: !isPrimary ? itemsTotal : 0,
-      partyName: invoice.customerName,
-      type: 'بيع',
-      voucherNumber: invoice.invoiceNumber
-    });
-
-    // ج. قيد الحسم (حساب 43) - مدين (إذا وجد)
-    if (discount > 0) {
+    if (isCash) {
+      // قيد مبيعات نقدية: من حـ/ الصندوق إلى حـ/ المبيعات (بالصافي لضمان سطرين فقط)
+      // 1. طرف المبيعات (دائن)
       cashEntries.unshift({
         id: crypto.randomUUID(),
         date: invoice.date,
-        statement: `حسم ممنوح فاتورة #${invoice.invoiceNumber}`,
-        receivedSYP: 0,
-        paidSYP: isPrimary ? discount : 0,
-        receivedUSD: 0,
-        paidUSD: !isPrimary ? discount : 0,
-        type: 'حسم',
+        statement: `مبيعات نقدية فاتورة #${invoice.invoiceNumber}`,
+        receivedSYP: isPrimary ? netAmount : 0,
+        paidSYP: 0,
+        receivedUSD: !isPrimary ? netAmount : 0,
+        paidUSD: 0,
+        type: 'بيع',
         voucherNumber: invoice.invoiceNumber,
-        linkedAccountCode: '43',
-        linkedAccountId: '43'
+        linkedAccountCode: '41',
+        linkedAccountId: '41'
       });
-
-      // د. قيد العميل - دائن بقيمة الحسم
+      // 2. طرف الصندوق (مدين)
       cashEntries.unshift({
         id: crypto.randomUUID(),
         date: invoice.date,
-        statement: `حسم ممنوح فاتورة #${invoice.invoiceNumber} (تخفيض رصيد)`,
-        receivedSYP: isPrimary ? discount : 0,
-        paidSYP: 0,
-        receivedUSD: !isPrimary ? discount : 0,
-        paidUSD: 0,
-        partyName: invoice.customerName,
-        type: 'حسم',
-        voucherNumber: invoice.invoiceNumber
-      });
-    }
-
-    // هـ. قيد الدفعة النقدية (إذا وجدت)
-    const actualPaidAmount = invoice.paymentType === 'نقداً' ? finalTotal : (invoice.paidAmount || 0);
-    if (actualPaidAmount > 0) {
-      const destination = invoice.paymentType === 'نقداً' ? (invoice.cashAccount || 'الصندوق') : 'آجل';
-      
-      // قيد الصندوق/الحساب - مدين
-      cashEntries.unshift({
-        id: crypto.randomUUID(),
-        date: invoice.date,
-        statement: `دفعة من فاتورة مبيعات رقم ${invoice.invoiceNumber} - وجهة: ${destination}`,
-        receivedSYP: isPrimary ? actualPaidAmount : 0,
-        paidSYP: 0,
-        receivedUSD: !isPrimary ? actualPaidAmount : 0,
-        paidUSD: 0,
-        notes: `الزبون: ${invoice.customerName}`,
+        statement: `مبيعات نقدية فاتورة #${invoice.invoiceNumber}`,
+        receivedSYP: 0,
+        paidSYP: isPrimary ? netAmount : 0,
+        receivedUSD: 0,
+        paidUSD: !isPrimary ? netAmount : 0,
         type: 'بيع',
         voucherNumber: invoice.invoiceNumber,
         cashAccount: invoice.cashAccount || 'الصندوق'
       });
-
-      // قيد العميل - دائن
+    } else {
+      // قيد مبيعات آجلة: من حـ/ الزبون إلى حـ/ المبيعات
+      // 1. طرف المبيعات (دائن)
       cashEntries.unshift({
         id: crypto.randomUUID(),
         date: invoice.date,
-        statement: `دفعة من فاتورة مبيعات رقم ${invoice.invoiceNumber} (تخفيض رصيد)`,
-        receivedSYP: isPrimary ? actualPaidAmount : 0,
+        statement: `مبيعات آجلة فاتورة #${invoice.invoiceNumber}`,
+        receivedSYP: isPrimary ? itemsTotal : 0,
         paidSYP: 0,
-        receivedUSD: !isPrimary ? actualPaidAmount : 0,
+        receivedUSD: !isPrimary ? itemsTotal : 0,
         paidUSD: 0,
+        type: 'بيع',
+        voucherNumber: invoice.invoiceNumber,
+        linkedAccountCode: '41',
+        linkedAccountId: '41'
+      });
+      // 2. طرف الزبون (مدين)
+      cashEntries.unshift({
+        id: crypto.randomUUID(),
+        date: invoice.date,
+        statement: `مبيعات آجلة فاتورة #${invoice.invoiceNumber}`,
+        receivedSYP: 0,
+        paidSYP: isPrimary ? itemsTotal : 0,
+        receivedUSD: 0,
+        paidUSD: !isPrimary ? itemsTotal : 0,
         partyName: invoice.customerName,
-        type: 'قبض',
+        type: 'بيع',
         voucherNumber: invoice.invoiceNumber
       });
+
+      // ج. قيد الحسم الممنوح (حساب 43) - مدين (إذا وجد)
+      if (discount > 0) {
+        // 1. طرف الحسم (مدين)
+        cashEntries.unshift({
+          id: crypto.randomUUID(),
+          date: invoice.date,
+          statement: `حسم ممنوح فاتورة #${invoice.invoiceNumber}`,
+          receivedSYP: 0,
+          paidSYP: isPrimary ? discount : 0,
+          receivedUSD: 0,
+          paidUSD: !isPrimary ? discount : 0,
+          type: 'حسم',
+          voucherNumber: invoice.invoiceNumber,
+          linkedAccountCode: '43',
+          linkedAccountId: '43'
+        });
+        // 2. طرف الزبون (دائن)
+        cashEntries.unshift({
+          id: crypto.randomUUID(),
+          date: invoice.date,
+          statement: `حسم ممنوح فاتورة #${invoice.invoiceNumber} (تخفيض رصيد)`,
+          receivedSYP: isPrimary ? discount : 0,
+          paidSYP: 0,
+          receivedUSD: !isPrimary ? discount : 0,
+          paidUSD: 0,
+          partyName: invoice.customerName,
+          type: 'حسم',
+          voucherNumber: invoice.invoiceNumber
+        });
+      }
+
+      // د. قيد الدفعة النقدية (تسوية دفعة)
+      if (invoice.paidAmount && invoice.paidAmount > 0) {
+        // 1. طرف الزبون (دائن)
+        cashEntries.unshift({
+          id: crypto.randomUUID(),
+          date: invoice.date,
+          statement: `دفعة من فاتورة مبيعات رقم ${invoice.invoiceNumber}`,
+          receivedSYP: isPrimary ? invoice.paidAmount : 0,
+          paidSYP: 0,
+          receivedUSD: !isPrimary ? invoice.paidAmount : 0,
+          paidUSD: 0,
+          partyName: invoice.customerName,
+          type: 'قبض',
+          voucherNumber: invoice.invoiceNumber
+        });
+        // 2. طرف الصندوق (مدين)
+        cashEntries.unshift({
+          id: crypto.randomUUID(),
+          date: invoice.date,
+          statement: `دفعة من فاتورة مبيعات رقم ${invoice.invoiceNumber}`,
+          receivedSYP: 0,
+          paidSYP: isPrimary ? invoice.paidAmount : 0,
+          receivedUSD: 0,
+          paidUSD: !isPrimary ? invoice.paidAmount : 0,
+          type: 'قبض',
+          voucherNumber: invoice.invoiceNumber,
+          cashAccount: invoice.cashAccount || 'الصندوق'
+        });
+      }
     }
 
     localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(cashEntries));

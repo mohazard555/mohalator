@@ -135,7 +135,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
     <div className="space-y-6">
       <style>{`
         @media print {
-          .bg-zinc-800 {
+          .bg-zinc-800, .bg-zinc-900, .bg-zinc-950, .bg-emerald-500\\/5, .bg-amber-500\\/5 {
             background-color: white !important;
             color: #0f172a !important;
             border: 1px solid #e2e8f0 !important;
@@ -143,7 +143,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
           .text-white {
             color: #0f172a !important;
           }
-          .bg-emerald-900\\/10, .bg-rose-900\\/10, .bg-amber-900\\/10 {
+          .bg-emerald-900\\/10, .bg-rose-900\\/10, .bg-amber-900\\/10, .bg-emerald-50\\/20, .bg-rose-50\\/20, .bg-amber-500\\/5 {
             background-color: transparent !important;
           }
           table {
@@ -156,6 +156,13 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
           th {
             background-color: #f8fafc !important;
             color: #0f172a !important;
+          }
+          .border-primary {
+            border-color: #e2e8f0 !important;
+          }
+          .shadow-2xl, .shadow-xl, .shadow-lg, .shadow-sm {
+            shadow: none !important;
+            box-shadow: none !important;
           }
         }
       `}</style>

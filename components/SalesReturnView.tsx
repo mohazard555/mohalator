@@ -223,47 +223,56 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
       const savedCash = localStorage.getItem(`${prefix}_cash_journal`);
       let cashEntries: CashEntry[] = savedCash ? JSON.parse(savedCash) : [];
       
-      // قيد المرتجع لحساب مرتجع المبيعات (42) - مدين
       if (totalReturnItemsAmountLocal > 0) {
-         cashEntries.unshift({
+        if (foundInvoice.paymentType === 'نقداً') {
+          // مرتجع نقدي: من حـ/ مرتجع المبيعات إلى حـ/ الصندوق
+          // 1. طرف مرتجع المبيعات (مدين)
+          cashEntries.unshift({
             id: crypto.randomUUID(),
             date: returnDate,
-            statement: `مرتجع مبيعات فاتورة #${foundInvoice.invoiceNumber}`,
+            statement: `مرتجع مبيعات نقدية فاتورة #${foundInvoice.invoiceNumber}`,
             receivedSYP: 0, 
             paidSYP: totalReturnItemsAmountLocal, 
             receivedUSD: 0, paidUSD: 0,
-            notes: 'قيد آلي لمرتجع المبيعات',
             type: 'مرتجع', voucherNumber: returnId,
             linkedAccountCode: '42',
             linkedAccountId: '42'
-         });
-      }
-
-      if (foundInvoice.paymentType === 'نقداً') {
-        if (totalReturnItemsAmountLocal > 0) {
+          });
+          // 2. طرف الصندوق (دائن)
           cashEntries.unshift({
             id: crypto.randomUUID(),
             date: returnDate,
             statement: `رد نقدي لمرتجع مبيع فاتورة ${foundInvoice.invoiceNumber}`,
             receivedSYP: totalReturnItemsAmountLocal, paidSYP: 0, 
             receivedUSD: 0, paidUSD: 0,
+            type: 'مرتجع', voucherNumber: returnId,
+            cashAccount: foundInvoice.cashAccount || 'الصندوق'
+          });
+        } else {
+          // مرتجع آجل: من حـ/ مرتجع المبيعات إلى حـ/ الزبون
+          // 1. طرف مرتجع المبيعات (مدين)
+          cashEntries.unshift({
+            id: crypto.randomUUID(),
+            date: returnDate,
+            statement: `مرتجع مبيعات آجلة فاتورة #${foundInvoice.invoiceNumber}`,
+            receivedSYP: 0, 
+            paidSYP: totalReturnItemsAmountLocal, 
+            receivedUSD: 0, paidUSD: 0,
+            type: 'مرتجع', voucherNumber: returnId,
+            linkedAccountCode: '42',
+            linkedAccountId: '42'
+          });
+          // 2. طرف الزبون (دائن)
+          cashEntries.unshift({
+            id: crypto.randomUUID(),
+            date: returnDate,
+            statement: `تسوية رصيد (مرتجع آجل) - فاتورة رقم ${foundInvoice.invoiceNumber}`,
+            receivedSYP: totalReturnItemsAmountLocal, paidSYP: 0, 
+            receivedUSD: 0, paidUSD: 0,
             partyName: foundInvoice.customerName,
-            notes: `للزبون: ${foundInvoice.customerName}`, 
             type: 'مرتجع', voucherNumber: returnId
           });
         }
-      } else {
-        // قيد العميل (دائن) لتخفيض الذمة
-        cashEntries.unshift({
-          id: crypto.randomUUID(),
-          date: returnDate,
-          statement: `تسوية رصيد (مرتجع آجل) - فاتورة رقم ${foundInvoice.invoiceNumber}`,
-          receivedSYP: totalReturnItemsAmountLocal, paidSYP: 0, 
-          receivedUSD: 0, paidUSD: 0,
-          partyName: foundInvoice.customerName,
-          notes: 'تعديل آلي للذمة',
-          type: 'مرتجع', voucherNumber: returnId
-        });
       }
       
       const discountDiff = adjustedDiscount - (foundInvoice.discountAmount || 0);
