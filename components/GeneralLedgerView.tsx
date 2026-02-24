@@ -25,6 +25,7 @@ interface LedgerTransaction {
   type: string;
   ref: string;
   account: string;
+  accountId?: string;
 }
 
 const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
@@ -66,35 +67,28 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
 
     const ledger: LedgerTransaction[] = [];
 
-    // 1. الأرصدة الافتتاحية
-    opening.forEach(e => {
-      ledger.push({
-        id: e.id, date: e.date, statement: `قيد افتتاحي: ${e.notes || e.accountName}`,
-        debit: e.debit, credit: e.credit, type: 'افتتاحي', ref: 'OP', account: e.accountName
-      });
-    });
-
-    // 2. حركات اليومية (المصدر الوحيد للحقيقة)
+    // 1. حركات اليومية (المصدر الوحيد للحقيقة)
+    // تشمل القيود الافتتاحية واليومية العادية
     journal.forEach(j => {
       let accountName = j.partyName || 'الصندوق العام';
       if (j.categoryId) {
         const catMatch = cats.find(c => c.id === j.categoryId);
         if (catMatch) accountName = catMatch.name;
-      } else if (j.linkedAccountCode) {
-        // إذا كان هناك كود حساب مرتبط، نحاول جلب اسمه من الشجرة
-        const savedChart = localStorage.getItem(`${prefix}_chart_accounts`);
-        if (savedChart) {
-           const accounts: AccountNode[] = JSON.parse(savedChart);
-           const acc = accounts.find(a => a.code === j.linkedAccountCode || a.id === j.linkedAccountId);
-           if (acc) accountName = acc.name;
-        }
+      } else if (j.linkedAccountId || j.linkedAccountCode) {
+        const acc = chartAccounts.find(a => a.id === j.linkedAccountId || a.code === j.linkedAccountCode);
+        if (acc) accountName = acc.name;
       }
 
       ledger.push({
-        id: j.id, date: j.date, statement: j.statement,
+        id: j.id, 
+        date: j.date, 
+        statement: j.statement,
         debit: (j.receivedSYP || 0) + (j.receivedUSD || 0), 
         credit: (j.paidSYP || 0) + (j.paidUSD || 0),
-        type: j.type || 'يومية', ref: j.voucherNumber || 'VOU', account: accountName
+        type: j.type || 'يومية', 
+        ref: j.voucherNumber || 'VOU', 
+        account: accountName,
+        accountId: j.linkedAccountId // إضافة المعرف لتسهيل الفلترة الدقيقة
       });
     });
 
@@ -121,38 +115,21 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
       if (selectedAccountId) {
         const selectedNode = chartAccounts.find(a => a.id === selectedAccountId);
         if (selectedNode?.type === 'FOLDER') {
-          // جلب كافة الحركات المرتبطة بالكود أو المعرف في اليومية
-          const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
-          const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
-          const journalRaw = localStorage.getItem(`${prefix}_cash_journal`);
-          const journal: CashEntry[] = journalRaw ? JSON.parse(journalRaw) : [];
-          
-          // التحقق من انتماء الحساب لهذا المجلد أو أحد فروعه
-          const isChildOfFolder = (accId: string): boolean => {
-             const acc = chartAccounts.find(a => a.id === accId);
-             if (!acc) return false;
-             if (acc.parentId === selectedNode.id) return true;
-             if (acc.parentId) return isChildOfFolder(acc.parentId);
-             return false;
-          };
-
-          // البحث عن الحركة الأصلية في اليومية للتحقق من الربط المحاسبي
-          const journalEntry = journal.find(j => j.id === t.id);
-          if (journalEntry) {
-             if (journalEntry.linkedAccountId === selectedNode.id || journalEntry.linkedAccountCode === selectedNode.code) matchAccount = true;
-             else if (journalEntry.linkedAccountId && isChildOfFolder(journalEntry.linkedAccountId)) matchAccount = true;
-             else if (journalEntry.partyName === selectedNode.name) matchAccount = true;
-             else {
-                // إذا لم نجد ربط مباشر، نعتمد على الاسم (للحالات القديمة)
-                const childNames = getAllChildNames(selectedNode.id);
-                matchAccount = childNames.includes(t.account) || t.account === selectedNode.name;
-             }
-          } else {
-             const childNames = getAllChildNames(selectedNode.id);
-             matchAccount = childNames.includes(t.account) || t.account === selectedNode.name;
-          }
+           // إذا كان مجلداً، نظهر كافة الحركات التي تنتمي لأبنائه
+           const isChildOfFolder = (accId: string): boolean => {
+              const acc = chartAccounts.find(a => a.id === accId);
+              if (!acc) return false;
+              if (acc.parentId === selectedNode.id) return true;
+              if (acc.parentId) return isChildOfFolder(acc.parentId);
+              return false;
+           };
+           
+           // @ts-ignore
+           matchAccount = t.accountId === selectedNode.id || (t.accountId && isChildOfFolder(t.accountId)) || t.account === selectedNode.name;
         } else {
-          matchAccount = t.account === accountFilter;
+           // فلترة دقيقة حسب المعرف
+           // @ts-ignore
+           matchAccount = t.accountId === selectedAccountId || t.account === accountFilter;
         }
       } else {
         matchAccount = t.account === accountFilter;

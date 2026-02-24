@@ -27,6 +27,10 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
   const [chartAccounts, setChartAccounts] = useState<AccountNode[]>([]);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   
+  const [viewMode, setViewMode] = useState<'NEW' | 'LIST'>('NEW');
+  const [savedOpeningEntries, setSavedOpeningEntries] = useState<OpeningEntry[]>([]);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+
   const [rows, setRows] = useState<JournalRow[]>(
     Array.from({ length: 8 }, () => ({
       id: crypto.randomUUID(),
@@ -58,17 +62,21 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
   }, []);
 
   const loadData = () => {
-    const sSett = localStorage.getItem('sheno_settings');
-    const sChart = localStorage.getItem('sheno_chart_accounts');
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+    
+    const sSett = localStorage.getItem(`${prefix}_settings`);
+    const sChart = localStorage.getItem(`${prefix}_chart_accounts`);
+    const sOp = localStorage.getItem(`${prefix}_opening_entries`);
     
     if (sSett) setSettings(JSON.parse(sSett));
     if (sChart) {
       const parsedChart = JSON.parse(sChart);
       setChartAccounts(parsedChart);
-      // توسيع الجذور تلقائياً لتسهيل الرؤية
       const roots = parsedChart.filter((a: any) => !a.parentId).map((a: any) => a.id);
       setExpandedNodes(new Set(roots));
     }
+    if (sOp) setSavedOpeningEntries(JSON.parse(sOp));
   };
 
   const toggleNode = (id: string, e: React.MouseEvent) => {
@@ -162,9 +170,18 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
     }
 
     setIsPosting(true);
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
     
-    const savedJou = localStorage.getItem('sheno_cash_journal');
+    const savedJou = localStorage.getItem(`${prefix}_cash_journal`);
     let jou: CashEntry[] = savedJou ? JSON.parse(savedJou) : [];
+
+    const voucherNum = editingEntryId ? `OP-EDIT-${editingEntryId}` : 'OP-' + new Date().getFullYear();
+
+    // حذف القيود القديمة إذا كان تعديلاً
+    if (editingEntryId) {
+       jou = jou.filter(j => j.voucherNumber !== voucherNum && j.voucherNumber !== `OP-${new Date().getFullYear()}`);
+    }
 
     const journalEntries: CashEntry[] = validRows.map(r => ({
       id: crypto.randomUUID(),
@@ -176,17 +193,24 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
       paidUSD: 0,
       notes: 'قيد افتتاحي معتمد',
       type: 'افتتاحي',
-      voucherNumber: 'OP-' + new Date().getFullYear(),
-      partyName: r.accountName
+      voucherNumber: voucherNum,
+      partyName: r.accountName,
+      linkedAccountId: r.accountId,
+      linkedAccountCode: r.accountCode
     }));
 
-    localStorage.setItem('sheno_cash_journal', JSON.stringify([...journalEntries, ...jou]));
+    localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify([...journalEntries, ...jou]));
 
-    const savedOp = localStorage.getItem('sheno_opening_entries');
+    const savedOp = localStorage.getItem(`${prefix}_opening_entries`);
     let opEntries: OpeningEntry[] = savedOp ? JSON.parse(savedOp) : [];
     
+    if (editingEntryId) {
+       opEntries = opEntries.filter(e => e.id !== editingEntryId);
+    }
+
+    const newEntryId = editingEntryId || crypto.randomUUID();
     const newOpeningEntries: OpeningEntry[] = validRows.map(r => ({
-      id: crypto.randomUUID(),
+      id: newEntryId,
       accountName: r.accountName,
       accountType: chartAccounts.find(a => a.id === r.accountId)?.reportType === 'الميزانية' ? 'أصول' : 'حقوق ملكية',
       debit: r.debit,
@@ -195,11 +219,73 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
       notes: r.statement || 'قيد افتتاحي'
     }));
 
-    localStorage.setItem('sheno_opening_entries', JSON.stringify([...newOpeningEntries, ...opEntries]));
+    localStorage.setItem(`${prefix}_opening_entries`, JSON.stringify([...newOpeningEntries, ...opEntries]));
 
     alert('تم حفظ وترحيل القيد بنجاح.');
     setIsPosting(false);
-    onBack();
+    loadData();
+    setViewMode('LIST');
+    setEditingEntryId(null);
+  };
+
+  const handleDeleteEntry = (id: string) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا القيد الافتتاحي؟')) return;
+    
+    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
+    const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+    
+    const savedOp = localStorage.getItem(`${prefix}_opening_entries`);
+    const savedJou = localStorage.getItem(`${prefix}_cash_journal`);
+    
+    if (savedOp) {
+      const opEntries: OpeningEntry[] = JSON.parse(savedOp);
+      localStorage.setItem(`${prefix}_opening_entries`, JSON.stringify(opEntries.filter(e => e.id !== id)));
+    }
+    
+    if (savedJou) {
+      const jou: CashEntry[] = JSON.parse(savedJou);
+      localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(jou.filter(j => j.voucherNumber !== `OP-EDIT-${id}` && j.voucherNumber !== `OP-${new Date().getFullYear()}`)));
+    }
+    
+    loadData();
+  };
+
+  const handleEditEntry = (id: string) => {
+    const entryRows = savedOpeningEntries.filter(e => e.id === id);
+    if (entryRows.length === 0) return;
+    
+    const first = entryRows[0];
+    setDate(first.date);
+    setEditingEntryId(id);
+    
+    const newRows: JournalRow[] = entryRows.map(e => {
+       const acc = chartAccounts.find(a => a.name === e.accountName);
+       return {
+          id: crypto.randomUUID(),
+          accountId: acc?.id || '',
+          accountName: e.accountName,
+          accountCode: acc?.code || '',
+          debit: e.debit,
+          credit: e.credit,
+          statement: e.notes
+       };
+    });
+    
+    // إكمال الصفوف لتبدو كجدول
+    while (newRows.length < 8) {
+       newRows.push({
+          id: crypto.randomUUID(),
+          accountId: '',
+          accountName: '',
+          accountCode: '',
+          debit: 0,
+          credit: 0,
+          statement: ''
+       });
+    }
+    
+    setRows(newRows);
+    setViewMode('NEW');
   };
 
   // وظيفة رندر الشجرة داخل المودال
@@ -281,16 +367,81 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
         </div>
         
         <div className="flex items-center gap-2">
+           <button 
+             onClick={() => {
+                setViewMode(viewMode === 'NEW' ? 'LIST' : 'NEW');
+                if (viewMode === 'LIST') {
+                   setEditingEntryId(null);
+                   setRows(Array.from({ length: 8 }, () => ({
+                      id: crypto.randomUUID(),
+                      accountId: '',
+                      accountName: '',
+                      accountCode: '',
+                      debit: 0,
+                      credit: 0,
+                      statement: ''
+                   })));
+                }
+             }}
+             className="px-4 py-1.5 bg-white border rounded-lg font-black text-[10px] text-zinc-600 hover:bg-zinc-50 transition-all shadow-sm flex items-center gap-2"
+           >
+              {viewMode === 'NEW' ? <LayoutList className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {viewMode === 'NEW' ? 'عرض القيود المحفوظة' : 'إنشاء قيد جديد'}
+           </button>
            <div className="bg-white border rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-sm">
               <span className="text-[9px] font-black text-zinc-400 uppercase">تاريخ القيد</span>
               <input type="date" value={date} onChange={e => setDate(e.target.value)} className="font-mono font-black text-xs outline-none text-primary bg-transparent" />
            </div>
-           <div className="px-4 py-1.5 bg-zinc-900 text-white border border-zinc-700 font-mono font-black text-xs shadow-lg rounded-lg">
-             DOC: OPEN-001
-           </div>
         </div>
       </div>
 
+      {viewMode === 'LIST' ? (
+         <div className="flex-1 bg-white border border-zinc-200 rounded-2xl shadow-xl overflow-hidden flex flex-col">
+            <div className="p-4 border-b bg-zinc-50 flex justify-between items-center">
+               <h3 className="font-black text-sm text-zinc-800">سجل القيود الافتتاحية المحفوظة</h3>
+               <span className="text-[10px] font-bold text-zinc-400">إجمالي القيود: {Array.from(new Set(savedOpeningEntries.map(e => e.id))).length}</span>
+            </div>
+            <div className="overflow-auto flex-1">
+               <table className="w-full text-right border-collapse">
+                  <thead>
+                     <tr className="bg-zinc-900 text-white font-black text-[10px] uppercase h-10">
+                        <th className="p-3 border-l border-zinc-800">التاريخ</th>
+                        <th className="p-3 border-l border-zinc-800">معرف القيد</th>
+                        <th className="p-3 border-l border-zinc-800">عدد الحسابات</th>
+                        <th className="p-3 border-l border-zinc-800">إجمالي القيمة</th>
+                        <th className="p-3 text-center">إجراءات</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                     {Array.from(new Set(savedOpeningEntries.map(e => e.id))).map(id => {
+                        const entryRows = savedOpeningEntries.filter(e => e.id === id);
+                        const total = entryRows.reduce((s, r) => s + r.debit, 0);
+                        return (
+                           <tr key={id} className="hover:bg-zinc-50 transition-colors">
+                              <td className="p-3 font-mono text-xs">{entryRows[0].date}</td>
+                              <td className="p-3 font-mono text-[10px] text-zinc-400">{id.substring(0, 8)}...</td>
+                              <td className="p-3 font-bold text-xs">{entryRows.length} حسابات</td>
+                              <td className="p-3 font-black text-sm text-primary">{total.toLocaleString()}</td>
+                              <td className="p-3">
+                                 <div className="flex items-center justify-center gap-2">
+                                    <button onClick={() => handleEditEntry(id)} className="p-1.5 bg-zinc-100 hover:bg-primary hover:text-white rounded-lg transition-all"><Edit2 className="w-4 h-4"/></button>
+                                    <button onClick={() => handleDeleteEntry(id)} className="p-1.5 bg-zinc-100 hover:bg-rose-500 hover:text-white rounded-lg transition-all"><Trash2 className="w-4 h-4"/></button>
+                                 </div>
+                              </td>
+                           </tr>
+                        );
+                     })}
+                     {savedOpeningEntries.length === 0 && (
+                        <tr>
+                           <td colSpan={5} className="p-20 text-center text-zinc-400 italic font-bold">لا توجد قيود افتتاحية مسجلة حالياً</td>
+                        </tr>
+                     )}
+                  </tbody>
+               </table>
+            </div>
+         </div>
+      ) : (
+         <>
       {/* Main Grid */}
       <div className="flex-1 bg-white border border-zinc-200 rounded-2xl shadow-xl overflow-hidden flex flex-col relative">
          <div className="overflow-auto flex-1 custom-scrollbar">
@@ -370,6 +521,7 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
       </div>
 
       {/* Summary Bar */}
+      {viewMode === 'NEW' && (
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pb-3 no-print">
          <div className="md:col-span-8 bg-zinc-900 p-1 rounded-2xl shadow-lg flex items-center">
             <div className="grid grid-cols-3 w-full divide-x divide-x-reverse divide-zinc-800">
@@ -397,10 +549,13 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
               disabled={!isBalanced || isPosting}
               className={`px-8 py-3 rounded-xl font-black text-sm flex items-center gap-2 shadow-xl transition-all ${isBalanced ? 'bg-primary text-white hover:scale-105 active:scale-95' : 'bg-zinc-200 text-zinc-400 cursor-not-allowed grayscale'}`}
             >
-               <Save className="w-4 h-4" /> {isPosting ? 'جاري الحفظ...' : 'ترحيل القيد'}
+               <Save className="w-4 h-4" /> {isPosting ? 'جاري الحفظ...' : editingEntryId ? 'تحديث القيد' : 'ترحيل القيد'}
             </button>
          </div>
       </div>
+      )}
+      </>
+      )}
 
       {/* Account Selector Modal (Dynamic Tree) */}
       {isSearchOpen && (

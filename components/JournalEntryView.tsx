@@ -93,19 +93,27 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
     const savedJou = localStorage.getItem('sheno_cash_journal');
     let jou: CashEntry[] = savedJou ? JSON.parse(savedJou) : [];
 
-    const newJournalEntries: CashEntry[] = validRows.map(r => ({
-        id: crypto.randomUUID(),
-        date,
-        statement: r.notes || mainDescription || `قيد رقم ${voucherNumber}`,
-        receivedSYP: r.credit, 
-        paidSYP: r.debit,   
-        receivedUSD: 0,
-        paidUSD: 0,
-        notes: mainDescription,
-        type: 'قيد',
-        voucherNumber,
-        partyName: r.accountName
-      }));
+    const newJournalEntries: CashEntry[] = validRows.map(r => {
+        const acc = accounts.find(a => a.name === r.accountName);
+        const party = parties.find(p => p.name === r.accountName);
+        const cat = categories.find(c => c.name === r.accountName);
+
+        return {
+            id: crypto.randomUUID(),
+            date,
+            statement: r.notes || mainDescription || `قيد رقم ${voucherNumber}`,
+            receivedSYP: r.credit, 
+            paidSYP: r.debit,   
+            receivedUSD: 0,
+            paidUSD: 0,
+            notes: mainDescription,
+            type: 'قيد',
+            voucherNumber,
+            partyName: r.accountName,
+            linkedAccountId: acc?.id || party?.id || cat?.id,
+            linkedAccountCode: acc?.code || party?.code || cat?.accountCode
+        };
+    });
 
     localStorage.setItem('sheno_cash_journal', JSON.stringify([...newJournalEntries, ...jou]));
     alert('تم ترحيل سند القيد بنجاح. ستنعكس الأرصدة فوراً في دليل الحسابات.');
