@@ -80,12 +80,6 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
         }
       }
 
-      // Logic: If cash, do not affect supplier balance
-      if (isCash || (entry.type === 'حسم' && (entry.statement?.includes('نقداً') || entry.notes?.includes('نقداً')))) {
-        debit = 0;
-        credit = 0;
-      }
-
       // Categorize for totals
       if (entry.type === 'شراء') {
         purchasesVal = originalAmount;

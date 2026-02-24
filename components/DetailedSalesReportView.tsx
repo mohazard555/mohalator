@@ -82,12 +82,6 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
         }
       }
 
-      // Logic: If cash, do not affect customer balance
-      if (isCash || (entry.type === 'حسم' && (entry.statement?.includes('نقداً') || entry.notes?.includes('نقداً')))) {
-        debit = 0;
-        credit = 0;
-      }
-
       movements.push({
         date: entry.date,
         type: entry.type || 'قيد',

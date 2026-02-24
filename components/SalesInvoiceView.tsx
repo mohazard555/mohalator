@@ -245,7 +245,10 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     const savedStock = localStorage.getItem(`${prefix}_stock_entries`);
     let stockEntries: StockEntry[] = savedStock ? JSON.parse(savedStock) : [];
     if (editingId) {
-      stockEntries = stockEntries.filter(e => e.invoiceNumber !== invoice.invoiceNumber);
+      const oldInvoice = invoices.find(i => i.id === editingId);
+      if (oldInvoice) {
+        stockEntries = stockEntries.filter(e => e.invoiceNumber !== oldInvoice.invoiceNumber);
+      }
     }
 
     const usedStockMoves: StockEntry[] = (invoice.usedMaterials || []).map(m => ({
@@ -274,7 +277,10 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     
     // عكس القيود القديمة في حال التعديل
     if (editingId) {
-      cashEntries = cashEntries.filter(e => e.voucherNumber !== invoice.invoiceNumber);
+      const oldInvoice = invoices.find(i => i.id === editingId);
+      if (oldInvoice) {
+        cashEntries = cashEntries.filter(e => e.voucherNumber !== oldInvoice.invoiceNumber);
+      }
     }
 
     const isPrimary = selectedCurrencyType === 'primary';
