@@ -182,6 +182,7 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
       id: editingId || crypto.randomUUID(),
       time: editingId ? (newInvoice.time || time) : time,
       totalAmount: finalTotal,
+      paidAmount: newInvoice.paymentType === 'نقداً' ? finalTotal : (newInvoice.paidAmount || 0),
       currencySymbol: currencySymbol,
       transportExpenses: transport,
       discountAmount: discount
@@ -290,7 +291,8 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
     }
 
     // ز. قيد الدفعة النقدية (إذا وجدت)
-    if (invoice.paidAmount > 0) {
+    const actualPaidAmount = invoice.paymentType === 'نقداً' ? finalTotal : (invoice.paidAmount || 0);
+    if (actualPaidAmount > 0) {
       const source = invoice.paymentType === 'نقداً' ? (invoice.cashAccount || 'الصندوق') : 'آجل';
       
       // قيد الصندوق/الحساب - دائن
@@ -299,9 +301,9 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
         date: invoice.date,
         statement: `دفعة مقابل فاتورة مشتريات رقم ${invoice.invoiceNumber} - المصدر: ${source}`,
         receivedSYP: 0, 
-        paidSYP: isPrimary ? invoice.paidAmount : 0, 
+        paidSYP: isPrimary ? actualPaidAmount : 0, 
         receivedUSD: 0, 
-        paidUSD: !isPrimary ? invoice.paidAmount : 0,
+        paidUSD: !isPrimary ? actualPaidAmount : 0,
         notes: invoice.notes, 
         type: 'شراء',
         voucherNumber: invoice.invoiceNumber,
@@ -314,11 +316,11 @@ const PurchaseInvoiceView: React.FC<PurchaseInvoiceViewProps> = ({ onBack }) => 
         date: invoice.date,
         statement: `دفعة مقابل فاتورة مشتريات رقم ${invoice.invoiceNumber} (تخفيض رصيد)`,
         receivedSYP: 0,
-        paidSYP: isPrimary ? invoice.paidAmount : 0,
+        paidSYP: isPrimary ? actualPaidAmount : 0,
         receivedUSD: 0,
-        paidUSD: !isPrimary ? invoice.paidAmount : 0,
+        paidUSD: !isPrimary ? actualPaidAmount : 0,
         partyName: invoice.supplierName,
-        type: 'شراء',
+        type: 'دفع',
         voucherNumber: invoice.invoiceNumber
       });
     }

@@ -489,10 +489,10 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                        <span className="px-5 py-2 bg-primary/10 text-primary rounded-xl text-xs font-black border border-primary/20 uppercase tracking-widest">{selectedAccount.reportType}</span>
                     </div>
                  </div>
-                 <div className="text-left bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 shadow-2xl relative z-10 min-w-[220px]">
-                    <span className="text-[10px] font-black text-zinc-500 uppercase block mb-2 tracking-widest">NET BALANCE | الرصيد المتاح</span>
-                    <div className={`text-5xl font-mono font-black ${calculateBalance(selectedAccount) >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>{Math.abs(calculateBalance(selectedAccount)).toLocaleString()}</div>
-                    <span className="text-xs font-bold text-zinc-600 uppercase mt-2 block tracking-widest">{settings?.currencySymbol}</span>
+                 <div className="text-left bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 shadow-2xl relative z-10 min-w-[220px] print:bg-white print:border-zinc-300 print:shadow-none">
+                    <span className="text-[10px] font-black text-zinc-500 uppercase block mb-2 tracking-widest print:text-zinc-600">NET BALANCE | الرصيد المتاح</span>
+                    <div className={`text-5xl font-mono font-black ${calculateBalance(selectedAccount) >= 0 ? 'text-emerald-400' : 'text-rose-500'} print:text-black`}>{Math.abs(calculateBalance(selectedAccount)).toLocaleString()}</div>
+                    <span className="text-xs font-bold text-zinc-600 uppercase mt-2 block tracking-widest print:text-zinc-500">{settings?.currencySymbol}</span>
                  </div>
               </div>
 

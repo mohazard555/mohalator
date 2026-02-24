@@ -172,7 +172,7 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
             <div className="flex flex-1">
                <div className="bg-zinc-100 dark:bg-zinc-800 flex-1 p-2 text-[9px] font-bold text-center border-l border-zinc-200 dark:border-zinc-700 flex items-center justify-center">اجمالي عدد الفواتير</div>
                <div className="flex-1 p-2 text-center font-black text-2xl flex items-center justify-center text-readable">
-                 {movements.filter(m => m.type === 'مبيع').length}
+                 {movements.filter(m => m.type === 'بيع').length}
                </div>
             </div>
          </div>
@@ -292,8 +292,8 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
                 <tr key={idx} className="h-10 border-b border-zinc-100 font-bold hover:bg-rose-50/20 transition-colors">
                   <td className="p-1 border-zinc-200 font-mono text-center text-zinc-400">{move.date}</td>
                   <td className="p-1 border-zinc-200 text-center">
-                    <span className={`px-2 py-0.5 rounded text-[8px] font-black ${
-                      move.type === 'مبيع' ? 'bg-rose-100 text-rose-800' : 
+                    <span className={`px-2 py-0.5 rounded text-[8px] font-black print:border print:border-zinc-300 print:bg-transparent print:text-black ${
+                      move.type === 'بيع' ? 'bg-rose-100 text-rose-800' : 
                       move.type === 'مرتجع' ? 'bg-amber-100 text-amber-800' : 
                       move.type === 'حسم' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'
                     }`}>
@@ -334,8 +334,8 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
                     </td>
                   )}
 
-                  <td className="p-1 border-zinc-200 font-mono text-center text-rose-800 bg-rose-50/5">{move.debit > 0 ? move.debit.toLocaleString() : ''}</td>
-                  <td className="p-1 border-zinc-200 font-mono text-center text-emerald-800 bg-emerald-50/5">{move.credit > 0 ? move.credit.toLocaleString() : ''}</td>
+                  <td className="p-1 border-zinc-200 font-mono text-center text-rose-800 bg-rose-50/5 print:text-black print:bg-transparent">{move.debit > 0 ? move.debit.toLocaleString() : ''}</td>
+                  <td className="p-1 border-zinc-200 font-mono text-center text-emerald-800 bg-emerald-50/5 print:text-black print:bg-transparent">{move.credit > 0 ? move.credit.toLocaleString() : ''}</td>
                 </tr>
               ))
             )}

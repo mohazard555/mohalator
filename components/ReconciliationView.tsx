@@ -95,33 +95,7 @@ const ReconciliationView: React.FC<ReconciliationViewProps> = ({ onBack }) => {
     const party = parties.find(p => p.name === selectedPartyName);
     if (!party) return null;
 
-    // 1. المبيعات
-    sales.filter(s => s.customerName === selectedPartyName && s.date >= startDate && s.date <= endDate).forEach(inv => {
-      const gross = inv.items.reduce((sum, it) => sum + it.total, 0);
-      movements.push({ date: inv.date, type: 'مبيع', statement: `فاتورة مبيعات #${inv.invoiceNumber}`, debit: gross, credit: 0 });
-      if (inv.discountAmount > 0) {
-        movements.push({ date: inv.date, type: 'حسم', statement: `حسم ممنوح فاتورة #${inv.invoiceNumber}`, debit: 0, credit: inv.discountAmount });
-      }
-    });
-
-    // 2. المشتريات
-    purchases.filter(p => p.supplierName === selectedPartyName && p.date >= startDate && p.date <= endDate).forEach(inv => {
-      const gross = inv.items.reduce((sum, it) => sum + it.total, 0) + (inv.transportExpenses || 0);
-      movements.push({ date: inv.date, type: 'شراء', statement: `فاتورة مشتريات #${inv.invoiceNumber}`, debit: 0, credit: gross });
-      if (inv.discountAmount > 0) {
-        movements.push({ date: inv.date, type: 'حسم', statement: `حسم مكتسب فاتورة #${inv.invoiceNumber}`, debit: inv.discountAmount, credit: 0 });
-      }
-    });
-
-    // 3. المرتجعات
-    salesReturns.filter(r => r.customerName === selectedPartyName && r.date >= startDate && r.date <= endDate).forEach(ret => {
-      movements.push({ date: ret.date, type: 'مرتجع', statement: `مرتجع مبيعات فاتورة #${ret.invoiceNumber}`, debit: 0, credit: ret.totalReturnAmount });
-    });
-    purchaseReturns.filter(r => r.supplierName === selectedPartyName && r.date >= startDate && r.date <= endDate).forEach(ret => {
-      movements.push({ date: ret.date, type: 'مرتجع', statement: `مرتجع مشتريات فاتورة #${ret.invoiceNumber}`, debit: ret.totalReturnAmount, credit: 0 });
-    });
-
-    // 4. الحركات النقدية (اليومية)
+    // الحركات النقدية (اليومية) التي تخص هذا الحساب
     journal.filter(j => (j.partyName === selectedPartyName || j.statement.includes(selectedPartyName)) && j.date >= startDate && j.date <= endDate).forEach(j => {
       movements.push({
         date: j.date,
@@ -142,7 +116,7 @@ const ReconciliationView: React.FC<ReconciliationViewProps> = ({ onBack }) => {
     });
 
     const summary = items.reduce((acc, curr) => {
-      if (curr.type === 'مبيع') acc.totalInvoices += curr.debit;
+      if (curr.type === 'بيع') acc.totalInvoices += curr.debit;
       if (curr.type === 'شراء') acc.totalPurchases += curr.credit;
       if (curr.type === 'مرتجع') acc.totalReturns += (curr.debit + curr.credit);
       if (curr.type === 'حسم') acc.totalDiscounts += (curr.debit + curr.credit);

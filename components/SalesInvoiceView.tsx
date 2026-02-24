@@ -234,6 +234,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
       invoiceNumber: invNum,
       time: editingId ? (newInvoice.time || time) : time,
       totalAmount: finalTotal,
+      paidAmount: newInvoice.paymentType === 'نقداً' ? finalTotal : (newInvoice.paidAmount || 0),
       currencySymbol: currencySymbol,
       totalAmountLiteral: tafqeet(finalTotal, currencyName)
     };
@@ -339,7 +340,8 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     }
 
     // هـ. قيد الدفعة النقدية (إذا وجدت)
-    if (invoice.paidAmount && invoice.paidAmount > 0) {
+    const actualPaidAmount = invoice.paymentType === 'نقداً' ? finalTotal : (invoice.paidAmount || 0);
+    if (actualPaidAmount > 0) {
       const destination = invoice.paymentType === 'نقداً' ? (invoice.cashAccount || 'الصندوق') : 'آجل';
       
       // قيد الصندوق/الحساب - مدين
@@ -347,9 +349,9 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
         id: crypto.randomUUID(),
         date: invoice.date,
         statement: `دفعة من فاتورة مبيعات رقم ${invoice.invoiceNumber} - وجهة: ${destination}`,
-        receivedSYP: isPrimary ? invoice.paidAmount : 0,
+        receivedSYP: isPrimary ? actualPaidAmount : 0,
         paidSYP: 0,
-        receivedUSD: !isPrimary ? invoice.paidAmount : 0,
+        receivedUSD: !isPrimary ? actualPaidAmount : 0,
         paidUSD: 0,
         notes: `الزبون: ${invoice.customerName}`,
         type: 'بيع',
@@ -362,12 +364,12 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
         id: crypto.randomUUID(),
         date: invoice.date,
         statement: `دفعة من فاتورة مبيعات رقم ${invoice.invoiceNumber} (تخفيض رصيد)`,
-        receivedSYP: isPrimary ? invoice.paidAmount : 0,
+        receivedSYP: isPrimary ? actualPaidAmount : 0,
         paidSYP: 0,
-        receivedUSD: !isPrimary ? invoice.paidAmount : 0,
+        receivedUSD: !isPrimary ? actualPaidAmount : 0,
         paidUSD: 0,
         partyName: invoice.customerName,
-        type: 'بيع',
+        type: 'قبض',
         voucherNumber: invoice.invoiceNumber
       });
     }

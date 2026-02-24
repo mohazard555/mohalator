@@ -268,32 +268,63 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
       
       const discountDiff = adjustedDiscount - (foundInvoice.discountAmount || 0);
       if (discountDiff !== 0) {
-         // قيد الحسم الممنوح (43)
-         cashEntries.unshift({
-            id: crypto.randomUUID(),
-            date: returnDate,
-            statement: `تعديل حسم ممنوح (مرتجع) للفاتورة رقم ${foundInvoice.invoiceNumber}`,
-            receivedSYP: discountDiff < 0 ? Math.abs(discountDiff) : 0, 
-            paidSYP: discountDiff > 0 ? discountDiff : 0,
-            receivedUSD: 0, paidUSD: 0,
-            notes: 'تعديل حسم ممنوح آلي',
-            type: 'حسم', voucherNumber: returnId,
-            linkedAccountCode: '43',
-            linkedAccountId: '43'
+         // تعديل قيود الحسم الأصلية بدلاً من إضافة قيود جديدة
+         const isPrimary = settings?.currency === 'ليرة سورية';
+         let discountUpdated = false;
+         
+         cashEntries = cashEntries.map(entry => {
+            if (entry.voucherNumber === foundInvoice.invoiceNumber && entry.type === 'حسم') {
+               discountUpdated = true;
+               if (entry.linkedAccountCode === '43') {
+                  return {
+                     ...entry,
+                     paidSYP: isPrimary ? adjustedDiscount : 0,
+                     paidUSD: !isPrimary ? adjustedDiscount : 0
+                  };
+               } else if (entry.partyName === foundInvoice.customerName) {
+                  return {
+                     ...entry,
+                     receivedSYP: isPrimary ? adjustedDiscount : 0,
+                     receivedUSD: !isPrimary ? adjustedDiscount : 0
+                  };
+               }
+            }
+            return entry;
          });
 
-         // قيد العميل المقابل للحسم
-         cashEntries.unshift({
-            id: crypto.randomUUID(),
-            date: returnDate,
-            statement: `تعديل حسم ممنوح (مرتجع) - أثر على العميل`,
-            receivedSYP: discountDiff > 0 ? discountDiff : 0, 
-            paidSYP: discountDiff < 0 ? Math.abs(discountDiff) : 0,
-            receivedUSD: 0, paidUSD: 0,
-            partyName: foundInvoice.customerName,
-            notes: 'تصحيح قيمة الحسم الممنوح بشكل مستقل',
-            type: 'حسم', voucherNumber: returnId
-         });
+         // إذا لم يكن هناك قيد حسم أصلي (كان الحسم 0 وأصبح له قيمة)، ننشئ قيود جديدة
+         if (!discountUpdated && adjustedDiscount > 0) {
+            cashEntries.unshift({
+               id: crypto.randomUUID(),
+               date: returnDate,
+               statement: `حسم ممنوح فاتورة #${foundInvoice.invoiceNumber}`,
+               receivedSYP: 0, 
+               paidSYP: isPrimary ? adjustedDiscount : 0,
+               receivedUSD: 0, paidUSD: !isPrimary ? adjustedDiscount : 0,
+               type: 'حسم', voucherNumber: foundInvoice.invoiceNumber,
+               linkedAccountCode: '43',
+               linkedAccountId: '43'
+            });
+
+            cashEntries.unshift({
+               id: crypto.randomUUID(),
+               date: returnDate,
+               statement: `حسم ممنوح فاتورة #${foundInvoice.invoiceNumber} (تخفيض رصيد)`,
+               receivedSYP: isPrimary ? adjustedDiscount : 0, 
+               paidSYP: 0,
+               receivedUSD: !isPrimary ? adjustedDiscount : 0, paidUSD: 0,
+               partyName: foundInvoice.customerName,
+               type: 'حسم', voucherNumber: foundInvoice.invoiceNumber
+            });
+         }
+      }
+
+      // تحديث الفاتورة الأصلية (تعديل الحسم)
+      const savedSales = localStorage.getItem(`${prefix}_sales_invoices`);
+      if (savedSales) {
+        const sales: SalesInvoice[] = JSON.parse(savedSales);
+        const updatedSales = sales.map(s => s.invoiceNumber === foundInvoice.invoiceNumber ? { ...s, discountAmount: adjustedDiscount } : s);
+        localStorage.setItem(`${prefix}_sales_invoices`, JSON.stringify(updatedSales));
       }
 
       localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(cashEntries));

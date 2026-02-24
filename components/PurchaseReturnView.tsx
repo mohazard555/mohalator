@@ -227,32 +227,63 @@ const PurchaseReturnView: React.FC<PurchaseReturnViewProps> = ({ onBack, initial
       // معالجة الحسم المكتسب (حساب 34)
       const discountDiff = adjustedDiscount - (foundInvoice.discountAmount || 0);
       if (discountDiff !== 0) {
-         // قيد الحسم (دائن لحساب 34)
-         cashEntries.unshift({
-            id: crypto.randomUUID(),
-            date: returnDate,
-            statement: `تعديل حسم مكتسب (مرتجع) للفاتورة رقم ${foundInvoice.invoiceNumber}`,
-            receivedSYP: discountDiff > 0 ? discountDiff : 0, 
-            paidSYP: discountDiff < 0 ? Math.abs(discountDiff) : 0,
-            receivedUSD: 0, paidUSD: 0,
-            notes: 'تعديل حسم مكتسب آلي',
-            type: 'حسم', voucherNumber: returnId,
-            linkedAccountCode: '34',
-            linkedAccountId: '34'
+         // تعديل قيود الحسم الأصلية بدلاً من إضافة قيود جديدة
+         const isPrimary = settings?.currency === 'ليرة سورية';
+         let discountUpdated = false;
+         
+         cashEntries = cashEntries.map(entry => {
+            if (entry.voucherNumber === foundInvoice.invoiceNumber && entry.type === 'حسم') {
+               discountUpdated = true;
+               if (entry.linkedAccountCode === '34') {
+                  return {
+                     ...entry,
+                     receivedSYP: isPrimary ? adjustedDiscount : 0,
+                     receivedUSD: !isPrimary ? adjustedDiscount : 0
+                  };
+               } else if (entry.partyName === foundInvoice.supplierName) {
+                  return {
+                     ...entry,
+                     paidSYP: isPrimary ? adjustedDiscount : 0,
+                     paidUSD: !isPrimary ? adjustedDiscount : 0
+                  };
+               }
+            }
+            return entry;
          });
 
-         // قيد المورد (مدين)
-         cashEntries.unshift({
-            id: crypto.randomUUID(),
-            date: returnDate,
-            statement: `تعديل حسم مكتسب (مرتجع) للفاتورة رقم ${foundInvoice.invoiceNumber} (قيد تسوية)`,
-            receivedSYP: 0, 
-            paidSYP: discountDiff,
-            receivedUSD: 0, paidUSD: 0,
-            partyName: foundInvoice.supplierName,
-            notes: 'تصحيح قيمة الحسم المكتسب بشكل مستقل',
-            type: 'حسم', voucherNumber: returnId
-         });
+         // إذا لم يكن هناك قيد حسم أصلي (كان الحسم 0 وأصبح له قيمة)، ننشئ قيود جديدة
+         if (!discountUpdated && adjustedDiscount > 0) {
+            cashEntries.unshift({
+               id: crypto.randomUUID(),
+               date: returnDate,
+               statement: `حسم مكتسب فاتورة #${foundInvoice.invoiceNumber}`,
+               receivedSYP: isPrimary ? adjustedDiscount : 0, 
+               paidSYP: 0,
+               receivedUSD: !isPrimary ? adjustedDiscount : 0, paidUSD: 0,
+               type: 'حسم', voucherNumber: foundInvoice.invoiceNumber,
+               linkedAccountCode: '34',
+               linkedAccountId: '34'
+            });
+
+            cashEntries.unshift({
+               id: crypto.randomUUID(),
+               date: returnDate,
+               statement: `حسم مكتسب فاتورة #${foundInvoice.invoiceNumber} (تخفيض رصيد)`,
+               receivedSYP: 0, 
+               paidSYP: isPrimary ? adjustedDiscount : 0,
+               receivedUSD: 0, paidUSD: !isPrimary ? adjustedDiscount : 0,
+               partyName: foundInvoice.supplierName,
+               type: 'حسم', voucherNumber: foundInvoice.invoiceNumber
+            });
+         }
+      }
+
+      // تحديث الفاتورة الأصلية (تعديل الحسم)
+      const savedPurchases = localStorage.getItem(`${prefix}_purchases`);
+      if (savedPurchases) {
+        const purchases: PurchaseInvoice[] = JSON.parse(savedPurchases);
+        const updatedPurchases = purchases.map(p => p.invoiceNumber === foundInvoice.invoiceNumber ? { ...p, discountAmount: adjustedDiscount } : p);
+        localStorage.setItem(`${prefix}_purchases`, JSON.stringify(updatedPurchases));
       }
 
       localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(cashEntries));
