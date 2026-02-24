@@ -11,9 +11,10 @@ interface TradingAccountReportProps {
   fin: any;
   expandedSections: Set<string>;
   toggleSection: (id: string) => void;
+  settings?: any;
 }
 
-const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expandedSections, toggleSection }) => {
+const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expandedSections, toggleSection, settings }) => {
   const [drillDown, setDrillDown] = useState<{ title: string; data: any[] } | null>(null);
   const modalPrintRef = useRef<HTMLDivElement>(null);
 
@@ -233,9 +234,21 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
 
        {/* Drill Down Modal */}
        {drillDown && (
-         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-zinc-900 w-full max-w-5xl rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
-               <div className="p-6 bg-zinc-900 text-white flex justify-between items-center px-10">
+         <>
+         <style type="text/css" media="print">
+           {`
+             @page { size: A4 portrait; margin: 10mm; }
+             body { background: white !important; }
+             .no-print { display: none !important; }
+             .drill-down-modal-container { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; background: white !important; z-index: 999999 !important; padding: 0 !important; }
+             .drill-down-modal-content { border: none !important; box-shadow: none !important; border-radius: 0 !important; max-width: 100% !important; height: auto !important; overflow: visible !important; }
+             .drill-down-modal-scroll { overflow: visible !important; height: auto !important; padding: 0 !important; }
+             .print-header { display: flex !important; }
+           `}
+         </style>
+         <div className="drill-down-modal-container fixed inset-0 bg-black/60 backdrop-blur-md z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300">
+            <div className="drill-down-modal-content bg-white dark:bg-zinc-900 w-full max-w-5xl rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+               <div className="p-6 bg-zinc-900 text-white flex justify-between items-center px-10 no-print">
                   <div className="flex items-center gap-4">
                      <div className="p-3 bg-primary rounded-2xl"><Calculator className="w-6 h-6"/></div>
                      <div>
@@ -251,32 +264,43 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
                   </div>
                </div>
 
-               <div className="p-8 flex-1 overflow-y-auto custom-scrollbar" ref={modalPrintRef}>
-                  <div className="hidden print:block mb-6 border-b-2 pb-4">
-                     <h1 className="text-2xl font-black">تفصيل بند: {drillDown.title}</h1>
-                     <p className="text-xs text-zinc-500 italic">تم استخراج هذا التقرير التفصيلي من حساب المتاجرة بتاريخ: {new Date().toLocaleDateString('ar-SA')}</p>
+               <div className="drill-down-modal-scroll p-8 flex-1 overflow-y-auto custom-scrollbar" ref={modalPrintRef}>
+                  <div className="hidden print-header print:flex justify-between items-start mb-8 border-b-2 border-primary pb-6 text-black">
+                     <div className="flex items-center gap-4">
+                        {settings?.logoUrl ? <img src={settings.logoUrl} className="w-20 h-20 object-contain" /> : <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-lg">FIN</div>}
+                        <div><h1 className="text-2xl font-black">{settings?.companyName}</h1><p className="text-[10px] text-zinc-400 font-black uppercase mt-1 tracking-widest">{settings?.companyType}</p></div>
+                     </div>
+                     <div className="text-center">
+                        <h2 className="text-3xl font-black underline underline-offset-8 decoration-primary/20">تفصيل بند: {drillDown.title}</h2>
+                        <p className="text-sm mt-4 font-black text-zinc-500 uppercase tracking-[0.2em]">تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
+                     </div>
+                     <div className="text-left text-[10px] font-black text-zinc-400">
+                        <p className="mb-1">{settings?.address}</p>
+                        <p className="mb-4">{settings?.phone}</p>
+                        <span className="bg-zinc-900 text-white px-3 py-1 rounded-full text-[8px] uppercase tracking-widest">SAMLATOR SECURED DATA</span>
+                     </div>
                   </div>
 
                   <table className="w-full text-right border-collapse">
                      <thead>
-                        <tr className="bg-zinc-50 dark:bg-zinc-800 border-b-2 border-zinc-100 dark:border-zinc-700 h-12 text-zinc-500 dark:text-zinc-400 font-black text-[10px] uppercase tracking-widest">
-                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800 w-12 text-center">م</th>
-                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800 w-32 text-center">التاريخ</th>
-                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800 w-32 text-center">رقم المستند</th>
-                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800">الطرف / الحساب</th>
-                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800">البيان</th>
-                           <th className="p-3 text-center w-40 bg-zinc-100/50 dark:bg-zinc-800/50">القيمة</th>
+                        <tr className="bg-zinc-50 dark:bg-zinc-800 border-b-2 border-zinc-100 dark:border-zinc-700 h-12 text-zinc-500 dark:text-zinc-400 font-black text-[10px] uppercase tracking-widest print:bg-zinc-100 print:text-black">
+                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800 print:border-zinc-300 w-12 text-center">م</th>
+                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800 print:border-zinc-300 w-32 text-center">التاريخ</th>
+                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800 print:border-zinc-300 w-32 text-center">رقم المستند</th>
+                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800 print:border-zinc-300">الطرف / الحساب</th>
+                           <th className="p-3 border-l border-zinc-100 dark:border-zinc-800 print:border-zinc-300">البيان</th>
+                           <th className="p-3 text-center w-40 bg-zinc-100/50 dark:bg-zinc-800/50 print:bg-zinc-200">القيمة</th>
                         </tr>
                      </thead>
-                     <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
+                     <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800 print:divide-zinc-200">
                         {drillDown.data.map((item, idx) => (
-                           <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors h-14 font-bold text-sm">
-                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono text-zinc-300">{idx + 1}</td>
-                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center font-mono text-zinc-400">{item.date}</td>
-                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-center text-primary">#{item.number}</td>
-                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-readable">{item.party}</td>
-                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 text-zinc-500 font-normal italic text-xs">{item.statement}</td>
-                              <td className="p-3 text-center font-mono font-black text-lg text-zinc-900 dark:text-zinc-100">{item.value.toLocaleString()}</td>
+                           <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors h-14 font-bold text-sm print:text-black">
+                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 print:border-zinc-300 text-center font-mono text-zinc-300 print:text-zinc-600">{idx + 1}</td>
+                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 print:border-zinc-300 text-center font-mono text-zinc-400 print:text-zinc-700">{item.date}</td>
+                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 print:border-zinc-300 text-center text-primary print:text-black">#{item.number}</td>
+                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 print:border-zinc-300 text-readable print:text-black">{item.party}</td>
+                              <td className="p-3 border-l border-zinc-100 dark:border-zinc-800 print:border-zinc-300 text-zinc-500 font-normal italic text-xs print:text-zinc-600">{item.statement}</td>
+                              <td className="p-3 text-center font-mono font-black text-lg text-zinc-900 dark:text-zinc-100 print:text-black">{item.value.toLocaleString()}</td>
                            </tr>
                         ))}
                      </tbody>
@@ -284,10 +308,21 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
 
                   {drillDown.data.length === 0 && (
                      <div className="p-20 text-center">
-                        <Search className="w-16 h-16 text-zinc-100 mx-auto mb-4" />
-                        <p className="text-zinc-400 font-black text-lg italic">لا توجد سجلات مسجلة لهذا البند في الفترة المحددة</p>
+                        <Search className="w-16 h-16 text-zinc-100 mx-auto mb-4 print:text-zinc-300" />
+                        <p className="text-zinc-400 font-black text-lg italic print:text-zinc-500">لا توجد سجلات مسجلة لهذا البند في الفترة المحددة</p>
                      </div>
                   )}
+                  
+                  <div className="hidden print:flex justify-between items-end mt-12 pt-8 border-t-2 border-zinc-100 text-[10px] font-black text-zinc-400">
+                     <div className="flex flex-col gap-1">
+                        <span>تاريخ استخراج التقرير آلياً: {new Date().toLocaleString('ar-SA')}</span>
+                        <span>النظام المحاسبي لا يقبل التعديل بعد الاعتماد</span>
+                     </div>
+                     <div className="text-center">
+                        <div className="w-48 border-b-2 border-zinc-300 mb-2 mx-auto"></div>
+                        <span>توقيع المدير المالي / الختم الرسمي</span>
+                     </div>
+                  </div>
                </div>
 
                <div className="p-8 bg-zinc-900 text-white flex justify-between items-center px-12 border-t-4 border-primary no-print">
@@ -301,6 +336,7 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
                </div>
             </div>
          </div>
+         </>
        )}
 
        {/* تحليل إضافي */}

@@ -184,6 +184,7 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
              fin={fin} 
              expandedSections={expandedSections}
              toggleSection={toggleSection}
+             settings={settings}
           />
           
           <div className="hidden print:flex justify-between items-end mt-12 pt-8 border-t-2 border-zinc-100 text-[10px] font-black text-zinc-400">

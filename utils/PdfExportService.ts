@@ -25,38 +25,13 @@ export const PdfExportService = {
   }: ExportOptions) => {
     // @ts-ignore
     const html2pdf = window.html2pdf;
+    // @ts-ignore
+    const htmlToImage = window.htmlToImage;
     
-    if (!html2pdf) {
-      alert('خطأ: مكتبة تصدير PDF غير محملة، يرجى التحقق من الاتصال.');
+    if (!html2pdf || !htmlToImage) {
+      alert('خطأ: مكتبات تصدير PDF غير محملة، يرجى التحقق من الاتصال.');
       return;
     }
-
-    // إعدادات المحرك لضمان سلامة النصوص العربية
-    const opt = {
-      margin: margin,
-      filename: fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 3, 
-        useCORS: true, 
-        letterRendering: false,
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
-        backgroundColor: '#ffffff'
-      },
-      jsPDF: { 
-        unit: 'mm', 
-        format: format, 
-        orientation: orientation,
-        compress: true
-      },
-      pagebreak: { 
-        mode: ['css', 'legacy'], 
-        avoid: ['tr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
-      }
-    };
 
     try {
       // الانتظار حتى تحميل الخطوط لضمان ظهور النص العربي بشكل صحيح
@@ -78,7 +53,33 @@ export const PdfExportService = {
       // إضافة كلاس مؤقت للمساعدة في التنسيق إذا لزم الأمر
       element.classList.add('export-container-fix');
       
-      const result = await html2pdf().set(opt).from(element).save();
+      // استخدام html-to-image بدلاً من html2canvas لدعم اللغة العربية بشكل مثالي
+      const canvas = await htmlToImage.toCanvas(element, {
+        quality: 1.0,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        style: {
+          direction: 'rtl',
+          fontFamily: "'Cairo', sans-serif"
+        }
+      });
+
+      // إعدادات المحرك لإنشاء الـ PDF من الـ Canvas
+      const opt = {
+        margin: margin,
+        filename: fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`,
+        image: { type: 'jpeg', quality: 1.0 },
+        jsPDF: { 
+          unit: 'mm', 
+          format: format, 
+          orientation: orientation,
+          compress: true
+        }
+      };
+
+      const result = await html2pdf().set(opt).from(canvas).save();
       
       // إعادة الحالة الأصلية
       element.style.direction = originalStyles.direction;
