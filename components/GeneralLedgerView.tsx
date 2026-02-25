@@ -79,43 +79,16 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
         if (acc) accountName = acc.name;
       }
 
-      let lineDebit = 0;
-      let lineCredit = 0;
-
-      if (j.type === 'افتتاحي') {
-         lineDebit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
-         lineCredit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
-      } else if (j.type === 'قيد') {
-         lineDebit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
-         lineCredit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
-      } else {
-         // Default for Cash Journal entries (Receipt/Payment/Sales/Purchases)
-         // In General Ledger, we show the "Party" side usually, or the "Box" side if it's a box account.
-         // However, the current GeneralLedgerView logic (before my change) was:
-         // debit: received, credit: paid.
-         // This is correct for the BOX side of a receipt.
-         // But for the PARTY side of a receipt, it should be: debit: 0, credit: 100.
-         // Since GeneralLedgerView shows ALL lines in the journal, and each line in the journal
-         // represents ONE side of a transaction (except for CashJournalView entries which are single-line).
-         
-         // Wait! CashJournalView entries are SINGLE-LINE in the journal.
-         // This means they only represent ONE side (the Party side).
-         // So for a Receipt (receivedSYP: 100), it should be CREDIT for the Party.
-         
-         lineDebit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
-         lineCredit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
-      }
-
       ledger.push({
         id: j.id, 
         date: j.date, 
         statement: j.statement,
-        debit: lineDebit, 
-        credit: lineCredit,
+        debit: (j.receivedSYP || 0) + (j.receivedUSD || 0), 
+        credit: (j.paidSYP || 0) + (j.paidUSD || 0),
         type: j.type || 'يومية', 
         ref: j.voucherNumber || 'VOU', 
         account: accountName,
-        accountId: j.linkedAccountId
+        accountId: j.linkedAccountId // إضافة المعرف لتسهيل الفلترة الدقيقة
       });
     });
 
