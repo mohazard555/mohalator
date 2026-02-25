@@ -176,12 +176,11 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
     const savedJou = localStorage.getItem(`${prefix}_cash_journal`);
     let jou: CashEntry[] = savedJou ? JSON.parse(savedJou) : [];
 
-    const newEntryId = editingEntryId || crypto.randomUUID();
-    const voucherNum = `OP-${newEntryId}`;
+    const voucherNum = editingEntryId ? `OP-EDIT-${editingEntryId}` : 'OP-' + new Date().getFullYear();
 
     // حذف القيود القديمة إذا كان تعديلاً
     if (editingEntryId) {
-       jou = jou.filter(j => j.voucherNumber !== voucherNum);
+       jou = jou.filter(j => j.voucherNumber !== voucherNum && j.voucherNumber !== `OP-${new Date().getFullYear()}`);
     }
 
     const journalEntries: CashEntry[] = validRows.map(r => ({
@@ -209,6 +208,7 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
        opEntries = opEntries.filter(e => e.id !== editingEntryId);
     }
 
+    const newEntryId = editingEntryId || crypto.randomUUID();
     const newOpeningEntries: OpeningEntry[] = validRows.map(r => ({
       id: newEntryId,
       accountName: r.accountName,
@@ -237,18 +237,14 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
     const savedOp = localStorage.getItem(`${prefix}_opening_entries`);
     const savedJou = localStorage.getItem(`${prefix}_cash_journal`);
     
-    // Transaction-like deletion
-    if (savedOp && savedJou) {
+    if (savedOp) {
       const opEntries: OpeningEntry[] = JSON.parse(savedOp);
+      localStorage.setItem(`${prefix}_opening_entries`, JSON.stringify(opEntries.filter(e => e.id !== id)));
+    }
+    
+    if (savedJou) {
       const jou: CashEntry[] = JSON.parse(savedJou);
-      
-      // Delete all journal lines with this journal_id (voucherNumber)
-      const updatedJou = jou.filter(j => j.voucherNumber !== `OP-${id}`);
-      localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(updatedJou));
-      
-      // Delete journal header
-      const updatedOp = opEntries.filter(e => e.id !== id);
-      localStorage.setItem(`${prefix}_opening_entries`, JSON.stringify(updatedOp));
+      localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(jou.filter(j => j.voucherNumber !== `OP-EDIT-${id}` && j.voucherNumber !== `OP-${new Date().getFullYear()}`)));
     }
     
     loadData();

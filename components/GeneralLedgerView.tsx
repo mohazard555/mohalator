@@ -71,78 +71,25 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
     // تشمل القيود الافتتاحية واليومية العادية
     journal.forEach(j => {
       let accountName = j.partyName || 'الصندوق العام';
-      let accountId = j.linkedAccountId;
-      let accountCode = j.linkedAccountCode;
-      
       if (j.categoryId) {
         const catMatch = cats.find(c => c.id === j.categoryId);
-        if (catMatch) {
-           accountName = catMatch.name;
-           accountId = catMatch.linkedAccountId;
-        }
+        if (catMatch) accountName = catMatch.name;
       } else if (j.linkedAccountId || j.linkedAccountCode) {
         const acc = chartAccounts.find(a => a.id === j.linkedAccountId || a.code === j.linkedAccountCode);
-        if (acc) {
-           accountName = acc.name;
-           accountId = acc.id;
-        }
+        if (acc) accountName = acc.name;
       }
 
-      if (j.voucherNumber) {
-         // Multi-line entry (Journal, Sales, Purchases, Opening)
-         let lineDebit = 0;
-         let lineCredit = 0;
-         if (j.type === 'افتتاحي') {
-            lineDebit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
-            lineCredit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
-         } else {
-            lineDebit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
-            lineCredit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
-         }
-         
-         ledger.push({
-           id: j.id, 
-           date: j.date, 
-           statement: j.statement,
-           debit: lineDebit, 
-           credit: lineCredit,
-           type: j.type || 'يومية', 
-           ref: j.voucherNumber || 'VOU', 
-           account: accountName,
-           accountId: accountId
-         });
-      } else {
-         // Single-line entry (CashJournalView)
-         // We need to add TWO lines to the general ledger to balance it!
-         
-         // Line 1: The Party
-         ledger.push({
-           id: j.id + '-party', 
-           date: j.date, 
-           statement: j.statement,
-           debit: Number(j.paidSYP || 0) + Number(j.paidUSD || 0), 
-           credit: Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0),
-           type: j.type || 'يومية', 
-           ref: 'VOU', 
-           account: accountName,
-           accountId: accountId
-         });
-
-         // Line 2: The Box
-         const boxCode = j.cashAccount === 'المصرف' ? '132' : '131';
-         const boxAcc = chartAccounts.find(a => a.code === boxCode);
-         ledger.push({
-           id: j.id + '-box', 
-           date: j.date, 
-           statement: j.statement,
-           debit: Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0), 
-           credit: Number(j.paidSYP || 0) + Number(j.paidUSD || 0),
-           type: j.type || 'يومية', 
-           ref: 'VOU', 
-           account: boxAcc ? boxAcc.name : (j.cashAccount || 'الصندوق'),
-           accountId: boxAcc ? boxAcc.id : undefined
-         });
-      }
+      ledger.push({
+        id: j.id, 
+        date: j.date, 
+        statement: j.statement,
+        debit: (j.receivedSYP || 0) + (j.receivedUSD || 0), 
+        credit: (j.paidSYP || 0) + (j.paidUSD || 0),
+        type: j.type || 'يومية', 
+        ref: j.voucherNumber || 'VOU', 
+        account: accountName,
+        accountId: j.linkedAccountId // إضافة المعرف لتسهيل الفلترة الدقيقة
+      });
     });
 
     setTransactions(ledger.sort((a, b) => a.date.localeCompare(b.date)));

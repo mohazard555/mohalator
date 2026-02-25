@@ -202,48 +202,29 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        const jCode = String(j.linkedAccountCode || '').trim();
        const jId = String(j.linkedAccountId || '').trim();
        const aId = String(account.id || '').trim();
-       const hasLinkedAccount = jCode || jId;
 
        if (jCode === code || jId === aId) {
           match = true;
        } else if (j.categoryId && linkedCatIds.has(j.categoryId)) {
           match = true;
-       } else if (j.partyName === name && !hasLinkedAccount) {
-          match = true;
-       } else if (isBox && !hasLinkedAccount) {
+       } else if (j.partyName === name) {
+          if (!j.linkedAccountCode && !j.linkedAccountId) {
+             match = true;
+          }
+       }
+       else if (isBox) {
           if (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) match = true;
           if (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))) match = true;
        }
 
        if (match) {
-          const isCurrentAccountBox = isBox && (
-             (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) ||
-             (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف'))))
-          );
-
-          let lineDebit = 0;
-          let lineCredit = 0;
-
-          if (j.voucherNumber) {
-             if (j.type === 'افتتاحي') {
-                lineDebit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
-                lineCredit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
-             } else {
-                lineDebit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
-                lineCredit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
-             }
+          if (isBox) {
+             debitTotal += (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0));
+             creditTotal += (Number(j.paidSYP || 0) + Number(j.paidUSD || 0));
           } else {
-             if (isCurrentAccountBox) {
-                lineDebit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
-                lineCredit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
-             } else {
-                lineDebit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
-                lineCredit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
-             }
+             debitTotal += (Number(j.paidSYP || 0) + Number(j.paidUSD || 0));
+             creditTotal += (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0));
           }
-
-          debitTotal += lineDebit;
-          creditTotal += lineCredit;
        }
     });
 
@@ -322,73 +303,29 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
 
     journal.forEach(j => {
        let match = false;
-       const jCode = String(j.linkedAccountCode || '').trim();
-       const jId = String(j.linkedAccountId || '').trim();
-       const aId = String(account.id || '').trim();
-       const hasLinkedAccount = jCode || jId;
-       
-       if (jCode === code || jId === aId) {
+       if (j.linkedAccountCode === code || j.linkedAccountId === account.id) {
           match = true;
        } else if (j.categoryId && linkedCatIds.has(j.categoryId)) {
           match = true;
-       } else if (j.partyName === name && !hasLinkedAccount) {
-          match = true;
-       } else if (isBox && !hasLinkedAccount) {
+       } else if (j.partyName === name) {
+          if (!j.linkedAccountCode && !j.linkedAccountId) {
+             match = true;
+          }
+       }
+       else if (isBox) {
           if (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) match = true;
           if (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))) match = true;
        }
 
        if (match) {
-          const isCurrentAccountBox = isBox && (
-             (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) ||
-             (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف'))))
-          );
-
-          let lineDebit = 0;
-          let lineCredit = 0;
-          let counterAcc = '';
-
-          if (j.voucherNumber) {
-             if (j.type === 'افتتاحي') {
-                lineDebit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
-                lineCredit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
-             } else {
-                lineDebit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
-                lineCredit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
-             }
-             
-             const otherLines = journal.filter(x => x.voucherNumber === j.voucherNumber && x.id !== j.id);
-             if (otherLines.length === 1) {
-                counterAcc = otherLines[0].partyName || 'حساب مقابل';
-                if (!otherLines[0].partyName) {
-                   const accMatch = accounts.find(a => a.id === otherLines[0].linkedAccountId || a.code === otherLines[0].linkedAccountCode);
-                   if (accMatch) counterAcc = accMatch.name;
-                }
-             } else if (otherLines.length > 1) {
-                counterAcc = 'مذكورين';
-             } else {
-                counterAcc = 'حساب مقابل';
-             }
-          } else {
-             if (isCurrentAccountBox) {
-                lineDebit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
-                lineCredit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
-                counterAcc = j.partyName || 'حساب متنوع';
-             } else {
-                lineDebit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
-                lineCredit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
-                counterAcc = j.cashAccount || 'الصندوق';
-             }
-          }
-
           moves.push({ 
              date: j.date, 
              number: j.voucherNumber || 'VOU', 
              statement: j.statement, 
-             debit: lineDebit, 
-             credit: lineCredit, 
+             debit: isBox ? (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0)) : (Number(j.paidSYP || 0) + Number(j.paidUSD || 0)), 
+             credit: isBox ? (Number(j.paidSYP || 0) + Number(j.paidUSD || 0)) : (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0)), 
              source: j.type === 'قبض' ? 'سند قبض' : j.type === 'دفع' ? 'سند دفع' : (j.type || 'سند يومية'), 
-             counterAccount: counterAcc,
+             counterAccount: isBox ? (j.partyName || 'حساب متنوع') : (j.linkedAccountCode === '42' || j.linkedAccountCode === '43' || j.linkedAccountCode === '32' || j.linkedAccountCode === '34' ? (j.partyName || 'حساب العميل/المورد') : 'الصندوق / المصرف'),
              user: settings?.managerName || 'النظام',
              accountName: name
           });
