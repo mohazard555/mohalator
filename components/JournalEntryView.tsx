@@ -196,9 +196,10 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
     ...categories.map(c => ({ name: c.name, code: c.accountCode || '---', type: 'بند مصروف/إيراد' }))
   ];
 
+  const searchTerm = accountSearch.trim().toLowerCase();
   const filteredResults = allSearchableAccounts.filter(a => 
-    (a.name || '').toLowerCase().includes(accountSearch.toLowerCase()) || 
-    (a.code || '').toLowerCase().includes(accountSearch.toLowerCase())
+    (a.name || '').toLowerCase().includes(searchTerm) || 
+    (a.code || '').toLowerCase().includes(searchTerm)
   );
 
   const [printingVoucher, setPrintingVoucher] = useState<string | null>(null);

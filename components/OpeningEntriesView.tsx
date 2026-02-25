@@ -344,10 +344,11 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
     });
   };
 
+  const searchTerm = accountSearch.trim().toLowerCase();
   const filteredFlatResults = chartAccounts.filter(acc => 
     acc.type === 'ACCOUNT' && (
-      acc.name.toLowerCase().includes(accountSearch.toLowerCase()) || 
-      acc.code.toLowerCase().includes(accountSearch.toLowerCase())
+      (acc.name || '').toLowerCase().includes(searchTerm) || 
+      (acc.code || '').toLowerCase().includes(searchTerm)
     )
   );
 
@@ -613,7 +614,7 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
                        </div>
 
                        <div className="max-h-[350px] overflow-y-auto custom-scrollbar space-y-1 pr-1 border border-zinc-50 rounded-xl p-1">
-                          {accountSearch.length > 0 ? (
+                          {accountSearch.trim().length > 0 ? (
                             // عرض مسطح في حال البحث لسرعة الوصول
                             <div className="space-y-1">
                                {filteredFlatResults.length === 0 ? (
