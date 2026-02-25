@@ -187,13 +187,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     let debitTotal = 0;
     let creditTotal = 0;
 
-    // 1. الأرصدة الافتتاحية
-    openingEntries.filter(e => e.accountName === name).forEach(e => {
-       debitTotal += Number(e.debit || 0);
-       creditTotal += Number(e.credit || 0);
-    });
-
-    // 2. حركات اليومية
+    // 1. حركات اليومية (المصدر الوحيد للحقيقة)
     const linkedCatIds = new Set(categories.filter(c => c.linkedAccountId === account.id).map(c => c.id));
     const isBox = code === '131' || code === '132';
 
@@ -202,29 +196,41 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        const jCode = String(j.linkedAccountCode || '').trim();
        const jId = String(j.linkedAccountId || '').trim();
        const aId = String(account.id || '').trim();
+       const hasLinkedAccount = jCode || jId;
 
        if (jCode === code || jId === aId) {
           match = true;
        } else if (j.categoryId && linkedCatIds.has(j.categoryId)) {
           match = true;
-       } else if (j.partyName === name) {
-          if (!j.linkedAccountCode && !j.linkedAccountId) {
-             match = true;
-          }
-       }
-       else if (isBox) {
+       } else if (j.partyName === name && !hasLinkedAccount) {
+          match = true;
+       } else if (isBox && !hasLinkedAccount) {
           if (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) match = true;
           if (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))) match = true;
        }
 
        if (match) {
-          if (isBox) {
-             debitTotal += (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0));
-             creditTotal += (Number(j.paidSYP || 0) + Number(j.paidUSD || 0));
+          let lineDebit = 0;
+          let lineCredit = 0;
+
+          if (j.type === 'افتتاحي') {
+             lineDebit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
+             lineCredit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
+          } else if (j.type === 'قيد') {
+             lineDebit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
+             lineCredit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
           } else {
-             debitTotal += (Number(j.paidSYP || 0) + Number(j.paidUSD || 0));
-             creditTotal += (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0));
+             if (isBox) {
+                lineDebit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
+                lineCredit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
+             } else {
+                lineDebit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
+                lineCredit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
+             }
           }
+
+          debitTotal += lineDebit;
+          creditTotal += lineCredit;
        }
     });
 
@@ -282,48 +288,54 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        });
     }
 
-    // 1. القيود الافتتاحية
-    openingEntries.filter(e => e.accountName === name).forEach(e => {
-        moves.push({ 
-          date: e.date, 
-          number: 'OP', 
-          statement: `قيد افتتاح: ${e.notes || 'رصيد أول مدة'}`, 
-          debit: e.debit, 
-          credit: e.credit, 
-          source: 'السجل الافتتاحي', 
-          counterAccount: 'رأس المال / أصول', 
-          user: settings?.managerName || 'النظام',
-          accountName: name 
-        });
-    });
-
-    // 2. حركات اليومية
+    // 1. حركات اليومية (المصدر الوحيد للحقيقة)
     const linkedCatIds = new Set(categories.filter(c => c.linkedAccountId === account.id).map(c => c.id));
     const isBox = code === '131' || code === '132';
 
     journal.forEach(j => {
        let match = false;
-       if (j.linkedAccountCode === code || j.linkedAccountId === account.id) {
+       const jCode = String(j.linkedAccountCode || '').trim();
+       const jId = String(j.linkedAccountId || '').trim();
+       const aId = String(account.id || '').trim();
+       const hasLinkedAccount = jCode || jId;
+       
+       if (jCode === code || jId === aId) {
           match = true;
        } else if (j.categoryId && linkedCatIds.has(j.categoryId)) {
           match = true;
-       } else if (j.partyName === name) {
-          if (!j.linkedAccountCode && !j.linkedAccountId) {
-             match = true;
-          }
-       }
-       else if (isBox) {
+       } else if (j.partyName === name && !hasLinkedAccount) {
+          match = true;
+       } else if (isBox && !hasLinkedAccount) {
           if (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) match = true;
           if (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))) match = true;
        }
 
        if (match) {
+          let lineDebit = 0;
+          let lineCredit = 0;
+
+          if (j.type === 'افتتاحي') {
+             lineDebit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
+             lineCredit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
+          } else if (j.type === 'قيد') {
+             lineDebit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
+             lineCredit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
+          } else {
+             if (isBox) {
+                lineDebit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
+                lineCredit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
+             } else {
+                lineDebit = Number(j.paidSYP || 0) + Number(j.paidUSD || 0);
+                lineCredit = Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0);
+             }
+          }
+
           moves.push({ 
              date: j.date, 
              number: j.voucherNumber || 'VOU', 
              statement: j.statement, 
-             debit: isBox ? (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0)) : (Number(j.paidSYP || 0) + Number(j.paidUSD || 0)), 
-             credit: isBox ? (Number(j.paidSYP || 0) + Number(j.paidUSD || 0)) : (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0)), 
+             debit: lineDebit, 
+             credit: lineCredit, 
              source: j.type === 'قبض' ? 'سند قبض' : j.type === 'دفع' ? 'سند دفع' : (j.type || 'سند يومية'), 
              counterAccount: isBox ? (j.partyName || 'حساب متنوع') : (j.linkedAccountCode === '42' || j.linkedAccountCode === '43' || j.linkedAccountCode === '32' || j.linkedAccountCode === '34' ? (j.partyName || 'حساب العميل/المورد') : 'الصندوق / المصرف'),
              user: settings?.managerName || 'النظام',
