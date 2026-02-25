@@ -6,7 +6,7 @@ import {
   ChevronDown, CheckCircle2, AlertCircle, FileText
 } from 'lucide-react';
 import { AccountNode, Party, AccountingCategory, CashEntry, AppSettings } from '../types';
-import { loadChartAccounts, getPrefix, normalizeArabic } from '../src/utils/accountUtils';
+import { loadChartAccounts, getPrefix, normalizeArabic } from '../utils/accountUtils';
 
 interface JournalRow {
   id: string;

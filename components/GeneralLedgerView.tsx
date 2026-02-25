@@ -11,7 +11,7 @@ import {
 } from '../types';
 import { exportToCSV } from '../utils/export';
 import { ImageExportService } from '../utils/ImageExportService';
-import { loadChartAccounts, getPrefix, normalizeArabic } from '../src/utils/accountUtils';
+import { loadChartAccounts, getPrefix, normalizeArabic } from '../utils/accountUtils';
 
 interface GeneralLedgerViewProps {
   onBack: () => void;

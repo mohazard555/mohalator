@@ -7,7 +7,7 @@ import {
   ChevronDown, RotateCcw, Info, PlusCircle
 } from 'lucide-react';
 import { OpeningEntry, AccountNode, AppSettings, CashEntry, Party, AccountingCategory } from '../types';
-import { loadChartAccounts, getPrefix, normalizeArabic } from '../src/utils/accountUtils';
+import { loadChartAccounts, getPrefix, normalizeArabic } from '../utils/accountUtils';
 
 interface JournalRow {
   id: string;
