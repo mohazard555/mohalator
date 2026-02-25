@@ -178,26 +178,52 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
 
     const voucherNum = editingEntryId ? `OP-EDIT-${editingEntryId}` : 'OP-' + new Date().getFullYear();
 
-    // حذف القيود القديمة إذا كان تعديلاً
-    if (editingEntryId) {
-       jou = jou.filter(j => j.voucherNumber !== voucherNum && j.voucherNumber !== `OP-${new Date().getFullYear()}`);
-    }
+    // منع التكرار: حذف أي قيود افتتاحية سابقة للحسابات المتأثرة بهذا القيد
+    // هذا يمنع التكرار الناتج عن وجود رصيد افتتاحي في بطاقة العميل/المورد وقيد افتتاحي في هذه الشاشة
+    const affectedAccountIds = validRows.map(r => r.accountId);
+    const affectedAccountNames = validRows.map(r => r.accountName);
+    
+    jou = jou.filter(j => {
+      // 1. حذف القيود القديمة لنفس رقم السند (في حال التعديل)
+      const isOldVoucher = j.voucherNumber === voucherNum || j.voucherNumber === `OP-${new Date().getFullYear()}`;
+      
+      // 2. حذف أي قيد افتتاحي سابق لنفس الحسابات المتأثرة (لمنع التكرار بين الشاشات)
+      const isOldOpeningForAffectedAccount = j.type === 'افتتاحي' && (
+        (j.linkedAccountId && affectedAccountIds.includes(j.linkedAccountId)) ||
+        (j.partyName && affectedAccountNames.includes(j.partyName))
+      );
+      
+      return !isOldVoucher && !isOldOpeningForAffectedAccount;
+    });
 
-    const journalEntries: CashEntry[] = validRows.map(r => ({
-      id: crypto.randomUUID(),
-      date,
-      statement: r.statement || 'قيد افتتاح السنة المالية',
-      receivedSYP: r.debit, 
-      paidSYP: r.credit,    
-      receivedUSD: 0,
-      paidUSD: 0,
-      notes: 'قيد افتتاحي معتمد',
-      type: 'افتتاحي',
-      voucherNumber: voucherNum,
-      partyName: r.accountName,
-      linkedAccountId: r.accountId,
-      linkedAccountCode: r.accountCode
-    }));
+    const journalEntries: CashEntry[] = validRows.map(r => {
+      // تحديد الحساب المقابل لتحسين البيان ومنع التكرار الذهني للمستخدم
+      let oppositeInfo = '';
+      if (validRows.length === 2) {
+        // إذا كان القيد من طرفين فقط، نذكر الحساب الآخر
+        const opposite = validRows.find(row => row.accountId !== r.accountId);
+        if (opposite) oppositeInfo = ` - مقابل: ${opposite.accountName}`;
+      } else if (validRows.length > 2) {
+        // إذا كان القيد مركباً، نذكر "مذكورين"
+        oppositeInfo = ` - مقابل: مذكورين`;
+      }
+
+      return {
+        id: crypto.randomUUID(),
+        date,
+        statement: (r.statement || 'قيد افتتاح السنة المالية') + oppositeInfo,
+        receivedSYP: r.debit, 
+        paidSYP: r.credit,    
+        receivedUSD: 0,
+        paidUSD: 0,
+        notes: 'قيد افتتاحي معتمد',
+        type: 'افتتاحي',
+        voucherNumber: voucherNum,
+        partyName: r.accountName,
+        linkedAccountId: r.accountId,
+        linkedAccountCode: r.accountCode
+      };
+    });
 
     localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify([...journalEntries, ...jou]));
 
@@ -344,11 +370,10 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
     });
   };
 
+  const searchTerm = accountSearch.trim().toLowerCase();
   const filteredFlatResults = chartAccounts.filter(acc => 
-    acc.type === 'ACCOUNT' && (
-      acc.name.toLowerCase().includes(accountSearch.toLowerCase()) || 
-      acc.code.toLowerCase().includes(accountSearch.toLowerCase())
-    )
+    (acc.name || '').toLowerCase().includes(searchTerm) || 
+    (acc.code || '').toLowerCase().includes(searchTerm)
   );
 
   return (

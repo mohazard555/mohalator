@@ -121,14 +121,20 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
   };
 
   const allSearchableAccounts = [
-    ...accounts.filter(a => a.type === 'ACCOUNT').map(a => ({ name: a.name, code: a.code, type: 'حساب عام' })),
-    ...parties.map(p => ({ name: p.name, code: p.code, type: 'جهة (عميل/مورد)' })),
-    ...categories.map(c => ({ name: c.name, code: c.accountCode || '---', type: 'بند مصروف/إيراد' }))
+    ...accounts.map(a => ({ 
+      id: a.id,
+      name: a.name, 
+      code: a.code, 
+      type: a.type === 'FOLDER' ? 'قسم رئيسي' : 'حساب عام' 
+    })),
+    ...parties.map(p => ({ id: p.id, name: p.name, code: p.code, type: 'جهة (عميل/مورد)' })),
+    ...categories.map(c => ({ id: c.id, name: c.name, code: c.accountCode || '---', type: 'بند مصروف/إيراد' }))
   ];
 
+  const searchTerm = accountSearch.trim().toLowerCase();
   const filteredResults = allSearchableAccounts.filter(a => 
-    (a.name || '').toLowerCase().includes(accountSearch.toLowerCase()) || 
-    (a.code || '').toLowerCase().includes(accountSearch.toLowerCase())
+    (a.name || '').toLowerCase().includes(searchTerm) || 
+    (a.code || '').toLowerCase().includes(searchTerm)
   );
 
   return (
@@ -231,7 +237,7 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
                                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                                    {filteredResults.length === 0 ? (<div className="p-6 text-center text-zinc-400 text-xs italic">لا يوجد حساب مطابق</div>) : (
                                       filteredResults.map((acc, i) => (
-                                         <div key={i} onClick={() => { updateRow(row.id, 'accountName', acc.name); setShowResults(false); setActiveRowId(null); }} className="p-3 border-b dark:border-zinc-800 hover:bg-primary/10 cursor-pointer flex justify-between items-center group transition-colors">
+                                         <div key={i} onClick={() => { setRows(rows.map(r => r.id === row.id ? { ...r, accountName: acc.name, accountId: acc.id } : r)); setShowResults(false); setActiveRowId(null); setAccountSearch(''); }} className="p-3 border-b dark:border-zinc-800 hover:bg-primary/10 cursor-pointer flex justify-between items-center group transition-colors">
                                             <div className="flex flex-col text-right"><span className="font-black text-xs text-readable group-hover:text-primary">{acc.name}</span><span className="text-[9px] text-zinc-400 font-bold uppercase">{acc.type}</span></div>
                                             <span className="font-mono text-[10px] text-zinc-400 font-black">#{acc.code}</span>
                                          </div>
