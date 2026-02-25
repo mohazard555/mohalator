@@ -11,6 +11,7 @@ import {
 } from '../types';
 import { exportToCSV } from '../utils/export';
 import { ImageExportService } from '../utils/ImageExportService';
+import { loadChartAccounts, getPrefix, normalizeArabic } from '../src/utils/accountUtils';
 
 interface GeneralLedgerViewProps {
   onBack: () => void;
@@ -46,14 +47,13 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
   const [isExportingImage, setIsExportingImage] = useState(false);
 
   useEffect(() => {
-    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
-    const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+    const prefix = getPrefix();
     
     loadLedger(prefix);
     const savedSett = localStorage.getItem(`${prefix}_settings`);
-    const savedChart = localStorage.getItem(`${prefix}_chart_accounts`);
     if (savedSett) setSettings(JSON.parse(savedSett));
-    if (savedChart) setChartAccounts(JSON.parse(savedChart));
+    
+    setChartAccounts(loadChartAccounts());
   }, []);
 
   const loadLedger = (prefix: string) => {
@@ -167,10 +167,10 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
     setIsExportingImage(false);
   };
 
-  const accSearchTerm = accountSearchTerm.trim().toLowerCase();
+  const accSearchTerm = normalizeArabic(accountSearchTerm);
   const filteredAccountSearch = chartAccounts.filter(acc => 
-    (acc.name || '').toLowerCase().includes(accSearchTerm) ||
-    (acc.code || '').toLowerCase().includes(accSearchTerm)
+    normalizeArabic(acc.name || '').includes(accSearchTerm) ||
+    normalizeArabic(acc.code || '').includes(accSearchTerm)
   );
 
   return (

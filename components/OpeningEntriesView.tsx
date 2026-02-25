@@ -7,6 +7,7 @@ import {
   ChevronDown, RotateCcw, Info, PlusCircle
 } from 'lucide-react';
 import { OpeningEntry, AccountNode, AppSettings, CashEntry, Party, AccountingCategory } from '../types';
+import { loadChartAccounts, getPrefix, normalizeArabic } from '../src/utils/accountUtils';
 
 interface JournalRow {
   id: string;
@@ -62,20 +63,17 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
   }, []);
 
   const loadData = () => {
-    const activeId = localStorage.getItem('sheno_active_company_id') || 'default';
-    const prefix = activeId === 'default' ? 'sheno' : `sheno_${activeId}`;
+    const prefix = getPrefix();
     
     const sSett = localStorage.getItem(`${prefix}_settings`);
-    const sChart = localStorage.getItem(`${prefix}_chart_accounts`);
-    const sOp = localStorage.getItem(`${prefix}_opening_entries`);
-    
     if (sSett) setSettings(JSON.parse(sSett));
-    if (sChart) {
-      const parsedChart = JSON.parse(sChart);
-      setChartAccounts(parsedChart);
-      const roots = parsedChart.filter((a: any) => !a.parentId).map((a: any) => a.id);
-      setExpandedNodes(new Set(roots));
-    }
+
+    const accounts = loadChartAccounts();
+    setChartAccounts(accounts);
+    const roots = accounts.filter((a: any) => !a.parentId).map((a: any) => a.id);
+    setExpandedNodes(new Set(roots));
+
+    const sOp = localStorage.getItem(`${prefix}_opening_entries`);
     if (sOp) setSavedOpeningEntries(JSON.parse(sOp));
   };
 
@@ -140,6 +138,7 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
       return;
     }
 
+    const prefix = getPrefix();
     const newNode: AccountNode = {
       id: crypto.randomUUID(),
       code: quickAddForm.code,
@@ -150,7 +149,7 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
     };
 
     const updatedChart = [...chartAccounts, newNode];
-    localStorage.setItem('sheno_chart_accounts', JSON.stringify(updatedChart));
+    localStorage.setItem(`${prefix}_chart_accounts`, JSON.stringify(updatedChart));
     setChartAccounts(updatedChart);
 
     handleSelectAccount(newNode);
@@ -370,10 +369,10 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
     });
   };
 
-  const searchTerm = accountSearch.trim().toLowerCase();
+  const searchTerm = normalizeArabic(accountSearch);
   const filteredFlatResults = chartAccounts.filter(acc => 
-    (acc.name || '').toLowerCase().includes(searchTerm) || 
-    (acc.code || '').toLowerCase().includes(searchTerm)
+    normalizeArabic(acc.name || '').includes(searchTerm) || 
+    normalizeArabic(acc.code || '').includes(searchTerm)
   );
 
   return (

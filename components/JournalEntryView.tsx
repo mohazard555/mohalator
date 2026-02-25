@@ -6,6 +6,7 @@ import {
   ChevronDown, CheckCircle2, AlertCircle, FileText
 } from 'lucide-react';
 import { AccountNode, Party, AccountingCategory, CashEntry, AppSettings } from '../types';
+import { loadChartAccounts, getPrefix, normalizeArabic } from '../src/utils/accountUtils';
 
 interface JournalRow {
   id: string;
@@ -40,17 +41,17 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
   const [showResults, setShowResults] = useState(false);
 
   useEffect(() => {
-    const sAcc = localStorage.getItem('sheno_chart_accounts');
-    const sPar = localStorage.getItem('sheno_parties');
-    const sCat = localStorage.getItem('sheno_accounting_categories');
-    const sSett = localStorage.getItem('sheno_settings');
+    const prefix = getPrefix();
+    const sPar = localStorage.getItem(`${prefix}_parties`);
+    const sCat = localStorage.getItem(`${prefix}_accounting_categories`);
+    const sSett = localStorage.getItem(`${prefix}_settings`);
     
-    if (sAcc) setAccounts(JSON.parse(sAcc));
+    setAccounts(loadChartAccounts());
     if (sPar) setParties(JSON.parse(sPar));
     if (sCat) setCategories(JSON.parse(sCat));
     if (sSett) setSettings(JSON.parse(sSett));
     
-    const sJou = localStorage.getItem('sheno_cash_journal');
+    const sJou = localStorage.getItem(`${prefix}_cash_journal`);
     if (sJou) {
         const jou: CashEntry[] = JSON.parse(sJou);
         const lastNum = jou.filter(j => j.type === 'قيد').length;
@@ -90,7 +91,8 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
       return;
     }
 
-    const savedJou = localStorage.getItem('sheno_cash_journal');
+    const prefix = getPrefix();
+    const savedJou = localStorage.getItem(`${prefix}_cash_journal`);
     let jou: CashEntry[] = savedJou ? JSON.parse(savedJou) : [];
 
     const newJournalEntries: CashEntry[] = validRows.map(r => {
@@ -115,7 +117,7 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
         };
     });
 
-    localStorage.setItem('sheno_cash_journal', JSON.stringify([...newJournalEntries, ...jou]));
+    localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify([...newJournalEntries, ...jou]));
     alert('تم ترحيل سند القيد بنجاح. ستنعكس الأرصدة فوراً في دليل الحسابات.');
     onBack();
   };
@@ -131,10 +133,10 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
     ...categories.map(c => ({ id: c.id, name: c.name, code: c.accountCode || '---', type: 'بند مصروف/إيراد' }))
   ];
 
-  const searchTerm = accountSearch.trim().toLowerCase();
+  const searchTerm = normalizeArabic(accountSearch);
   const filteredResults = allSearchableAccounts.filter(a => 
-    (a.name || '').toLowerCase().includes(searchTerm) || 
-    (a.code || '').toLowerCase().includes(searchTerm)
+    normalizeArabic(a.name || '').includes(searchTerm) || 
+    normalizeArabic(a.code || '').includes(searchTerm)
   );
 
   return (
