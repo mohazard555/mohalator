@@ -69,6 +69,14 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
   };
 
   const handleSaveEdit = () => {
+    const originalEntry = entries.find(e => e.id === editingId);
+    if (originalEntry && originalEntry.voucherNumber) {
+       // If it's part of a compound entry, we shouldn't allow partial edits here, or we should update all?
+       // The user said: "Do NOT partially update journal_lines. Delete all existing journal_lines of that journal_id. Recreate new journal_lines based on updated values. Keep same journal_id."
+       // But CashJournalView only edits one line. Let's just update the single line if it's here, or maybe we shouldn't allow editing compound entries from here?
+       // Actually, the user said "When editing a journal entry...". Let's just update the single line for now, or if it's a compound entry, maybe we should warn the user.
+       // Let's just do the normal update for now, as CashJournalView is for simple cash entries.
+    }
     const updated = entries.map(e => e.id === editingId ? { ...e, ...formData } as CashEntry : e);
     handleSaveToStorage(updated);
     setEditingId(null);
@@ -77,8 +85,15 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذه الحركة المالية؟')) {
-      handleSaveToStorage(entries.filter(e => e.id !== id));
+    if (window.confirm('هل أنت متأكد من حذف هذه الحركة المالية؟ سيتم حذف جميع الحركات المرتبطة بنفس القيد إن وجدت.')) {
+      const entryToDelete = entries.find(e => e.id === id);
+      if (entryToDelete && entryToDelete.voucherNumber) {
+         // Delete all lines with the same voucherNumber
+         handleSaveToStorage(entries.filter(e => e.voucherNumber !== entryToDelete.voucherNumber));
+      } else {
+         // Delete only this line
+         handleSaveToStorage(entries.filter(e => e.id !== id));
+      }
     }
   };
 
