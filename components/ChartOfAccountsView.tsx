@@ -187,12 +187,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
     let debitTotal = 0;
     let creditTotal = 0;
 
-    // 1. الأرصدة الافتتاحية
-    openingEntries.filter(e => e.accountName === name).forEach(e => {
-       debitTotal += Number(e.debit || 0);
-       creditTotal += Number(e.credit || 0);
-    });
-
     // 2. حركات اليومية
     const linkedCatIds = new Set(categories.filter(c => c.linkedAccountId === account.id).map(c => c.id));
     const isBox = code === '131' || code === '132';
@@ -218,13 +212,19 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        }
 
        if (match) {
-          if (isBox) {
-             debitTotal += (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0));
-             creditTotal += (Number(j.paidSYP || 0) + Number(j.paidUSD || 0));
+          let d = 0, c = 0;
+          if (j.type === 'افتتاحي') {
+             d = Number(j.receivedSYP || 0);
+             c = Number(j.paidSYP || 0);
+          } else if (j.type === 'قيد') {
+             d = Number(j.paidSYP || 0);
+             c = Number(j.receivedSYP || 0);
           } else {
-             debitTotal += (Number(j.paidSYP || 0) + Number(j.paidUSD || 0));
-             creditTotal += (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0));
+             d = isBox ? Number(j.receivedSYP || 0) : Number(j.paidSYP || 0);
+             c = isBox ? Number(j.paidSYP || 0) : Number(j.receivedSYP || 0);
           }
+          debitTotal += d;
+          creditTotal += c;
        }
     });
 
@@ -282,22 +282,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        });
     }
 
-    // 1. القيود الافتتاحية
-    openingEntries.filter(e => e.accountName === name).forEach(e => {
-        moves.push({ 
-          date: e.date, 
-          number: 'OP', 
-          statement: `قيد افتتاح: ${e.notes || 'رصيد أول مدة'}`, 
-          debit: e.debit, 
-          credit: e.credit, 
-          source: 'السجل الافتتاحي', 
-          counterAccount: 'رأس المال / أصول', 
-          user: settings?.managerName || 'النظام',
-          accountName: name 
-        });
-    });
-
-    // 2. حركات اليومية
+    // 2. حركات اليومية (تشمل الافتتاحية والقيود)
     const linkedCatIds = new Set(categories.filter(c => c.linkedAccountId === account.id).map(c => c.id));
     const isBox = code === '131' || code === '132';
 
@@ -318,12 +303,24 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        }
 
        if (match) {
+          let d = 0, c = 0;
+          if (j.type === 'افتتاحي') {
+             d = Number(j.receivedSYP || 0);
+             c = Number(j.paidSYP || 0);
+          } else if (j.type === 'قيد') {
+             d = Number(j.paidSYP || 0);
+             c = Number(j.receivedSYP || 0);
+          } else {
+             d = isBox ? Number(j.receivedSYP || 0) : Number(j.paidSYP || 0);
+             c = isBox ? Number(j.paidSYP || 0) : Number(j.receivedSYP || 0);
+          }
+
           moves.push({ 
              date: j.date, 
              number: j.voucherNumber || 'VOU', 
              statement: j.statement, 
-             debit: isBox ? (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0)) : (Number(j.paidSYP || 0) + Number(j.paidUSD || 0)), 
-             credit: isBox ? (Number(j.paidSYP || 0) + Number(j.paidUSD || 0)) : (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0)), 
+             debit: d, 
+             credit: c, 
              source: j.type === 'قبض' ? 'سند قبض' : j.type === 'دفع' ? 'سند دفع' : (j.type || 'سند يومية'), 
              counterAccount: isBox ? (j.partyName || 'حساب متنوع') : (j.linkedAccountCode === '42' || j.linkedAccountCode === '43' || j.linkedAccountCode === '32' || j.linkedAccountCode === '34' ? (j.partyName || 'حساب العميل/المورد') : 'الصندوق / المصرف'),
              user: settings?.managerName || 'النظام',
