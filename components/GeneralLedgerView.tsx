@@ -167,10 +167,9 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
     setIsExportingImage(false);
   };
 
-  const accSearchTerm = accountSearchTerm.trim().toLowerCase();
   const filteredAccountSearch = chartAccounts.filter(acc => 
-    (acc.name || '').toLowerCase().includes(accSearchTerm) ||
-    (acc.code || '').toLowerCase().includes(accSearchTerm)
+    acc.name.toLowerCase().includes(accountSearchTerm.toLowerCase()) ||
+    acc.code.toLowerCase().includes(accountSearchTerm.toLowerCase())
   );
 
   return (
