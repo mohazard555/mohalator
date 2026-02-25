@@ -79,25 +79,12 @@ const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ onBack }) => {
         if (acc) accountName = acc.name;
       }
 
-      let d = 0, c = 0;
-      if (j.type === 'افتتاحي') {
-        d = (j.receivedSYP || 0) + (j.receivedUSD || 0);
-        c = (j.paidSYP || 0) + (j.paidUSD || 0);
-      } else if (j.type === 'قيد') {
-        d = (j.paidSYP || 0) + (j.paidUSD || 0);
-        c = (j.receivedSYP || 0) + (j.receivedUSD || 0);
-      } else {
-        // Receipt/Payment
-        d = (j.receivedSYP || 0) + (j.receivedUSD || 0);
-        c = (j.paidSYP || 0) + (j.paidUSD || 0);
-      }
-
       ledger.push({
         id: j.id, 
         date: j.date, 
         statement: j.statement,
-        debit: d, 
-        credit: c,
+        debit: (j.receivedSYP || 0) + (j.receivedUSD || 0), 
+        credit: (j.paidSYP || 0) + (j.paidUSD || 0),
         type: j.type || 'يومية', 
         ref: j.voucherNumber || 'VOU', 
         account: accountName,
