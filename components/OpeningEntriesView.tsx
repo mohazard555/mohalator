@@ -207,12 +207,14 @@ const OpeningEntriesView: React.FC<OpeningEntriesViewProps> = ({ onBack }) => {
         oppositeInfo = ` - مقابل: مذكورين`;
       }
 
+      const isBoxAccount = r.accountCode === '131' || r.accountCode === '132';
+
       return {
         id: crypto.randomUUID(),
         date,
         statement: (r.statement || 'قيد افتتاح السنة المالية') + oppositeInfo,
-        receivedSYP: r.debit, 
-        paidSYP: r.credit,    
+        receivedSYP: isBoxAccount ? r.debit : r.credit, 
+        paidSYP: isBoxAccount ? r.credit : r.debit,    
         receivedUSD: 0,
         paidUSD: 0,
         notes: 'قيد افتتاحي معتمد',
