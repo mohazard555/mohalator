@@ -8,9 +8,10 @@ interface BalanceSheetReportProps {
   expandedSections: Set<string>;
   toggleSection: (id: string) => void;
   renderDetailTable: (data: any[]) => React.ReactNode;
+  displayLevel: number;
 }
 
-const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSections, toggleSection, renderDetailTable }) => {
+const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSections, toggleSection, renderDetailTable, displayLevel }) => {
   
   const totalAssets = fin.closingStockValue + fin.cashInHand + fin.receivables + fin.fixedAssets;
   const totalEquity = fin.equityOpening + fin.netProfit;
@@ -80,7 +81,7 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
          {/* جانب الأصول */}
          <div className="space-y-4">
              <h4 className="bg-zinc-900 text-white p-3 rounded-xl font-black text-center text-xs uppercase tracking-widest">الأصـــــول (الموجودات)</h4>
-             <div className="divide-y border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 shadow-sm">
+             <div className={`divide-y border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 shadow-sm ${displayLevel === 1 ? 'hidden' : ''}`}>
                 <div className="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                    <div className="flex justify-between items-center cursor-pointer group" onClick={() => toggleSection('bs_closing')}>
                       <span className="font-bold text-sm flex items-center gap-2">
@@ -90,7 +91,7 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
                       </span>
                       <span className="font-mono font-black text-lg">{fin.closingStockValue.toLocaleString()}</span>
                    </div>
-                   {expandedSections.has('bs_closing') && renderDetailTable(fin.closingStockItems.map((it:any) => ({ name: it.name, balance: it.total })))}
+                   {displayLevel >= 3 && expandedSections.has('bs_closing') && renderDetailTable(fin.closingStockItems.map((it:any) => ({ name: it.name, balance: it.total })))}
                 </div>
                 
                 <div className="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
@@ -102,7 +103,7 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
                       </span>
                       <span className="font-mono font-black text-lg">{fin.cashInHand.toLocaleString()}</span>
                    </div>
-                   {expandedSections.has('bs_cash') && renderDetailTable([
+                   {displayLevel >= 3 && expandedSections.has('bs_cash') && renderDetailTable([
                      { name: 'الصندوق الرئيسي', balance: fin.cashBalance },
                      { name: 'حساب المصرف البنكي', balance: fin.bankBalance }
                    ])}
@@ -116,7 +117,7 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
                       </span>
                       <span className="font-mono font-black text-lg">{fin.receivables.toLocaleString()}</span>
                    </div>
-                   {expandedSections.has('bs_receivables') && renderDetailTable(fin.receivablesList)}
+                   {displayLevel >= 3 && expandedSections.has('bs_receivables') && renderDetailTable(fin.receivablesList)}
                 </div>
 
                 <div className="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
@@ -127,7 +128,7 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
                       </span>
                       <span className="font-mono font-black text-lg">{fin.fixedAssets.toLocaleString()}</span>
                    </div>
-                   {expandedSections.has('bs_fixed') && renderDetailTable(fin.fixedAssetsList)}
+                   {displayLevel >= 3 && expandedSections.has('bs_fixed') && renderDetailTable(fin.fixedAssetsList)}
                 </div>
              </div>
              <div className="flex justify-between p-5 bg-zinc-900 text-white rounded-2xl font-black text-xl shadow-lg border-b-4 border-primary">
@@ -139,7 +140,7 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
          {/* جانب الخصوم وحقوق الملكية */}
          <div className="space-y-4">
              <h4 className="bg-zinc-400 text-zinc-900 p-3 rounded-xl font-black text-center text-xs uppercase tracking-widest">الخصوم وحقوق الملكية (المطاليب)</h4>
-             <div className="border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 shadow-sm divide-y dark:divide-zinc-800">
+             <div className={`border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 shadow-sm divide-y dark:divide-zinc-800 ${displayLevel === 1 ? 'hidden' : ''}`}>
                 
                 {/* قسم الخصوم */}
                 <div className="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
@@ -150,7 +151,7 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
                       </span>
                       <span className="font-mono font-black text-lg">{fin.payables.toLocaleString()}</span>
                    </div>
-                   {expandedSections.has('bs_payables') && renderDetailTable(fin.payablesList)}
+                   {displayLevel >= 3 && expandedSections.has('bs_payables') && renderDetailTable(fin.payablesList)}
                 </div>
 
                 {/* قسم حقوق الملكية */}
@@ -167,7 +168,7 @@ const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({ fin, expandedSe
                          </span>
                          <span className="font-mono font-black">{fin.equityOpening.toLocaleString()}</span>
                       </div>
-                      {expandedSections.has('bs_equity') && renderDetailTable(fin.equityList)}
+                      {displayLevel >= 3 && expandedSections.has('bs_equity') && renderDetailTable(fin.equityList)}
                       
                       <div className="flex justify-between items-center pt-2 border-t border-zinc-100 dark:border-zinc-800">
                          <div className="flex items-center gap-2">

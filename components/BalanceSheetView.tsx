@@ -16,6 +16,7 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [showDetailsInPrint, setShowDetailsInPrint] = useState(false);
+  const [displayLevel, setDisplayLevel] = useState(4);
 
   // Data
   const [journal, setJournal] = useState<CashEntry[]>([]);
@@ -197,12 +198,31 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
 
       <div className="bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-800 shadow-2xl flex flex-wrap items-center justify-between no-print mb-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full"></div>
-          <div className="flex flex-col gap-1 relative z-10">
-            <span className="text-[10px] text-slate-400 font-black uppercase mr-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> نطاق تقرير الميزانية</span>
-            <div className="flex items-center gap-3">
-               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-slate-900 border border-slate-700 text-white p-2 rounded-xl text-xs font-mono outline-none focus:border-primary" />
-               <span className="text-slate-600 font-black">←</span>
-               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-slate-900 border border-slate-700 text-white p-2 rounded-xl text-xs font-mono outline-none focus:border-primary" />
+          <div className="flex items-center gap-6 relative z-10">
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] text-slate-400 font-black uppercase mr-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> نطاق تقرير الميزانية</span>
+              <div className="flex items-center gap-3">
+                 <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-slate-900 border border-slate-700 text-white p-2 rounded-xl text-xs font-mono outline-none focus:border-primary" />
+                 <span className="text-slate-600 font-black">←</span>
+                 <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-slate-900 border border-slate-700 text-white p-2 rounded-xl text-xs font-mono outline-none focus:border-primary" />
+              </div>
+            </div>
+
+            <div className="h-10 w-px bg-slate-800 mx-2"></div>
+
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] text-slate-400 font-black uppercase mr-1">مستوى العرض (Levels)</span>
+              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                {[1, 2, 3, 4].map(lvl => (
+                  <button 
+                    key={lvl} 
+                    onClick={() => setDisplayLevel(lvl)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${displayLevel === lvl ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    Level {lvl}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <div className="hidden lg:block text-left">
@@ -231,6 +251,7 @@ const BalanceSheetView: React.FC<BalanceSheetViewProps> = ({ onBack }) => {
              expandedSections={expandedSections} 
              toggleSection={toggleSection} 
              renderDetailTable={renderDetailTable} 
+             displayLevel={displayLevel}
           />
       </div>
     </div>

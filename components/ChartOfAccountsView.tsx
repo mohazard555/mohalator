@@ -501,17 +501,17 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                           <span>التاريخ: {new Date().toLocaleDateString('ar-SA')}</span>
                        </div>
                     </div>
-                    <table className="w-full text-right border-collapse print:text-[12px]">
+                    <table className="w-full text-right border-collapse print:text-[11px]">
                        <thead>
-                          <tr className="bg-zinc-900 text-white text-[10px] font-black uppercase text-zinc-500 border-b dark:border-zinc-800 sticky top-0 z-10 h-14 print:bg-white print:text-black print:border-b-2 print:border-zinc-900">
+                          <tr className="bg-zinc-900 text-white text-[10px] font-black uppercase text-zinc-500 border-b dark:border-zinc-800 sticky top-0 z-10 h-14 print:bg-primary/5 print:text-primary print:border-b-2 print:border-primary">
                              <th className="p-4 border-l border-zinc-800 w-24 text-center print:border-zinc-300">التاريخ</th>
                              <th className="p-4 border-l border-zinc-800 print:border-zinc-300">البيان الرسمي</th>
                              <th className="p-4 border-l border-zinc-800 w-32 text-center print:border-zinc-300">الحساب الفرعي</th>
                              <th className="p-4 border-l border-zinc-800 w-32 text-center print:border-zinc-300">الحساب المقابل</th>
                              <th className="p-4 border-l border-zinc-800 w-20 text-center print:border-zinc-300">العملية</th>
                              <th className="p-4 border-l border-zinc-800 w-20 text-center print:border-zinc-300">رقم المستند</th>
-                             <th className="p-4 text-center border-l border-zinc-800 bg-emerald-900/20 print:bg-transparent print:border-zinc-300">مدين (+)</th>
-                             <th className="p-4 text-center border-l border-zinc-800 bg-rose-900/20 print:bg-transparent print:border-zinc-300">دائن (-)</th>
+                             <th className="p-4 text-center border-l border-zinc-800 bg-emerald-900/20 print:bg-emerald-50 print:border-primary/20">مدين (+)</th>
+                             <th className="p-4 text-center border-l border-zinc-800 bg-rose-900/20 print:bg-rose-50 print:border-primary/20">دائن (-)</th>
                              <th className="p-4 text-center w-24">المستخدم</th>
                           </tr>
                        </thead>
