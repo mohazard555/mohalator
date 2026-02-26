@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowRight, Plus, Trash2, Save, X, Search, 
   Calculator, MessageSquare, Calendar, Hash,
-  ChevronDown, CheckCircle2, AlertCircle, FileText
+  ChevronDown, CheckCircle2, AlertCircle, FileText, History, Printer, Edit2
 } from 'lucide-react';
 import { AccountNode, Party, AccountingCategory, CashEntry, AppSettings } from '../types';
 import { loadChartAccounts, getPrefix, normalizeArabic } from '../utils/accountUtils';
@@ -17,11 +17,19 @@ interface JournalRow {
   notes: string;
 }
 
+interface Voucher {
+  voucherNumber: string;
+  date: string;
+  mainDescription: string;
+  rows: JournalRow[];
+}
+
 interface JournalEntryViewProps {
   onBack: () => void;
 }
 
 const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
+  const printRef = useRef<HTMLDivElement>(null);
   const [rows, setRows] = useState<JournalRow[]>([
     { id: crypto.randomUUID(), accountId: '', accountName: '', debit: 0, credit: 0, notes: '' },
     { id: crypto.randomUUID(), accountId: '', accountName: '', debit: 0, credit: 0, notes: '' }
@@ -30,36 +38,92 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
   const [voucherNumber, setVoucherNumber] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [mainDescription, setMainDescription] = useState('');
+  const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
   
   const [accounts, setAccounts] = useState<AccountNode[]>([]);
   const [parties, setParties] = useState<Party[]>([]);
   const [categories, setCategories] = useState<AccountingCategory[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [journal, setJournal] = useState<CashEntry[]>([]);
 
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [accountSearch, setAccountSearch] = useState('');
   const [showResults, setShowResults] = useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+  const [selectedVoucherForPrint, setSelectedVoucherForPrint] = useState<Voucher | null>(null);
 
   useEffect(() => {
     const prefix = getPrefix();
     const sPar = localStorage.getItem(`${prefix}_parties`);
     const sCat = localStorage.getItem(`${prefix}_accounting_categories`);
     const sSett = localStorage.getItem(`${prefix}_settings`);
+    const sJou = localStorage.getItem(`${prefix}_cash_journal`);
     
     setAccounts(loadChartAccounts());
     if (sPar) setParties(JSON.parse(sPar));
     if (sCat) setCategories(JSON.parse(sCat));
     if (sSett) setSettings(JSON.parse(sSett));
     
-    const sJou = localStorage.getItem(`${prefix}_cash_journal`);
     if (sJou) {
         const jou: CashEntry[] = JSON.parse(sJou);
+        setJournal(jou);
         const lastNum = jou.filter(j => j.type === 'قيد').length;
-        setVoucherNumber((lastNum + 1).toString());
+        if (!editingVoucherId) setVoucherNumber((lastNum + 1).toString());
     } else {
-        setVoucherNumber('1');
+        if (!editingVoucherId) setVoucherNumber('1');
     }
-  }, []);
+  }, [editingVoucherId]);
+
+  const getVouchers = (): Voucher[] => {
+    const journalEntries = journal.filter(j => j.type === 'قيد');
+    const grouped: { [key: string]: Voucher } = {};
+
+    journalEntries.forEach(j => {
+      const key = `${j.voucherNumber}_${j.date}`;
+      if (!grouped[key]) {
+        grouped[key] = {
+          voucherNumber: j.voucherNumber || '',
+          date: j.date,
+          mainDescription: j.notes || '',
+          rows: []
+        };
+      }
+      grouped[key].rows.push({
+        id: j.id,
+        accountId: j.linkedAccountId || '',
+        accountName: j.partyName || '',
+        debit: j.paidSYP || 0,
+        credit: j.receivedSYP || 0,
+        notes: j.statement.replace(`قيد رقم ${j.voucherNumber}`, '').replace(j.notes || '', '').trim()
+      });
+    });
+
+    return Object.values(grouped).sort((a, b) => b.date.localeCompare(a.date) || b.voucherNumber.localeCompare(a.voucherNumber));
+  };
+
+  const handleEditVoucher = (v: Voucher) => {
+    setVoucherNumber(v.voucherNumber);
+    setDate(v.date);
+    setMainDescription(v.mainDescription);
+    setRows(v.rows.map(r => ({ ...r, id: crypto.randomUUID() })));
+    setEditingVoucherId(v.voucherNumber);
+    setIsArchiveOpen(false);
+  };
+
+  const handleDeleteVoucher = (v: Voucher) => {
+    if (!confirm('هل أنت متأكد من حذف هذا القيد نهائياً؟')) return;
+    const prefix = getPrefix();
+    const updatedJournal = journal.filter(j => !(j.voucherNumber === v.voucherNumber && j.date === v.date && j.type === 'قيد'));
+    localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify(updatedJournal));
+    setJournal(updatedJournal);
+  };
+
+  const handlePrintVoucher = (v: Voucher) => {
+    setSelectedVoucherForPrint(v);
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
 
   const handleAddRow = () => {
     setRows([...rows, { id: crypto.randomUUID(), accountId: '', accountName: '', debit: 0, credit: 0, notes: '' }]);
@@ -95,6 +159,11 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
     const savedJou = localStorage.getItem(`${prefix}_cash_journal`);
     let jou: CashEntry[] = savedJou ? JSON.parse(savedJou) : [];
 
+    // If editing, remove old rows first
+    if (editingVoucherId) {
+      jou = jou.filter(j => !(j.voucherNumber === editingVoucherId && j.type === 'قيد'));
+    }
+
     const newJournalEntries: CashEntry[] = validRows.map(r => {
         const acc = accounts.find(a => a.name === r.accountName);
         const party = parties.find(p => p.name === r.accountName);
@@ -119,7 +188,17 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
 
     localStorage.setItem(`${prefix}_cash_journal`, JSON.stringify([...newJournalEntries, ...jou]));
     alert('تم ترحيل سند القيد بنجاح. ستنعكس الأرصدة فوراً في دليل الحسابات.');
-    onBack();
+    
+    // Reset form
+    setEditingVoucherId(null);
+    setMainDescription('');
+    setRows([
+      { id: crypto.randomUUID(), accountId: '', accountName: '', debit: 0, credit: 0, notes: '' },
+      { id: crypto.randomUUID(), accountId: '', accountName: '', debit: 0, credit: 0, notes: '' }
+    ]);
+    
+    // Refresh journal state
+    setJournal([...newJournalEntries, ...jou]);
   };
 
   const allSearchableAccounts = [
@@ -185,10 +264,131 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
           </div>
         </div>
         <div className="flex gap-2">
+           <button onClick={() => setIsArchiveOpen(true)} className="bg-zinc-100 dark:bg-zinc-800 text-readable border border-zinc-200 dark:border-zinc-700 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 transition-all hover:bg-zinc-200 dark:hover:bg-zinc-700"><History className="w-5 h-5" /> أرشيف القيود</button>
            <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable border border-zinc-200 dark:border-zinc-700 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2"><FileText className="w-5 h-5" /> معاينة الطباعة</button>
-           <button onClick={handleSave} className="bg-primary text-white px-10 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-all"><Save className="w-5 h-5" /> ترحيل القيد للدليل</button>
+           <button onClick={handleSave} className="bg-primary text-white px-10 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-all"><Save className="w-5 h-5" /> {editingVoucherId ? 'تحديث القيد' : 'ترحيل القيد للدليل'}</button>
         </div>
       </div>
+
+      {/* Archive Modal */}
+      {isArchiveOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300 no-print">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-5xl max-h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-zinc-200 dark:border-zinc-800">
+            <div className="p-6 border-b dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-950">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-xl"><History className="w-6 h-6 text-primary" /></div>
+                <h3 className="text-xl font-black text-readable">أرشيف سندات القيد اليدوية</h3>
+              </div>
+              <button onClick={() => setIsArchiveOpen(false)} className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-full transition-colors"><X className="w-6 h-6 text-zinc-400" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+              <div className="grid grid-cols-1 gap-4">
+                {getVouchers().length === 0 ? (
+                  <div className="p-20 text-center flex flex-col items-center gap-4">
+                    <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center"><FileText className="w-10 h-10 text-zinc-300" /></div>
+                    <p className="text-zinc-400 font-bold italic">لا يوجد قيود مؤرشفة حالياً</p>
+                  </div>
+                ) : (
+                  getVouchers().map((v, idx) => (
+                    <div key={idx} className="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-2xl p-5 hover:border-primary/50 transition-all group">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 text-center min-w-[80px]">
+                            <span className="block text-[10px] text-zinc-400 font-black uppercase">رقم السند</span>
+                            <span className="block text-lg font-black text-primary">#{v.voucherNumber}</span>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <Calendar className="w-4 h-4 text-zinc-400" />
+                              <span className="text-sm font-black text-readable">{v.date}</span>
+                            </div>
+                            <h4 className="font-bold text-readable line-clamp-1">{v.mainDescription || 'بدون بيان عام'}</h4>
+                            <p className="text-[10px] text-zinc-400 font-bold mt-1">عدد الأسطر: {v.rows.length} | إجمالي القيد: {v.rows.reduce((s, r) => s + r.debit, 0).toLocaleString()} ل.س</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handlePrintVoucher(v)} className="p-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-readable hover:text-primary transition-colors"><Printer className="w-5 h-5" /></button>
+                          <button onClick={() => handleEditVoucher(v)} className="p-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-readable hover:text-blue-500 transition-colors"><Edit2 className="w-5 h-5" /></button>
+                          <button onClick={() => handleDeleteVoucher(v)} className="p-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-readable hover:text-rose-500 transition-colors"><Trash2 className="w-5 h-5" /></button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Professional Print View */}
+      {selectedVoucherForPrint && (
+        <div className="hidden print:block fixed inset-0 bg-white z-[500] p-0 m-0">
+          <div className="p-10 max-w-4xl mx-auto space-y-8">
+            <div className="flex justify-between items-start border-b-2 border-zinc-100 pb-8">
+              <div>
+                <h1 className="text-3xl font-black text-zinc-900 mb-2">{settings?.companyName || 'شركة المحاسبة'}</h1>
+                <p className="text-sm text-zinc-500 font-bold italic">{settings?.managerName || 'مدير النظام'}</p>
+              </div>
+              <div className="text-left">
+                <h2 className="text-2xl font-black text-zinc-900">سند قيد يدوي</h2>
+                <p className="text-sm text-zinc-500 font-mono font-bold">#{selectedVoucherForPrint.voucherNumber}</p>
+                <p className="text-sm text-zinc-500 font-mono font-bold mt-1">{selectedVoucherForPrint.date}</p>
+              </div>
+            </div>
+
+            <div className="bg-zinc-50 p-6 rounded-2xl border border-zinc-100">
+               <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-2">البيان العام للسند</span>
+               <p className="text-lg font-bold text-zinc-800">{selectedVoucherForPrint.mainDescription || '---'}</p>
+            </div>
+
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b-2 border-zinc-900">
+                  <th className="py-4 px-2 text-right text-sm font-black uppercase">الحساب</th>
+                  <th className="py-4 px-2 text-center text-sm font-black uppercase w-32">مدين (+)</th>
+                  <th className="py-4 px-2 text-center text-sm font-black uppercase w-32">دائن (-)</th>
+                  <th className="py-4 px-2 text-right text-sm font-black uppercase">ملاحظات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y border-b-2 border-zinc-900">
+                {selectedVoucherForPrint.rows.map((r, i) => (
+                  <tr key={i}>
+                    <td className="py-4 px-2 text-sm font-bold text-zinc-800">{r.accountName}</td>
+                    <td className="py-4 px-2 text-center text-sm font-mono font-black text-zinc-900">{r.debit > 0 ? r.debit.toLocaleString() : '-'}</td>
+                    <td className="py-4 px-2 text-center text-sm font-mono font-black text-zinc-900">{r.credit > 0 ? r.credit.toLocaleString() : '-'}</td>
+                    <td className="py-4 px-2 text-sm font-medium text-zinc-500 italic">{r.notes}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-zinc-50 font-black">
+                  <td className="py-4 px-2 text-right">الإجمالي</td>
+                  <td className="py-4 px-2 text-center font-mono">{selectedVoucherForPrint.rows.reduce((s, r) => s + r.debit, 0).toLocaleString()}</td>
+                  <td className="py-4 px-2 text-center font-mono">{selectedVoucherForPrint.rows.reduce((s, r) => s + r.credit, 0).toLocaleString()}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <div className="grid grid-cols-3 gap-8 pt-20">
+              <div className="text-center border-t border-zinc-200 pt-4">
+                <span className="text-xs font-black text-zinc-400 uppercase">توقيع المحاسب</span>
+              </div>
+              <div className="text-center border-t border-zinc-200 pt-4">
+                <span className="text-xs font-black text-zinc-400 uppercase">توقيع المدير</span>
+              </div>
+              <div className="text-center border-t border-zinc-200 pt-4">
+                <span className="text-xs font-black text-zinc-400 uppercase">ختم الشركة</span>
+              </div>
+            </div>
+            
+            <div className="pt-10 text-center">
+              <p className="text-[8px] text-zinc-300 font-bold uppercase tracking-[0.2em]">تم الإنشاء بواسطة نظام Finexa المحاسبي الذكي</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col">
          <div className="p-8 bg-zinc-50 dark:bg-zinc-950 border-b dark:border-zinc-800 grid grid-cols-1 md:grid-cols-4 gap-6 relative">

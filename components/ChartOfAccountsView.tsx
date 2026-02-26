@@ -207,8 +207,10 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
           }
        }
        else if (isBox) {
-          if (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) match = true;
-          if (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))) match = true;
+          if (j.type !== 'قيد' && j.type !== 'افتتاحي') {
+             if (code === '131' && (j.cashAccount === 'الصندوق' || (!j.cashAccount && !j.statement.includes('المصرف')))) match = true;
+             if (code === '132' && (j.cashAccount === 'المصرف' || (!j.cashAccount && j.statement.includes('المصرف')))) match = true;
+          }
        }
 
        if (match) {
@@ -222,12 +224,14 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        }
     });
 
-    // رصيد أول المدة للزبائن والموردين
+    // رصيد أول المدة للزبائن والموردين (تم إيقافه لأنه مدمج في اليومية الآن لمنع التكرار)
+    /*
     const party = parties.find(p => p.name === name);
     if (party) {
        if (party.type === 'عميل' || account.parentId === '121') debitTotal += (party.openingBalance || 0);
        else if (party.type === 'مورد' || account.parentId === '221') creditTotal += (party.openingBalance || 0);
     }
+    */
 
     // تحديد طبيعة الحساب (مدين أو دائن)
     const isDebitNature = 
@@ -460,7 +464,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
       <div className="lg:col-span-7">
          {selectedAccount ? (
            <div ref={movementsRef} className="space-y-6 animate-in slide-in-from-left-6 export-fix">
-              <div className="bg-white dark:bg-zinc-950 p-10 rounded-[3rem] border-2 border-zinc-100 dark:border-zinc-800 shadow-2xl flex justify-between items-center relative overflow-hidden">
+              <div className="bg-white dark:bg-zinc-950 p-10 rounded-[3rem] border-2 border-zinc-100 dark:border-zinc-800 shadow-2xl flex justify-between items-center relative overflow-hidden no-print">
                  <div className="absolute top-0 left-0 w-48 h-48 bg-primary/5 blur-[100px] rounded-full"></div>
                  <div className="relative z-10 space-y-2">
                     <span className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.3em] block mb-1">ACCOUNT ANALYSIS | تحليل الحساب</span>
