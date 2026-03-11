@@ -243,7 +243,8 @@ const SalesReturnView: React.FC<SalesReturnViewProps> = ({ onBack, initialReturn
             id: crypto.randomUUID(),
             date: returnDate,
             statement: `رد نقدي لمرتجع مبيع فاتورة ${foundInvoice.invoiceNumber}`,
-            receivedSYP: totalReturnItemsAmountLocal, paidSYP: 0, 
+            receivedSYP: 0, 
+            paidSYP: totalReturnItemsAmountLocal, 
             receivedUSD: 0, paidUSD: 0,
             type: 'مرتجع', voucherNumber: returnId,
             cashAccount: foundInvoice.cashAccount || 'الصندوق'

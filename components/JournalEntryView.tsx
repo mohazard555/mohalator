@@ -181,8 +181,8 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
             id: crypto.randomUUID(),
             date,
             statement: r.notes || mainDescription || `قيد رقم ${voucherNumber}`,
-            receivedSYP: r.debit, 
-            paidSYP: r.credit,   
+            receivedSYP: r.credit, 
+            paidSYP: r.debit,   
             receivedUSD: 0,
             paidUSD: 0,
             notes: mainDescription,
@@ -276,7 +276,6 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
         </div>
         <div className="flex gap-2">
            <button onClick={() => setIsArchiveOpen(true)} className="bg-zinc-100 dark:bg-zinc-800 text-readable border border-zinc-200 dark:border-zinc-700 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 transition-all hover:bg-zinc-200 dark:hover:bg-zinc-700"><History className="w-5 h-5" /> أرشيف القيود</button>
-           <button onClick={() => window.print()} className="bg-zinc-100 dark:bg-zinc-800 text-readable border border-zinc-200 dark:border-zinc-700 px-6 py-2.5 rounded-2xl font-black flex items-center gap-2"><FileText className="w-5 h-5" /> معاينة الطباعة</button>
            <button onClick={handleSave} className="bg-primary text-white px-10 py-2.5 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-all"><Save className="w-5 h-5" /> {editingVoucherId ? 'تحديث القيد' : 'ترحيل القيد للدليل'}</button>
         </div>
       </div>
@@ -318,7 +317,6 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handlePrintVoucher(v)} className="p-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-readable hover:text-primary transition-colors"><Printer className="w-5 h-5" /></button>
                           <button onClick={() => handleEditVoucher(v)} className="p-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-readable hover:text-blue-500 transition-colors"><Edit2 className="w-5 h-5" /></button>
                           <button onClick={() => handleDeleteVoucher(v)} className="p-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-readable hover:text-rose-500 transition-colors"><Trash2 className="w-5 h-5" /></button>
                         </div>

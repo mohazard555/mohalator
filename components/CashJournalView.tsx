@@ -154,10 +154,12 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
         const cashKeywords = ['صندوق', 'مصرف', 'بنك', 'cash', 'bank'];
         const isCashSide = (name: string) => cashKeywords.some(k => name.toLowerCase().includes(k));
         
-        const cashSide = group.find(e => isCashSide(e.partyName || ''));
-        const nonCashSide = group.find(e => !isCashSide(e.partyName || ''));
+        const cashSide = group.find(e => isCashSide(e.partyName || '') || e.cashAccount);
+        const nonCashSide = group.find(e => !isCashSide(e.partyName || '') && !e.cashAccount);
 
-        if (nonCashSide) {
+        if (cashSide) {
+          processedJournal.push(cashSide);
+        } else if (nonCashSide) {
           processedJournal.push(nonCashSide);
         } else {
           processedJournal.push(group[0]);

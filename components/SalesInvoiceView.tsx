@@ -288,7 +288,7 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
     const netAmount = itemsTotal - discount;
 
     if (isCash) {
-      // قيد مبيعات نقدية: من حـ/ الصندوق إلى حـ/ المبيعات (بالصافي لضمان سطرين فقط)
+      // قيد مبيعات نقدية: من حـ/ الصندوق إلى حـ/ المبيعات
       // 1. طرف المبيعات (دائن)
       cashEntries.unshift({
         id: crypto.randomUUID(),
@@ -308,10 +308,10 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
         id: crypto.randomUUID(),
         date: invoice.date,
         statement: `مبيعات نقدية فاتورة #${invoice.invoiceNumber}`,
-        receivedSYP: 0,
-        paidSYP: isPrimary ? netAmount : 0,
-        receivedUSD: 0,
-        paidUSD: !isPrimary ? netAmount : 0,
+        receivedSYP: isPrimary ? netAmount : 0,
+        paidSYP: 0,
+        receivedUSD: !isPrimary ? netAmount : 0,
+        paidUSD: 0,
         type: 'بيع',
         voucherNumber: invoice.invoiceNumber,
         cashAccount: invoice.cashAccount || 'الصندوق'
@@ -397,10 +397,10 @@ const SalesInvoiceView: React.FC<SalesInvoiceViewProps> = ({ onBack, initialInvo
           id: crypto.randomUUID(),
           date: invoice.date,
           statement: `دفعة من فاتورة مبيعات رقم ${invoice.invoiceNumber}`,
-          receivedSYP: 0,
-          paidSYP: isPrimary ? invoice.paidAmount : 0,
-          receivedUSD: 0,
-          paidUSD: !isPrimary ? invoice.paidAmount : 0,
+          receivedSYP: isPrimary ? invoice.paidAmount : 0,
+          paidSYP: 0,
+          receivedUSD: !isPrimary ? invoice.paidAmount : 0,
+          paidUSD: 0,
           type: 'قبض',
           voucherNumber: invoice.invoiceNumber,
           cashAccount: invoice.cashAccount || 'الصندوق'

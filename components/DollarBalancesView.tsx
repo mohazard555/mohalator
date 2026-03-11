@@ -42,12 +42,22 @@ const DollarBalancesView: React.FC<DollarBalancesViewProps> = ({ onBack }) => {
       const matchDate = (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate);
       
       if (matchDate && (rec > 0 || pd > 0)) {
-        const key = e.partyName || 'الصندوق العام';
-        const current = dollarStats.get(key) || { received: 0, paid: 0, net: 0 };
-        current.received += rec;
-        current.paid += pd;
-        current.net = current.received - current.paid;
-        dollarStats.set(key, current);
+        // Track for party
+        if (e.partyName) {
+          const current = dollarStats.get(e.partyName) || { received: 0, paid: 0, net: 0 };
+          current.received += rec;
+          current.paid += pd;
+          current.net = current.received - current.paid;
+          dollarStats.set(e.partyName, current);
+        }
+        
+        // Track for cash account
+        const fundKey = e.cashAccount || 'الصندوق العام';
+        const currentFund = dollarStats.get(fundKey) || { received: 0, paid: 0, net: 0 };
+        currentFund.received += rec;
+        currentFund.paid += pd;
+        currentFund.net = currentFund.received - currentFund.paid;
+        dollarStats.set(fundKey, currentFund);
       }
     });
 
@@ -61,14 +71,26 @@ const DollarBalancesView: React.FC<DollarBalancesViewProps> = ({ onBack }) => {
   const totalIn = dollarBalances.reduce((s, c) => s + c.received, 0);
   const totalOut = dollarBalances.reduce((s, c) => s + c.paid, 0);
   
-  const selectedPartyMovements = selectedParty 
-    ? entries.filter(e => {
-        const matchParty = (e.partyName === selectedParty || e.statement.includes(selectedParty));
+  const getSelectedPartyMovements = () => {
+    if (!selectedParty) return [];
+    let cumulative = 0;
+    return entries
+      .filter(e => {
+        const matchParty = e.partyName === selectedParty || e.cashAccount === selectedParty || (selectedParty === 'الصندوق العام' && !e.partyName && !e.cashAccount);
         const matchDate = (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate);
-        const hasValue = (Number(e.receivedUSD) || 0) > 0 || (Number(e.paidUSD) || 0) > 0;
-        return matchParty && matchDate && hasValue;
+        const hasUSD = (Number(e.receivedUSD) || 0) > 0 || (Number(e.paidUSD) || 0) > 0;
+        return matchParty && matchDate && hasUSD;
       })
-    : [];
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(e => {
+        const rec = Number(e.receivedUSD) || 0;
+        const pd = Number(e.paidUSD) || 0;
+        cumulative += (rec - pd);
+        return { ...e, cumulative };
+      });
+  };
+
+  const selectedPartyMovements = getSelectedPartyMovements();
 
   const handleExportExcel = () => {
     const data = dollarBalances.map(b => ({
@@ -227,18 +249,22 @@ const DollarBalancesView: React.FC<DollarBalancesViewProps> = ({ onBack }) => {
                              <th className="p-4 border-l border-zinc-800">البيان الرسمي للعملية</th>
                              <th className="p-4 text-center border-l border-zinc-800 text-emerald-400">مقبوض (+)</th>
                              <th className="p-4 text-center border-l border-zinc-800 text-rose-400">مدفوع (-)</th>
+                             <th className="p-4 text-center border-l border-zinc-800 text-amber-500">الرصيد التراكمي</th>
                              <th className="p-4">ملاحظات</th>
                           </tr>
                        </thead>
                        <tbody className="divide-y font-bold dark:divide-zinc-800">
                           {selectedPartyMovements.length === 0 ? (
-                            <tr><td colSpan={5} className="p-20 text-center italic text-zinc-400 font-bold">لا يوجد حركات مسجلة لهذا الحساب حالياً</td></tr>
-                          ) : selectedPartyMovements.map((m, i) => (
+                            <tr><td colSpan={6} className="p-20 text-center italic text-zinc-400 font-bold">لا يوجد حركات مسجلة لهذا الحساب حالياً</td></tr>
+                          ) : selectedPartyMovements.map((m: any, i) => (
                              <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 h-14 transition-colors">
                                 <td className="p-4 font-mono text-zinc-400 border-l border-zinc-50 dark:border-zinc-800">{m.date}</td>
                                 <td className="p-4 text-readable border-l border-zinc-50 dark:border-zinc-800">{m.statement}</td>
                                 <td className="p-4 text-center font-mono text-emerald-600 text-lg border-l border-zinc-50 dark:border-zinc-800">{(Number(m.receivedUSD) || 0) > 0 ? (Number(m.receivedUSD) || 0).toLocaleString() : '-'}</td>
                                 <td className="p-4 text-center font-mono text-rose-600 text-lg border-l border-zinc-50 dark:border-zinc-800">{(Number(m.paidUSD) || 0) > 0 ? (Number(m.paidUSD) || 0).toLocaleString() : '-'}</td>
+                                <td className={`p-4 text-center font-mono text-lg border-l border-zinc-50 dark:border-zinc-800 ${m.cumulative >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                   {m.cumulative.toLocaleString()}
+                                </td>
                                 <td className="p-4 text-zinc-400 font-normal italic text-xs truncate max-w-[150px]">{m.notes || '-'}</td>
                              </tr>
                           ))}

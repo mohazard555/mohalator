@@ -176,8 +176,47 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
           </div>
       </div>
 
-      <div ref={reportRef} className="bg-white dark:bg-zinc-950 p-6 md:p-10 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl export-fix">
-          <div className="flex justify-between items-start mb-10 border-b-2 border-primary pb-6 text-zinc-900 dark:text-white">
+      <div ref={reportRef} className="bg-white dark:bg-zinc-950 p-6 md:p-10 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl export-fix print:p-0 print:border-none print:rounded-none">
+          {/* Professional Print Header */}
+          <div className="hidden print:flex flex-row justify-between items-start mb-8 border-b-4 border-primary pb-6 bg-white text-zinc-900 mx-4">
+            <div className="flex items-center gap-4">
+              {settings?.logoUrl ? (
+                <img src={settings.logoUrl} className="w-20 h-20 object-contain bg-white rounded-xl p-1 shadow-sm border" alt="Logo" />
+              ) : (
+                <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg">FIN</div>
+              )}
+              <div>
+                <h1 className="text-3xl font-black text-primary leading-none">{settings?.companyName || 'SAMLATOR SYSTEM'}</h1>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">{settings?.companyType}</p>
+              </div>
+            </div>
+            <div className="text-center pt-2">
+              <h2 className="text-4xl font-black text-zinc-900 underline decoration-primary/20 underline-offset-8">حساب المتاجرة</h2>
+              <div className="flex flex-col items-center gap-1 mt-4">
+                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">فترة التقرير المحددة</span>
+                 <div className="bg-zinc-50 border border-zinc-200 px-6 py-1 rounded-full flex items-center gap-3">
+                    <span className="font-mono font-black text-xs">{startDate}</span>
+                    <span className="text-zinc-300 font-bold">←</span>
+                    <span className="font-mono font-black text-xs">{endDate}</span>
+                 </div>
+              </div>
+            </div>
+            <div className="text-left space-y-1 pt-2">
+               <div className="flex items-center justify-end gap-2 text-zinc-500 text-xs font-bold">
+                  <span>{settings?.address}</span>
+               </div>
+               <div className="flex items-center justify-end gap-2 text-zinc-500 text-xs font-bold" dir="ltr">
+                  <span>{settings?.phone}</span>
+               </div>
+               <div className="text-[10px] font-black text-zinc-400 uppercase pt-2 flex items-center justify-end gap-2">
+                  <span>تاريخ الطباعة:</span>
+                  <span>{new Date().toLocaleDateString('ar-SA')}</span>
+               </div>
+            </div>
+          </div>
+
+          {/* Screen Header (Hidden in Print) */}
+          <div className="flex justify-between items-start mb-10 border-b-2 border-primary pb-6 text-zinc-900 dark:text-white no-print">
              <div className="flex items-center gap-4">
                 {settings?.logoUrl ? <img src={settings.logoUrl} className="w-20 h-20 object-contain" /> : <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-lg">FIN</div>}
                 <div><h1 className="text-2xl font-black">{settings?.companyName}</h1><p className="text-[10px] text-zinc-400 font-black uppercase mt-1 tracking-widest">{settings?.companyType}</p></div>

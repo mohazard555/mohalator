@@ -199,8 +199,8 @@ const PurchaseReturnView: React.FC<PurchaseReturnViewProps> = ({ onBack, initial
             id: crypto.randomUUID(),
             date: returnDate,
             statement: `استلام نقدي لمرتجع مشتريات فاتورة ${foundInvoice.invoiceNumber}`,
-            receivedSYP: 0, 
-            paidSYP: totalReturnItemsAmountLocal, 
+            receivedSYP: totalReturnItemsAmountLocal, 
+            paidSYP: 0, 
             receivedUSD: 0, paidUSD: 0,
             type: 'مرتجع', voucherNumber: returnId,
             cashAccount: foundInvoice.cashAccount || 'الصندوق'

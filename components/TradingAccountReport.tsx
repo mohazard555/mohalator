@@ -85,13 +85,37 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
 
   return (
     <div className="space-y-8 text-zinc-900 dark:text-zinc-100 animate-in fade-in duration-500">
-       <div className="flex justify-end no-print">
+       <div className="flex justify-between items-center no-print">
+          <h3 className="text-xl font-black text-readable flex items-center gap-2">
+             <Calculator className="w-6 h-6 text-primary" />
+             ملخص نتائج المتاجرة
+          </h3>
           <button 
             onClick={handleExportExcel}
             className="bg-emerald-600 text-white px-6 py-2 rounded-xl font-black text-xs flex items-center gap-2 shadow-md hover:brightness-110"
           >
              <FileSpreadsheet className="w-4 h-4" /> تصدير ميزان المتاجرة Excel
           </button>
+       </div>
+
+       {/* Quick Summary Cards (Visible in Print & Screen) */}
+       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-zinc-50 dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center text-center">
+             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">صافي المبيعات</span>
+             <div className="text-2xl font-mono font-black text-rose-700">{fin.netSales.toLocaleString()}</div>
+          </div>
+          <div className="bg-zinc-50 dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center text-center">
+             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">تكلفة المبيعات (COGS)</span>
+             <div className="text-2xl font-mono font-black text-zinc-600">{fin.cogs.toLocaleString()}</div>
+          </div>
+          <div className={`p-6 rounded-3xl border flex flex-col items-center text-center ${fin.grossProfit >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800'}`}>
+             <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${fin.grossProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {fin.grossProfit >= 0 ? 'مجمل الربح' : 'مجمل الخسارة'}
+             </span>
+             <div className={`text-3xl font-mono font-black ${fin.grossProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                {Math.abs(fin.grossProfit).toLocaleString()}
+             </div>
+          </div>
        </div>
 
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-2 border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] overflow-hidden bg-white dark:bg-zinc-950 shadow-sm">
