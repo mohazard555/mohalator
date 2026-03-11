@@ -92,8 +92,8 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
         id: j.id,
         accountId: j.linkedAccountId || '',
         accountName: j.partyName || '',
-        debit: j.paidSYP || 0,
-        credit: j.receivedSYP || 0,
+        debit: j.receivedSYP || 0,
+        credit: j.paidSYP || 0,
         notes: j.statement.replace(`قيد رقم ${j.voucherNumber}`, '').replace(j.notes || '', '').trim()
       });
     });
@@ -181,8 +181,8 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
             id: crypto.randomUUID(),
             date,
             statement: r.notes || mainDescription || `قيد رقم ${voucherNumber}`,
-            receivedSYP: r.credit, 
-            paidSYP: r.debit,   
+            receivedSYP: r.debit, 
+            paidSYP: r.credit,   
             receivedUSD: 0,
             paidUSD: 0,
             notes: mainDescription,
