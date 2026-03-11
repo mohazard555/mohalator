@@ -164,23 +164,32 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
       jou = jou.filter(j => !(j.voucherNumber === editingVoucherId && j.type === 'قيد'));
     }
 
-    const newJournalEntries: CashEntry[] = validRows.map(r => {
+    const newJournalEntries: CashEntry[] = validRows.map((r, idx) => {
         const acc = accounts.find(a => a.name === r.accountName);
         const party = parties.find(p => p.name === r.accountName);
         const cat = categories.find(c => c.name === r.accountName);
+
+        // Find counter parties
+        const otherRows = validRows.filter((_, i) => i !== idx);
+        const counterName = otherRows.length === 1 
+          ? otherRows[0].accountName 
+          : otherRows.length > 1 
+            ? 'مذكورين' 
+            : '---';
 
         return {
             id: crypto.randomUUID(),
             date,
             statement: r.notes || mainDescription || `قيد رقم ${voucherNumber}`,
-            receivedSYP: r.credit, 
-            paidSYP: r.debit,   
+            receivedSYP: r.debit, 
+            paidSYP: r.credit,   
             receivedUSD: 0,
             paidUSD: 0,
             notes: mainDescription,
             type: 'قيد',
             voucherNumber,
             partyName: r.accountName,
+            counterPartyName: counterName,
             linkedAccountId: acc?.id || party?.id || cat?.id,
             linkedAccountCode: acc?.code || party?.code || cat?.accountCode
         };
@@ -222,6 +231,9 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
     <div className="space-y-6 animate-in fade-in duration-500">
       <style>{`
         @media print {
+          @page { margin: 0.5cm; size: auto; }
+          body { background: white !important; margin: 0 !important; padding: 0 !important; }
+          .no-print { display: none !important; }
           .bg-zinc-900, .bg-zinc-800, .bg-zinc-950, .bg-zinc-50 {
             background-color: white !important;
             color: #0f172a !important;
@@ -248,7 +260,6 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
             border-color: #e2e8f0 !important;
           }
           .shadow-2xl, .shadow-xl, .shadow-lg {
-            shadow: none !important;
             box-shadow: none !important;
           }
         }
@@ -323,7 +334,7 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
 
       {/* Professional Print View */}
       {selectedVoucherForPrint && (
-        <div className="hidden print:block fixed inset-0 bg-white z-[500] p-0 m-0">
+        <div className="hidden print:block absolute top-0 left-0 w-full bg-white z-[500] p-0 m-0">
           <div className="p-10 max-w-4xl mx-auto space-y-8 print:p-0 print:m-0 print:max-w-none">
             <div className="flex justify-between items-start border-b-4 border-zinc-900 pb-8">
               <div className="flex items-center gap-4">

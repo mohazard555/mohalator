@@ -400,20 +400,20 @@ const DetailedSupplierReportView: React.FC<DetailedSupplierReportViewProps> = ({
            </div>
         </div>
 
-        <div className="mt-6 flex flex-col md:flex-row gap-6">
-           <div className="flex-1 bg-zinc-900 text-white p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 blur-[100px] rounded-full"></div>
-              <div className="relative z-10">
-                 <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.4em] mb-2 block">FINAL ACCOUNT BALANCE</span>
-                 <h3 className="text-xl font-black italic">صافي مديونية المورد المستحقة حالياً:</h3>
-              </div>
-              <div className="text-center relative z-10">
-                 <div className="text-5xl font-black font-mono tracking-tighter text-amber-400">
-                    {finalBalance.toLocaleString()}
-                 </div>
-                 <span className="text-sm font-bold text-zinc-500 uppercase mt-2 block tracking-widest">{activeCurrencyName}</span>
-              </div>
-           </div>
+         <div className="mt-6 flex flex-col md:flex-row gap-6">
+            <div className="flex-1 bg-zinc-900 text-white p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl relative overflow-hidden print:bg-white print:text-black print:border-2 print:border-zinc-200">
+               <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 blur-[100px] rounded-full print:hidden"></div>
+               <div className="relative z-10">
+                  <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.4em] mb-2 block print:text-zinc-400">FINAL ACCOUNT BALANCE</span>
+                  <h3 className="text-xl font-black italic">صافي مديونية المورد المستحقة حالياً:</h3>
+               </div>
+               <div className="text-center relative z-10">
+                  <div className="text-5xl font-black font-mono tracking-tighter text-amber-400 print:text-black">
+                     {finalBalance.toLocaleString()}
+                  </div>
+                  <span className="text-sm font-bold text-zinc-500 uppercase mt-2 block tracking-widest">{activeCurrencyName}</span>
+               </div>
+            </div>
 
            <div className="w-full md:w-96 bg-white border-2 border-zinc-200 p-6 rounded-[2rem] flex flex-col justify-center space-y-3">
               <span className="text-[10px] font-black text-zinc-400 uppercase border-b pb-1">المبلغ كتابةً / التفقيط</span>

@@ -260,12 +260,12 @@ const VoucherListView: React.FC<VoucherListViewProps> = ({ onBack, type }) => {
       <div className="min-h-screen bg-zinc-200 flex flex-col items-center p-4 md:p-10 animate-in fade-in" dir="rtl">
         <style>{`
           @media print {
-            @page { size: 210mm 148.5mm landscape; margin: 0 !important; }
+            @page { size: auto; margin: 1cm !important; }
             body { margin: 0 !important; padding: 0 !important; background: white !important; }
             .no-print { display: none !important; }
             .print-receipt-half { 
-              width: 210mm !important; 
-              height: 148.5mm !important; 
+              width: 100% !important; 
+              height: auto !important; 
               margin: 0 !important; 
               padding: 0 !important; 
               box-sizing: border-box !important;

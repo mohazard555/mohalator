@@ -461,13 +461,14 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
              .mx-auto { margin-left: 0 !important; margin-right: 0 !important; }
              .shadow-2xl { box-shadow: none !important; }
              .rounded-3xl { border-radius: 0 !important; }
-             .border { border: 1px solid #e5e7eb !important; }
+             .border { border: none !important; }
              .bg-zinc-900 { background-color: #f8fafc !important; color: black !important; border-bottom: 2px solid black !important; }
              .text-white { color: black !important; }
              .p-8 { padding: 0 !important; }
              .p-6 { padding: 1rem !important; }
              .bg-zinc-100 { background-color: white !important; }
-             @page { margin: 1cm; }
+             @page { margin: 0.5cm; size: auto; }
+             body { background: white !important; margin: 0 !important; padding: 0 !important; }
            }
          `}</style>
          <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-zinc-200 animate-in zoom-in-95 print:shadow-none print:border-none print:rounded-none">

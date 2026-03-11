@@ -392,8 +392,8 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
           </tbody>
         </table>
 
-        <div className="border-t-4 border-rose-900 mt-4 bg-zinc-900 text-white rounded-2xl overflow-hidden shadow-2xl print-bg-white">
-           <div className="grid grid-cols-1 md:grid-cols-5 divide-y md:divide-y-0 md:divide-x md:divide-x-reverse divide-white/10">
+        <div className="border-t-4 border-rose-900 mt-4 bg-zinc-900 text-white rounded-2xl overflow-hidden shadow-2xl print:bg-white print:text-black print:border-2 print:border-zinc-200">
+           <div className="grid grid-cols-1 md:grid-cols-5 divide-y md:divide-y-0 md:divide-x md:divide-x-reverse divide-white/10 print:divide-zinc-200">
               <div className="p-4 flex flex-col items-center">
                  <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">إجمالي المبيعات</span>
                  <span className="text-xl font-mono font-black">{movements.filter(m => m.type === 'بيع').reduce((s,c) => s + c.originalAmount, 0).toLocaleString()}</span>

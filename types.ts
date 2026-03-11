@@ -254,6 +254,7 @@ export interface CashEntry {
   type?: 'قبض' | 'دفع' | 'بيع' | 'شراء' | 'مرتجع' | 'افتتاحي' | 'حسم' | 'قيد';
   voucherNumber?: string;
   partyName?: string;
+  counterPartyName?: string;
   amount?: number;
   amountLiteral?: string;
   categoryId?: string; 

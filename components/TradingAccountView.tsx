@@ -132,8 +132,9 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
           .shadow-2xl, .shadow-xl { box-shadow: none !important; }
           .rounded-3xl { border-radius: 0 !important; }
           .p-8, .p-10 { padding: 0 !important; }
-          body { background: white !important; }
-          @page { margin: 1cm; }
+          body { background: white !important; margin: 0 !important; padding: 0 !important; }
+          @page { margin: 0.5cm; size: auto; }
+          .export-fix { border: none !important; box-shadow: none !important; margin-top: 0 !important; padding-top: 0 !important; }
         }
       `}</style>
       <div className="flex flex-col md:flex-row items-center justify-between gap-6 no-print">

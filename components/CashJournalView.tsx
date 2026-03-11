@@ -123,10 +123,53 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
   const filteredEntries = entries.filter(e => {
     const matchSearch = e.statement.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           (e.notes || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (e.partyName || '').toLowerCase().includes(searchTerm.toLowerCase());
+                          (e.partyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (e.counterPartyName || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchDate = (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate);
     return matchSearch && matchDate;
   });
+
+  // Logic to avoid repeating both sides of simple journal entries in the view
+  // We will group by voucherNumber and date, and for simple 2-row entries, we only show one row
+  const displayEntries = (() => {
+    const journalGroups: { [key: string]: CashEntry[] } = {};
+    const others: CashEntry[] = [];
+
+    filteredEntries.forEach(e => {
+      if (e.type === 'قيد' && e.voucherNumber) {
+        const key = `${e.voucherNumber}_${e.date}`;
+        if (!journalGroups[key]) journalGroups[key] = [];
+        journalGroups[key].push(e);
+      } else {
+        others.push(e);
+      }
+    });
+
+    const processedJournal: CashEntry[] = [];
+    Object.values(journalGroups).forEach(group => {
+      if (group.length === 2) {
+        // For simple 2-row entries, show the one that is NOT the main cash/box account if possible
+        // or just show the first one but with counter account info
+        // Actually, let's show the one that is NOT 'الصندوق' or 'المصرف' if one of them is
+        const cashKeywords = ['صندوق', 'مصرف', 'بنك', 'cash', 'bank'];
+        const isCashSide = (name: string) => cashKeywords.some(k => name.toLowerCase().includes(k));
+        
+        const cashSide = group.find(e => isCashSide(e.partyName || ''));
+        const nonCashSide = group.find(e => !isCashSide(e.partyName || ''));
+
+        if (nonCashSide) {
+          processedJournal.push(nonCashSide);
+        } else {
+          processedJournal.push(group[0]);
+        }
+      } else {
+        // For complex entries, show all rows
+        processedJournal.push(...group);
+      }
+    });
+
+    return [...others, ...processedJournal].sort((a, b) => b.date.localeCompare(a.date));
+  })();
 
   const totalPrimary = filteredEntries.reduce((acc, curr) => acc + (curr.receivedSYP - curr.paidSYP), 0);
   const totalSecondary = filteredEntries.reduce((acc, curr) => acc + (curr.receivedUSD - curr.paidUSD), 0);
@@ -337,6 +380,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
                 <tr className="bg-zinc-800 text-white text-[10px] font-black uppercase tracking-widest border-b h-14 print:bg-zinc-100 print:text-black">
                   <th className="p-4 border-l">التاريخ</th>
                   <th className="p-4 border-l">الحساب / القسم</th>
+                  <th className="p-4 border-l">الحساب المقابل</th>
                   <th className="p-4 border-l">البيان الرسمي</th>
                   <th className="p-4 border-l text-center bg-emerald-900/10 print:bg-transparent">مقبوض ({settings?.currencySymbol})</th>
                   <th className="p-4 border-l text-center bg-rose-900/10 print:bg-transparent">مدفوع ({settings?.currencySymbol})</th>
@@ -346,7 +390,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
                 </tr>
               </thead>
               <tbody className="divide-y font-bold">
-                {filteredEntries.map((entry) => {
+                {displayEntries.map((entry) => {
                   const category = categories.find(c => c.id === entry.categoryId);
                   return (
                     <tr key={entry.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">
@@ -357,6 +401,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
                             {category && <span className="text-[8px] text-zinc-400 font-black uppercase">{category.type}</span>}
                          </div>
                       </td>
+                      <td className="p-4 border-l text-primary font-black text-xs">{entry.counterPartyName || '-'}</td>
                       <td className="p-4 border-l text-zinc-500 font-normal">{entry.statement}</td>
                       <td className="p-4 text-center text-emerald-600 font-mono border-l bg-emerald-50/20">{entry.receivedSYP > 0 ? entry.receivedSYP.toLocaleString() : '-'}</td>
                       <td className="p-4 text-center text-rose-500 font-mono border-l bg-rose-50/20">{entry.paidSYP > 0 ? entry.paidSYP.toLocaleString() : '-'}</td>
