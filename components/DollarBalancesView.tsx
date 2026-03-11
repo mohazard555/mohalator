@@ -14,6 +14,8 @@ const DollarBalancesView: React.FC<DollarBalancesViewProps> = ({ onBack }) => {
   const [entries, setEntries] = useState<CashEntry[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedParty, setSelectedParty] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -37,8 +39,9 @@ const DollarBalancesView: React.FC<DollarBalancesViewProps> = ({ onBack }) => {
     entries.forEach(e => {
       const rec = Number(e.receivedUSD) || 0;
       const pd = Number(e.paidUSD) || 0;
+      const matchDate = (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate);
       
-      if (rec > 0 || pd > 0) {
+      if (matchDate && (rec > 0 || pd > 0)) {
         const key = e.partyName || 'الصندوق العام';
         const current = dollarStats.get(key) || { received: 0, paid: 0, net: 0 };
         current.received += rec;
@@ -59,7 +62,12 @@ const DollarBalancesView: React.FC<DollarBalancesViewProps> = ({ onBack }) => {
   const totalOut = dollarBalances.reduce((s, c) => s + c.paid, 0);
   
   const selectedPartyMovements = selectedParty 
-    ? entries.filter(e => (e.partyName === selectedParty || e.statement.includes(selectedParty)) && ((Number(e.receivedUSD) || 0) > 0 || (Number(e.paidUSD) || 0) > 0))
+    ? entries.filter(e => {
+        const matchParty = (e.partyName === selectedParty || e.statement.includes(selectedParty));
+        const matchDate = (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate);
+        const hasValue = (Number(e.receivedUSD) || 0) > 0 || (Number(e.paidUSD) || 0) > 0;
+        return matchParty && matchDate && hasValue;
+      })
     : [];
 
   const handleExportExcel = () => {
@@ -101,6 +109,22 @@ const DollarBalancesView: React.FC<DollarBalancesViewProps> = ({ onBack }) => {
         </div>
       </div>
 
+      <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center gap-4 no-print shadow-sm">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
+          <input type="text" placeholder="بحث باسم الحساب..." className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl py-2.5 pr-12 outline-none font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+        </div>
+        <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 px-4 py-2 rounded-2xl border border-zinc-200 dark:border-zinc-700">
+           <Calendar className="w-4 h-4 text-zinc-400" />
+           <div className="flex items-center gap-2">
+             <span className="text-[10px] font-black uppercase text-zinc-500">من</span>
+             <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-readable" />
+             <span className="text-[10px] font-black uppercase text-zinc-500">إلى</span>
+             <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-mono outline-none text-readable" />
+           </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
          <div className="lg:col-span-1 space-y-6 no-print">
             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl space-y-4">
@@ -128,7 +152,42 @@ const DollarBalancesView: React.FC<DollarBalancesViewProps> = ({ onBack }) => {
             </div>
          </div>
 
-         <div ref={reportRef} className="lg:col-span-3 space-y-6 export-fix bg-white dark:bg-zinc-950 p-6 md:p-10 rounded-[3rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl">
+         <div ref={reportRef} className="lg:col-span-3 space-y-6 export-fix bg-white dark:bg-zinc-950 p-6 md:p-10 rounded-[3rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl print:p-0 print:border-none print:shadow-none print:rounded-none">
+            {/* Professional Print Header */}
+            <div className="hidden print:flex flex-row justify-between items-start mb-8 border-b-4 border-amber-500 pb-8 bg-white text-zinc-900">
+              <div className="flex items-center gap-4">
+                {settings?.logoUrl ? (
+                  <img src={settings.logoUrl} className="w-20 h-20 object-contain" alt="Logo" />
+                ) : (
+                  <div className="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg">SH</div>
+                )}
+                <div>
+                  <h1 className="text-3xl font-black text-amber-600 leading-none">{settings?.companyName || 'SAMLATOR SYSTEM'}</h1>
+                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">{settings?.companyType}</p>
+                </div>
+              </div>
+              <div className="text-center pt-2">
+                <h2 className="text-3xl font-black text-zinc-900 underline decoration-amber-500/20 underline-offset-8">مركز أرصدة وحركات الدولار</h2>
+                <div className="flex flex-col items-center gap-1 mt-4">
+                   <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">فترة التقرير المحددة</span>
+                   <div className="bg-zinc-50 border border-zinc-200 px-6 py-1 rounded-full flex items-center gap-3">
+                      <span className="font-mono font-black text-xs">{startDate || 'بداية السجلات'}</span>
+                      <span className="text-zinc-300 font-bold">←</span>
+                      <span className="font-mono font-black text-xs">{endDate || 'اليوم الحاضر'}</span>
+                   </div>
+                </div>
+              </div>
+              <div className="text-left space-y-1 pt-2">
+                 <div className="flex items-center justify-end gap-2 text-zinc-500 text-xs font-bold">
+                    <span>{settings?.address}</span>
+                 </div>
+                 <div className="text-[10px] font-black text-zinc-400 uppercase pt-2 flex items-center justify-end gap-2">
+                    <span>تاريخ الطباعة:</span>
+                    <span>{new Date().toLocaleDateString('ar-SA')}</span>
+                 </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 no-print-visible">
                <div className="bg-emerald-50 dark:bg-emerald-900/10 p-8 rounded-[2rem] border border-emerald-100 dark:border-emerald-800 flex flex-col items-center gap-2">
                   <TrendingUp className="w-8 h-8 text-emerald-600" />

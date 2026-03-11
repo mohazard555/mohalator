@@ -453,9 +453,25 @@ const PeriodicInventoryView: React.FC<PeriodicInventoryViewProps> = ({ onBack })
 
   if (viewMode === 'PREVIEW' && previewData) {
     return (
-      <div className="min-h-screen bg-zinc-100 p-8" dir="rtl">
-         <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-zinc-200 animate-in zoom-in-95">
-            <div className="bg-zinc-900 p-6 text-white flex justify-between items-center">
+      <div className="min-h-screen bg-zinc-100 p-8 print:bg-white print:p-0" dir="rtl">
+         <style>{`
+           @media print {
+             .no-print { display: none !important; }
+             .max-w-4xl { max-width: 100% !important; width: 100% !important; }
+             .mx-auto { margin-left: 0 !important; margin-right: 0 !important; }
+             .shadow-2xl { box-shadow: none !important; }
+             .rounded-3xl { border-radius: 0 !important; }
+             .border { border: 1px solid #e5e7eb !important; }
+             .bg-zinc-900 { background-color: #f8fafc !important; color: black !important; border-bottom: 2px solid black !important; }
+             .text-white { color: black !important; }
+             .p-8 { padding: 0 !important; }
+             .p-6 { padding: 1rem !important; }
+             .bg-zinc-100 { background-color: white !important; }
+             @page { margin: 1cm; }
+           }
+         `}</style>
+         <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-zinc-200 animate-in zoom-in-95 print:shadow-none print:border-none print:rounded-none">
+            <div className="bg-zinc-900 p-6 text-white flex justify-between items-center no-print-bg print:bg-zinc-100 print:text-black print:border-b-2 print:border-zinc-900">
                <div className="flex items-center gap-3">
                   <Package className="w-8 h-8 text-primary" />
                   <div>

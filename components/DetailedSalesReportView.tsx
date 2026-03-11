@@ -134,27 +134,42 @@ const DetailedSalesReportView: React.FC<DetailedSalesReportViewProps> = ({ onBac
           .print-border { border: 1px solid #e5e7eb !important; }
           
           /* Specific overrides for the summary boxes */
-          .bg-zinc-900.text-white {
+          .bg-zinc-900.text-white, .bg-zinc-900 {
             background-color: white !important;
             color: black !important;
             border: 2px solid #e5e7eb !important;
           }
-          .bg-rose-500\\/10, .bg-emerald-500\\/10, .bg-amber-500\\/10 {
+          .bg-rose-500\\/10, .bg-emerald-500\\/10, .bg-amber-500\\/10, .bg-rose-50\\/10, .bg-emerald-50\\/5, .bg-rose-50\\/5 {
             background-color: white !important;
-            border: 1px solid #f3f4f6 !important;
+            border: none !important;
           }
           .divide-white\\/10 {
             border-color: #e5e7eb !important;
           }
           
-          /* Keep colors for numbers */
-          .text-rose-400, .text-emerald-400, .text-rose-700, .text-emerald-700, .text-rose-800, .text-amber-600 {
+          /* Keep colors for numbers and lines */
+          .text-rose-400, .text-emerald-400, .text-rose-700, .text-emerald-700, .text-rose-800, .text-amber-600, .text-emerald-800 {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          th { background-color: #f8fafc !important; color: #0f172a !important; border: 1px solid #e2e8f0 !important; }
-          td { border: 1px solid #e2e8f0 !important; }
+          
+          th { 
+            background-color: white !important; 
+            color: #0f172a !important; 
+            border-bottom: 2px solid #991b1b !important; /* Rose-800 line */
+            border-top: 1px solid #e2e8f0 !important;
+            border-left: 1px solid #e2e8f0 !important;
+            border-right: 1px solid #e2e8f0 !important;
+          }
+          td { 
+            border-bottom: 1px solid #f1f5f9 !important; 
+            border-left: 1px solid #f1f5f9 !important;
+            border-right: 1px solid #f1f5f9 !important;
+          }
           table { border: 1px solid #e2e8f0 !important; }
+          
+          /* Colored lines for rows */
+          tr.border-b { border-bottom: 1px solid #991b1b20 !important; }
         }
       `}</style>
       

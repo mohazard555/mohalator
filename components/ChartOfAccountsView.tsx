@@ -214,7 +214,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
        }
 
        if (match) {
-          if (isBox) {
+          if (isBox && j.type !== 'قيد') {
              debitTotal += (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0));
              creditTotal += (Number(j.paidSYP || 0) + Number(j.paidUSD || 0));
           } else {
@@ -307,8 +307,8 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
              date: j.date, 
              number: j.voucherNumber || 'VOU', 
              statement: j.statement, 
-             debit: isBox ? (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0)) : (Number(j.paidSYP || 0) + Number(j.paidUSD || 0)), 
-             credit: isBox ? (Number(j.paidSYP || 0) + Number(j.paidUSD || 0)) : (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0)), 
+             debit: (isBox && j.type !== 'قيد') ? (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0)) : (Number(j.paidSYP || 0) + Number(j.paidUSD || 0)), 
+             credit: (isBox && j.type !== 'قيد') ? (Number(j.paidSYP || 0) + Number(j.paidUSD || 0)) : (Number(j.receivedSYP || 0) + Number(j.receivedUSD || 0)), 
              source: j.type === 'قبض' ? 'سند قبض' : j.type === 'دفع' ? 'سند دفع' : (j.type || 'سند يومية'), 
              counterAccount: (j.type === 'افتتاحي' || j.type === 'قيد') ? (j.partyName || 'مذكورين') : (isBox ? (j.partyName || 'حساب متنوع') : (j.linkedAccountCode === '42' || j.linkedAccountCode === '43' || j.linkedAccountCode === '32' || j.linkedAccountCode === '34' ? (j.partyName || 'حساب العميل/المورد') : 'الصندوق / المصرف')),
              user: settings?.managerName || 'النظام',

@@ -124,6 +124,18 @@ const TradingAccountView: React.FC<TradingAccountViewProps> = ({ onBack }) => {
 
   return (
     <div className="space-y-6 animate-in fade-in">
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          .max-w-4xl { max-width: 100% !important; width: 100% !important; }
+          .mx-auto { margin-left: 0 !important; margin-right: 0 !important; }
+          .shadow-2xl, .shadow-xl { box-shadow: none !important; }
+          .rounded-3xl { border-radius: 0 !important; }
+          .p-8, .p-10 { padding: 0 !important; }
+          body { background: white !important; }
+          @page { margin: 1cm; }
+        }
+      `}</style>
       <div className="flex flex-col md:flex-row items-center justify-between gap-6 no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 rounded-xl transition-all shadow-sm">

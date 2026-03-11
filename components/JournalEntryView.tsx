@@ -324,49 +324,60 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
       {/* Professional Print View */}
       {selectedVoucherForPrint && (
         <div className="hidden print:block fixed inset-0 bg-white z-[500] p-0 m-0">
-          <div className="p-10 max-w-4xl mx-auto space-y-8">
-            <div className="flex justify-between items-start border-b-2 border-zinc-100 pb-8">
-              <div>
-                <h1 className="text-3xl font-black text-zinc-900 mb-2">{settings?.companyName || 'شركة المحاسبة'}</h1>
-                <p className="text-sm text-zinc-500 font-bold italic">{settings?.managerName || 'مدير النظام'}</p>
+          <div className="p-10 max-w-4xl mx-auto space-y-8 print:p-0 print:m-0 print:max-w-none">
+            <div className="flex justify-between items-start border-b-4 border-zinc-900 pb-8">
+              <div className="flex items-center gap-4">
+                {settings?.logoUrl ? (
+                  <img src={settings.logoUrl} className="w-20 h-20 object-contain" alt="Logo" />
+                ) : (
+                  <div className="w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center text-white font-black text-2xl">SH</div>
+                )}
+                <div>
+                  <h1 className="text-3xl font-black text-zinc-900 mb-1">{settings?.companyName || 'شركة المحاسبة'}</h1>
+                  <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">{settings?.companyType || 'إدارة مالية متكاملة'}</p>
+                </div>
               </div>
               <div className="text-left">
-                <h2 className="text-2xl font-black text-zinc-900">سند قيد يدوي</h2>
-                <p className="text-sm text-zinc-500 font-mono font-bold">#{selectedVoucherForPrint.voucherNumber}</p>
-                <p className="text-sm text-zinc-500 font-mono font-bold mt-1">{selectedVoucherForPrint.date}</p>
+                <h2 className="text-4xl font-black text-zinc-900 underline decoration-zinc-200 underline-offset-8">سند قيد يدوي</h2>
+                <div className="mt-4 space-y-1">
+                  <p className="text-sm font-black text-zinc-600">رقم السند: <span className="font-mono text-primary text-lg">#{selectedVoucherForPrint.voucherNumber}</span></p>
+                  <p className="text-sm font-black text-zinc-600">تاريخ القيد: <span className="font-mono">{selectedVoucherForPrint.date}</span></p>
+                </div>
               </div>
             </div>
 
-            <div className="bg-zinc-50 p-6 rounded-2xl border border-zinc-100">
-               <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-2">البيان العام للسند</span>
-               <p className="text-lg font-bold text-zinc-800">{selectedVoucherForPrint.mainDescription || '---'}</p>
+            <div className="grid grid-cols-1 gap-6">
+              <div className="bg-zinc-50 p-6 rounded-2xl border-2 border-zinc-100">
+                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em] block mb-2">البيان العام للسند (Description)</span>
+                 <p className="text-xl font-bold text-zinc-900 leading-relaxed">{selectedVoucherForPrint.mainDescription || '---'}</p>
+              </div>
             </div>
 
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b-2 border-zinc-900">
-                  <th className="py-4 px-2 text-right text-sm font-black uppercase">الحساب</th>
-                  <th className="py-4 px-2 text-center text-sm font-black uppercase w-32">مدين (+)</th>
-                  <th className="py-4 px-2 text-center text-sm font-black uppercase w-32">دائن (-)</th>
-                  <th className="py-4 px-2 text-right text-sm font-black uppercase">ملاحظات</th>
+                <tr className="bg-zinc-100 text-zinc-900 border-y-2 border-zinc-900">
+                  <th className="py-4 px-4 text-right text-xs font-black uppercase border-l border-zinc-200">الحساب المحاسبي</th>
+                  <th className="py-4 px-4 text-center text-xs font-black uppercase w-32 border-l border-zinc-200">مدين (+)</th>
+                  <th className="py-4 px-4 text-center text-xs font-black uppercase w-32 border-l border-zinc-200">دائن (-)</th>
+                  <th className="py-4 px-4 text-right text-xs font-black uppercase">ملاحظات السطر</th>
                 </tr>
               </thead>
               <tbody className="divide-y border-b-2 border-zinc-900">
                 {selectedVoucherForPrint.rows.map((r, i) => (
-                  <tr key={i}>
-                    <td className="py-4 px-2 text-sm font-bold text-zinc-800">{r.accountName}</td>
-                    <td className="py-4 px-2 text-center text-sm font-mono font-black text-zinc-900">{r.debit > 0 ? r.debit.toLocaleString() : '-'}</td>
-                    <td className="py-4 px-2 text-center text-sm font-mono font-black text-zinc-900">{r.credit > 0 ? r.credit.toLocaleString() : '-'}</td>
-                    <td className="py-4 px-2 text-sm font-medium text-zinc-500 italic">{r.notes}</td>
+                  <tr key={i} className="h-12">
+                    <td className="py-4 px-4 text-sm font-black text-zinc-900 border-l border-zinc-100">{r.accountName}</td>
+                    <td className="py-4 px-4 text-center text-lg font-mono font-black text-emerald-700 border-l border-zinc-100">{r.debit > 0 ? r.debit.toLocaleString() : '-'}</td>
+                    <td className="py-4 px-4 text-center text-lg font-mono font-black text-rose-700 border-l border-zinc-100">{r.credit > 0 ? r.credit.toLocaleString() : '-'}</td>
+                    <td className="py-4 px-4 text-xs font-bold text-zinc-500 italic leading-tight">{r.notes}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr className="bg-zinc-50 font-black">
-                  <td className="py-4 px-2 text-right">الإجمالي</td>
-                  <td className="py-4 px-2 text-center font-mono">{selectedVoucherForPrint.rows.reduce((s, r) => s + r.debit, 0).toLocaleString()}</td>
-                  <td className="py-4 px-2 text-center font-mono">{selectedVoucherForPrint.rows.reduce((s, r) => s + r.credit, 0).toLocaleString()}</td>
-                  <td></td>
+                <tr className="bg-zinc-50 font-black text-lg">
+                  <td className="py-6 px-4 text-right">إجمالي القيد الموزون</td>
+                  <td className="py-6 px-4 text-center font-mono text-emerald-700 border-l border-zinc-200">{selectedVoucherForPrint.rows.reduce((s, r) => s + r.debit, 0).toLocaleString()}</td>
+                  <td className="py-6 px-4 text-center font-mono text-rose-700 border-l border-zinc-200">{selectedVoucherForPrint.rows.reduce((s, r) => s + r.credit, 0).toLocaleString()}</td>
+                  <td className="bg-white"></td>
                 </tr>
               </tfoot>
             </table>

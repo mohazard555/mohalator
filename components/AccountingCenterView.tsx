@@ -37,6 +37,7 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [showDetailsInPrint, setShowDetailsInPrint] = useState(false);
+  const [displayLevel, setDisplayLevel] = useState(1);
 
   useEffect(() => { loadData(); }, []);
 
@@ -227,7 +228,7 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
                     <div className="text-left text-[10px] font-black text-zinc-400"><p>{settings?.address}</p><p dir="ltr">{settings?.phone}</p></div>
                  </div>
 
-                 {reportType === 'BALANCE_SHEET' && <BalanceSheetReport fin={fin} expandedSections={expandedSections} toggleSection={(id) => { const n = new Set(expandedSections); if(n.has(id)) n.delete(id); else n.add(id); setExpandedSections(n); }} renderDetailTable={(data) => <div className={`mt-3 border rounded-xl bg-white dark:bg-zinc-950 ${!showDetailsInPrint ? 'no-print' : ''}`}><table className="w-full text-[10px]"><thead className="bg-zinc-50 border-b"><tr><th className="p-2 text-right">البيان</th><th className="p-2 text-center">الرصيد</th></tr></thead><tbody>{data.map((it, i) => <tr key={i} className="border-b"><td className="p-2">{it.name}</td><td className="p-2 text-center font-mono font-black">{(it.balance || 0).toLocaleString()}</td></tr>)}</tbody></table></div>} />}
+                 {reportType === 'BALANCE_SHEET' && <BalanceSheetReport fin={fin} expandedSections={expandedSections} toggleSection={(id) => { const n = new Set(expandedSections); if(n.has(id)) n.delete(id); else n.add(id); setExpandedSections(n); }} displayLevel={displayLevel} renderDetailTable={(data) => <div className={`mt-3 border rounded-xl bg-white dark:bg-zinc-950 ${!showDetailsInPrint ? 'no-print' : ''}`}><table className="w-full text-[10px]"><thead className="bg-zinc-50 border-b"><tr><th className="p-2 text-right">البيان</th><th className="p-2 text-center">الرصيد</th></tr></thead><tbody>{data.map((it, i) => <tr key={i} className="border-b"><td className="p-2">{it.name}</td><td className="p-2 text-center font-mono font-black">{(it.balance || 0).toLocaleString()}</td></tr>)}</tbody></table></div>} />}
                  {reportType === 'TRADING' && <TradingAccountReport fin={fin} expandedSections={expandedSections} toggleSection={(id) => { const n = new Set(expandedSections); if(n.has(id)) n.delete(id); else n.add(id); setExpandedSections(n); }} />}
                  {reportType === 'INCOME_STATEMENT' && <IncomeStatementReport fin={fin} settings={settings} expandedSections={expandedSections} toggleSection={(id) => { const n = new Set(expandedSections); if(n.has(id)) n.delete(id); else n.add(id); setExpandedSections(n); }} />}
               </div>
