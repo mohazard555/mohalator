@@ -500,24 +500,13 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                  </div>
                  <div className="max-h-[500px] overflow-y-auto custom-scrollbar print:max-h-none print:overflow-visible">
                     {/* Print-only Header */}
-                    <div className="hidden print:flex flex-col mb-8 bg-white text-zinc-900 mx-auto w-full">
-                      <div className="flex justify-between items-center border-b-4 border-rose-700 pb-4">
-                        <div className="text-right flex flex-col gap-1">
-                          <span className="text-sm font-black text-zinc-600">سوريا</span>
-                          <span className="text-xs font-bold text-zinc-500">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</span>
-                        </div>
-                        <div className="text-center flex flex-col items-center">
-                          <h2 className="text-3xl font-black text-black">كشف حركات الحساب التفصيلي</h2>
-                          <span className="text-sm font-black text-rose-700 mt-1">الحساب: {selectedAccount.name} | الكود: {selectedAccount.code}</span>
-                        </div>
-                        <div className="text-left flex items-center gap-3">
-                          <div className="flex flex-col items-end">
-                            <h1 className="text-2xl font-black text-rose-700 leading-none">SAMLATOR2026</h1>
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">نظام إدارة محاسبية متطور</p>
-                          </div>
-                          <div className="w-12 h-12 bg-rose-700 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-sm">SH</div>
-                        </div>
-                      </div>
+                    <div className="hidden print:block mb-8 border-b-4 border-zinc-900 pb-6 text-center">
+                       <h1 className="text-4xl font-black mb-2">كشف حركات الحساب التفصيلي</h1>
+                       <div className="flex justify-center gap-8 text-xl font-bold">
+                          <span>الحساب: {selectedAccount.name}</span>
+                          <span>الكود: {selectedAccount.code}</span>
+                          <span>التاريخ: {new Date().toLocaleDateString('ar-SA')}</span>
+                       </div>
                     </div>
                     <table className="w-full text-right border-collapse print:text-[11px]">
                        <thead>
@@ -682,26 +671,6 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                  </button>
               </div>
               <div className="p-8 space-y-6">
-                 {/* Print-only Header */}
-                 <div className="hidden print:flex flex-col mb-8 bg-white text-zinc-900 mx-auto w-full">
-                   <div className="flex justify-between items-center border-b-4 border-rose-700 pb-4">
-                     <div className="text-right flex flex-col gap-1">
-                       <span className="text-sm font-black text-zinc-600">سوريا</span>
-                       <span className="text-xs font-bold text-zinc-500">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</span>
-                     </div>
-                     <div className="text-center flex flex-col items-center">
-                       <h2 className="text-3xl font-black text-black">تفاصيل الحركة المالية الكاملة</h2>
-                       <span className="text-sm font-black text-rose-700 mt-1">{selectedMove.source} | #{selectedMove.number}</span>
-                     </div>
-                     <div className="text-left flex items-center gap-3">
-                       <div className="flex flex-col items-end">
-                         <h1 className="text-2xl font-black text-rose-700 leading-none">SAMLATOR2026</h1>
-                         <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">نظام إدارة محاسبية متطور</p>
-                       </div>
-                       <div className="w-12 h-12 bg-rose-700 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-sm">SH</div>
-                     </div>
-                   </div>
-                 </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border dark:border-zinc-700">
                        <span className="text-[9px] font-black text-zinc-400 uppercase block mb-1 tracking-widest">تاريخ العملية الموثق</span>

@@ -4,7 +4,6 @@ import { ArrowRight, Plus, Trash2, Edit2, Save, X, Tags, TrendingDown, TrendingU
 import { AccountingCategory, CashEntry, AppSettings, AccountNode } from '../types';
 import { exportToCSV } from '../utils/export';
 import { ImageExportService } from '../utils/ImageExportService';
-import { loadChartAccounts } from '../utils/accountUtils';
 
 interface AccountingCategoriesViewProps {
   onBack: () => void;
@@ -42,12 +41,12 @@ const AccountingCategoriesView: React.FC<AccountingCategoriesViewProps> = ({ onB
     const savedCats = localStorage.getItem('sheno_accounting_categories');
     const savedJournal = localStorage.getItem('sheno_cash_journal');
     const savedSettings = localStorage.getItem('sheno_settings');
+    const savedChart = localStorage.getItem('sheno_chart_accounts');
     
     if (savedCats) setCategories(JSON.parse(savedCats));
     if (savedJournal) setJournal(JSON.parse(savedJournal));
     if (savedSettings) setSettings(JSON.parse(savedSettings));
-    
-    setChartAccounts(loadChartAccounts());
+    if (savedChart) setChartAccounts(JSON.parse(savedChart));
   };
 
   const handleSelectChartAccount = (acc: AccountNode) => {
