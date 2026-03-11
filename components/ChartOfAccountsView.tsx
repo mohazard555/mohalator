@@ -8,6 +8,7 @@ import {
 import { AccountNode, CashEntry, OpeningEntry, AppSettings, SalesInvoice, PurchaseInvoice, AccountingCategory, Party, PartyType, InventoryItem, StockEntry, PeriodicInventory } from '../types';
 import { ImageExportService } from '../utils/ImageExportService';
 import { exportToCSV } from '../utils/export';
+import { PrintHeader } from './PrintHeader';
 
 interface ChartOfAccountsViewProps {
   onBack?: () => void;
@@ -500,14 +501,7 @@ const ChartOfAccountsView: React.FC<ChartOfAccountsViewProps> = ({ onBack }) => 
                  </div>
                  <div className="max-h-[500px] overflow-y-auto custom-scrollbar print:max-h-none print:overflow-visible">
                     {/* Print-only Header */}
-                    <div className="hidden print:block mb-8 border-b-4 border-zinc-900 pb-6 text-center">
-                       <h1 className="text-4xl font-black mb-2">كشف حركات الحساب التفصيلي</h1>
-                       <div className="flex justify-center gap-8 text-xl font-bold">
-                          <span>الحساب: {selectedAccount.name}</span>
-                          <span>الكود: {selectedAccount.code}</span>
-                          <span>التاريخ: {new Date().toLocaleDateString('ar-SA')}</span>
-                       </div>
-                    </div>
+                    <PrintHeader settings={settings} title="كشف حركات الحساب التفصيلي" period={`الحساب: ${selectedAccount.name} | الكود: ${selectedAccount.code}`} />
                     <table className="w-full text-right border-collapse print:text-[11px]">
                        <thead>
                           <tr className="bg-zinc-900 text-white text-[10px] font-black uppercase text-zinc-500 border-b dark:border-zinc-800 sticky top-0 z-10 h-14 print:bg-primary/5 print:text-primary print:border-b-2 print:border-primary">

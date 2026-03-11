@@ -15,6 +15,7 @@ import BalanceSheetReport from './BalanceSheetReport';
 import TradingAccountReport from './TradingAccountReport';
 import IncomeStatementReport from './IncomeStatementReport';
 import OpeningEntriesManager from './OpeningEntriesManager';
+import { PrintHeader } from './PrintHeader';
 
 const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReportType, isSingleView = false }) => {
   const reportRef = useRef<HTMLDivElement>(null);
@@ -216,7 +217,9 @@ const AccountingCenterView: React.FC<any> = ({ onBack, initialTab, initialReport
 
            <div className="lg:col-span-3">
               <div ref={reportRef} className="bg-white dark:bg-zinc-950 p-6 md:p-10 rounded-[2.5rem] border shadow-2xl export-fix min-h-[500px] flex flex-col">
-                 <div className="flex justify-between items-start mb-10 border-b-2 border-primary pb-6 text-zinc-900 dark:text-white">
+                 <PrintHeader settings={settings} title={reportType === 'BALANCE_SHEET' ? 'الميزانية العمومية' : reportType === 'INCOME_STATEMENT' ? 'قائمة الأرباح والخسائر' : 'حساب المتاجرة'} period={`الفترة من: ${startDate} إلى: ${endDate}`} />
+                 
+                 <div className="flex justify-between items-start mb-10 border-b-2 border-primary pb-6 text-zinc-900 dark:text-white print:hidden">
                     <div className="flex items-center gap-4">
                        {settings?.logoUrl ? <img src={settings.logoUrl} className="w-16 h-16 object-contain" /> : <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-white font-black text-3xl">SH</div>}
                        <div><h1 className="text-xl font-black">{settings?.companyName}</h1><p className="text-[10px] text-zinc-400 font-black uppercase mt-1">{settings?.companyType}</p></div>

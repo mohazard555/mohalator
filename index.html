@@ -35,15 +35,34 @@
       
       /* --- ضوابط الطباعة وتعدد الصفحات --- */
       @media print {
+        @page {
+          size: A4;
+          margin: 15mm;
+        }
+        
         /* إجبار الخلفية البيضاء في كل مكان عند الطباعة */
         html, body { 
           background: white !important; 
           color: black !important;
+          width: 100% !important;
+          height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: visible !important;
+          font-size: 11pt !important;
+        }
+
+        #root {
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
         }
 
         .export-fix, .professional-invoice-box, [ref="reportRef"], .export-container-fix {
           background-color: white !important;
           color: black !important;
+          box-shadow: none !important;
+          border: none !important;
         }
 
         /* إخفاء عناصر الوضع المظلم القهرية */
@@ -58,11 +77,33 @@
           border-color: #d1d5db !important; /* zinc-300 */
         }
 
+        /* Keep colors for specific elements if needed, or force light gray */
         .dark .bg-primary, .bg-primary, 
         .dark .bg-rose-900, .bg-rose-900,
-        .dark .bg-blue-800, .bg-blue-800 {
-           background-color: #eee !important; /* خلفية رمادية فاتحة للجداول الملونة */
+        .dark .bg-blue-800, .bg-blue-800,
+        .bg-zinc-900, .dark .bg-zinc-900,
+        .bg-zinc-800, .dark .bg-zinc-800,
+        .bg-zinc-950, .dark .bg-zinc-950 {
+           background-color: transparent !important;
            color: black !important;
+        }
+
+        /* Table specific print styles */
+        table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+        }
+        
+        th {
+          background-color: #f8fafc !important; /* slate-50 */
+          color: #000 !important;
+          border-bottom: 2px solid #e2e8f0 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        
+        td {
+          border-bottom: 1px solid #e2e8f0 !important;
         }
 
         .pdf-page-break {
@@ -74,7 +115,21 @@
         tr { page-break-inside: avoid !important; break-inside: avoid !important; }
         thead { display: table-header-group !important; }
         
-        .no-print { display: none !important; }
+        .no-print, nav, header:not(.print-header), button, .sidebar, .modal-backdrop { 
+          display: none !important; 
+        }
+
+        /* Force print colors */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        
+        /* Remove shadows and rounded corners for cleaner print */
+        * {
+          box-shadow: none !important;
+          border-radius: 0 !important;
+        }
       }
 
       .export-container-fix {

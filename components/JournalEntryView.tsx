@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { AccountNode, Party, AccountingCategory, CashEntry, AppSettings } from '../types';
 import { loadChartAccounts, getPrefix, normalizeArabic } from '../utils/accountUtils';
+import { PrintHeader } from './PrintHeader';
 
 interface JournalRow {
   id: string;
@@ -229,41 +230,6 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <style>{`
-        @media print {
-          @page { margin: 0.5cm; size: auto; }
-          body { background: white !important; margin: 0 !important; padding: 0 !important; }
-          .no-print { display: none !important; }
-          .bg-zinc-900, .bg-zinc-800, .bg-zinc-950, .bg-zinc-50 {
-            background-color: white !important;
-            color: #0f172a !important;
-            border: 1px solid #e2e8f0 !important;
-          }
-          .text-white {
-            color: #0f172a !important;
-          }
-          .bg-emerald-900\\/20, .bg-rose-900\\/20, .bg-emerald-50\\/10, .bg-rose-50\\/10 {
-            background-color: transparent !important;
-          }
-          table {
-            background-color: white !important;
-            border: 1px solid #e2e8f0 !important;
-          }
-          th, td {
-            border: 1px solid #e2e8f0 !important;
-          }
-          th {
-            background-color: #f8fafc !important;
-            color: #0f172a !important;
-          }
-          .border-zinc-800, .border-zinc-700, .border-zinc-100 {
-            border-color: #e2e8f0 !important;
-          }
-          .shadow-2xl, .shadow-xl, .shadow-lg {
-            box-shadow: none !important;
-          }
-        }
-      `}</style>
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all shadow-sm">
@@ -334,26 +300,7 @@ const JournalEntryView: React.FC<JournalEntryViewProps> = ({ onBack }) => {
       {selectedVoucherForPrint && (
         <div className="hidden print:block absolute top-0 left-0 w-full bg-white z-[500] p-0 m-0">
           <div className="p-10 max-w-4xl mx-auto space-y-8 print:p-0 print:m-0 print:max-w-none">
-            <div className="flex justify-between items-start border-b-4 border-zinc-900 pb-8">
-              <div className="flex items-center gap-4">
-                {settings?.logoUrl ? (
-                  <img src={settings.logoUrl} className="w-20 h-20 object-contain" alt="Logo" />
-                ) : (
-                  <div className="w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center text-white font-black text-2xl">SH</div>
-                )}
-                <div>
-                  <h1 className="text-3xl font-black text-zinc-900 mb-1">{settings?.companyName || 'شركة المحاسبة'}</h1>
-                  <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">{settings?.companyType || 'إدارة مالية متكاملة'}</p>
-                </div>
-              </div>
-              <div className="text-left">
-                <h2 className="text-4xl font-black text-zinc-900 underline decoration-zinc-200 underline-offset-8">سند قيد يدوي</h2>
-                <div className="mt-4 space-y-1">
-                  <p className="text-sm font-black text-zinc-600">رقم السند: <span className="font-mono text-primary text-lg">#{selectedVoucherForPrint.voucherNumber}</span></p>
-                  <p className="text-sm font-black text-zinc-600">تاريخ القيد: <span className="font-mono">{selectedVoucherForPrint.date}</span></p>
-                </div>
-              </div>
-            </div>
+            <PrintHeader settings={settings} title="سند قيد يدوي" period={`رقم السند: #${selectedVoucherForPrint.voucherNumber} | تاريخ القيد: ${selectedVoucherForPrint.date}`} />
 
             <div className="grid grid-cols-1 gap-6">
               <div className="bg-zinc-50 p-6 rounded-2xl border-2 border-zinc-100">

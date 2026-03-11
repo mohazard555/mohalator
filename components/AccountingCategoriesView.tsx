@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Plus, Trash2, Edit2, Save, X, Tags, TrendingDown, TrendingUp, Search, Calendar, FileText, Printer, FileDown, FileSpreadsheet, ImageIcon, Landmark, ChevronDown, Calculator, Building2, MapPin, Phone, Check } from 'lucide-react';
 import { AccountingCategory, CashEntry, AppSettings, AccountNode } from '../types';
 import { exportToCSV } from '../utils/export';
+import { PrintHeader } from './PrintHeader';
 import { ImageExportService } from '../utils/ImageExportService';
 
 interface AccountingCategoriesViewProps {
