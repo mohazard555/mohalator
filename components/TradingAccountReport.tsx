@@ -289,20 +289,24 @@ const TradingAccountReport: React.FC<TradingAccountReportProps> = ({ fin, expand
                </div>
 
                <div className="drill-down-modal-scroll p-8 flex-1 overflow-y-auto custom-scrollbar" ref={modalPrintRef}>
-                  <div className="hidden print-header print:flex justify-between items-start mb-8 border-b-2 border-primary pb-6 text-black">
-                     <div className="flex items-center gap-4">
-                        {settings?.logoUrl ? <img src={settings.logoUrl} className="w-20 h-20 object-contain" /> : <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-lg">FIN</div>}
-                        <div><h1 className="text-2xl font-black">{settings?.companyName}</h1><p className="text-[10px] text-zinc-400 font-black uppercase mt-1 tracking-widest">{settings?.companyType}</p></div>
-                     </div>
-                     <div className="text-center">
-                        <h2 className="text-3xl font-black underline underline-offset-8 decoration-primary/20">تفصيل بند: {drillDown.title}</h2>
-                        <p className="text-sm mt-4 font-black text-zinc-500 uppercase tracking-[0.2em]">تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
-                     </div>
-                     <div className="text-left text-[10px] font-black text-zinc-400">
-                        <p className="mb-1">{settings?.address}</p>
-                        <p className="mb-4">{settings?.phone}</p>
-                        <span className="bg-zinc-900 text-white px-3 py-1 rounded-full text-[8px] uppercase tracking-widest">SAMLATOR SECURED DATA</span>
-                     </div>
+                  <div className="hidden print-header print:flex flex-col mb-8 bg-white text-zinc-900 mx-auto w-full">
+                    <div className="flex justify-between items-center border-b-4 border-rose-700 pb-4">
+                      <div className="text-right flex flex-col gap-1">
+                        <span className="text-sm font-black text-zinc-600">سوريا</span>
+                        <span className="text-xs font-bold text-zinc-500">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</span>
+                      </div>
+                      <div className="text-center flex flex-col items-center">
+                        <h2 className="text-3xl font-black text-black">تفصيل بند: {drillDown.title}</h2>
+                        <span className="text-sm font-black text-rose-700 mt-1">الفترة: {startDate} إلى {endDate}</span>
+                      </div>
+                      <div className="text-left flex items-center gap-3">
+                        <div className="flex flex-col items-end">
+                          <h1 className="text-2xl font-black text-rose-700 leading-none">SAMLATOR2026</h1>
+                          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">نظام إدارة محاسبية متطور</p>
+                        </div>
+                        <div className="w-12 h-12 bg-rose-700 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-sm">SH</div>
+                      </div>
+                    </div>
                   </div>
 
                   <table className="w-full text-right border-collapse">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Plus, Trash2, Edit2, Save, X, TrendingUp, TrendingDown, Search, Calendar, Filter, Coins, CreditCard, Printer, Tags, ImageIcon, FileSpreadsheet, User, FileDown } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Edit2, Save, X, TrendingUp, TrendingDown, Search, Calendar, Filter, Coins, CreditCard, Printer, Tags, ImageIcon, FileSpreadsheet, User, FileDown, FileText } from 'lucide-react';
 import { CashEntry, AppSettings, AccountingCategory, Party } from '../types';
 import { ImageExportService } from '../utils/ImageExportService';
 import { exportToCSV } from '../utils/export';
@@ -17,6 +17,7 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedVoucher, setSelectedVoucher] = useState<string | null>(null);
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -173,8 +174,8 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
     return [...others, ...processedJournal].sort((a, b) => b.date.localeCompare(a.date));
   })();
 
-  const totalPrimary = filteredEntries.reduce((acc, curr) => acc + (curr.receivedSYP - curr.paidSYP), 0);
-  const totalSecondary = filteredEntries.reduce((acc, curr) => acc + (curr.receivedUSD - curr.paidUSD), 0);
+  const totalPrimary = displayEntries.reduce((acc, curr) => acc + (curr.receivedSYP - curr.paidSYP), 0);
+  const totalSecondary = displayEntries.reduce((acc, curr) => acc + (curr.receivedUSD - curr.paidUSD), 0);
 
   return (
     <div className="space-y-6">
@@ -327,40 +328,23 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
       <div ref={exportRef} className="space-y-6 bg-white dark:bg-zinc-950 p-6 rounded-[2.5rem] shadow-sm export-fix print:p-0">
         
         {/* Professional Print Header (Visible only in print/export) */}
-        <div className="hidden print:flex flex-row justify-between items-start mb-6 border-b-4 border-primary pb-6 bg-white text-zinc-900 mx-4">
-          <div className="flex items-center gap-4">
-            {settings?.logoUrl ? (
-              <img src={settings.logoUrl} className="w-20 h-20 object-contain bg-white rounded-xl p-1 shadow-sm border" alt="Logo" />
-            ) : (
-               <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg">SH</div>
-            )}
-            <div>
-              <h1 className="text-3xl font-black text-primary leading-none">{settings?.companyName || 'SAMLATOR SYSTEM'}</h1>
-              <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">{settings?.companyType}</p>
+        <div className="hidden print:flex flex-col mb-8 bg-white text-zinc-900 mx-auto w-full">
+          <div className="flex justify-between items-center border-b-4 border-rose-700 pb-4">
+            <div className="text-right flex flex-col gap-1">
+              <span className="text-sm font-black text-zinc-600">سوريا</span>
+              <span className="text-xs font-bold text-zinc-500">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</span>
             </div>
-          </div>
-          <div className="text-center pt-2">
-            <h2 className="text-4xl font-black text-zinc-900 underline decoration-primary/20 underline-offset-8">دفتر اليومية الشامل</h2>
-            <div className="flex flex-col items-center gap-1 mt-4">
-               <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">فترة التقرير المحددة</span>
-               <div className="bg-zinc-50 border border-zinc-200 px-6 py-1 rounded-full flex items-center gap-3">
-                  <span className="font-mono font-black text-xs">{startDate || 'بداية السجلات'}</span>
-                  <span className="text-zinc-300 font-bold">←</span>
-                  <span className="font-mono font-black text-xs">{endDate || 'اليوم الحاضر'}</span>
-               </div>
+            <div className="text-center flex flex-col items-center">
+              <h2 className="text-3xl font-black text-black">دفتر اليومية الشامل (صندوق)</h2>
+              <span className="text-sm font-black text-rose-700 mt-1">الفترة: {startDate || 'البداية'} إلى {endDate || 'اليوم'}</span>
             </div>
-          </div>
-          <div className="text-left space-y-1 pt-2">
-             <div className="flex items-center justify-end gap-2 text-zinc-500 text-xs font-bold">
-                <span>{settings?.address}</span>
-             </div>
-             <div className="flex items-center justify-end gap-2 text-zinc-500 text-xs font-bold" dir="ltr">
-                <span>{settings?.phone}</span>
-             </div>
-             <div className="text-[10px] font-black text-zinc-400 uppercase pt-2 flex items-center justify-end gap-2">
-                <span>تاريخ الطباعة:</span>
-                <span>{new Date().toLocaleDateString('ar-SA')}</span>
-             </div>
+            <div className="text-left flex items-center gap-3">
+              <div className="flex flex-col items-end">
+                <h1 className="text-2xl font-black text-rose-700 leading-none">SAMLATOR2026</h1>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">نظام إدارة محاسبية متطور</p>
+              </div>
+              <div className="w-12 h-12 bg-rose-700 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-sm">SH</div>
+            </div>
           </div>
         </div>
 
@@ -411,6 +395,9 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
                       <td className="p-4 text-center text-zinc-400 font-mono border-l">{entry.paidUSD > 0 ? entry.paidUSD.toLocaleString() : '-'}</td>
                       <td className="p-4 no-print">
                         <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {entry.voucherNumber && (
+                             <button onClick={() => setSelectedVoucher(entry.voucherNumber!)} className="p-2 text-zinc-400 hover:text-emerald-500 transition-all" title="عرض التفاصيل"><Search className="w-4 h-4" /></button>
+                          )}
                           <button onClick={() => handleEdit(entry)} className="p-2 text-zinc-400 hover:text-primary transition-all"><Edit2 className="w-4 h-4" /></button>
                           <button onClick={() => handleDelete(entry.id)} className="p-2 text-zinc-400 hover:text-rose-500 transition-all"><Trash2 className="w-4 h-4" /></button>
                         </div>
@@ -423,6 +410,53 @@ const CashJournalView: React.FC<CashJournalViewProps> = ({ onBack }) => {
           </div>
         </div>
       </div>
+
+      {/* Voucher Details Modal */}
+      {selectedVoucher && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300">
+           <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95">
+              <div className="p-6 bg-zinc-900 text-white flex justify-between items-center border-b border-white/10">
+                 <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-primary/20 rounded-xl text-primary">
+                       <FileText className="w-6 h-6" />
+                    </div>
+                    <div>
+                       <h3 className="text-xl font-black tracking-tight">تفاصيل السند / القيد</h3>
+                       <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">رقم المرجع: {selectedVoucher}</p>
+                    </div>
+                 </div>
+                 <button onClick={() => setSelectedVoucher(null)} className="p-2 hover:bg-white/10 rounded-xl transition-all">
+                    <X className="w-6 h-6 text-zinc-400" />
+                 </button>
+              </div>
+              <div className="p-8 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                 <table className="w-full text-right border-collapse text-sm">
+                    <thead>
+                       <tr className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-black uppercase text-[10px]">
+                          <th className="p-3 border-l dark:border-zinc-700">الحساب</th>
+                          <th className="p-3 border-l dark:border-zinc-700">البيان</th>
+                          <th className="p-3 border-l dark:border-zinc-700 text-center">مدين</th>
+                          <th className="p-3 border-l dark:border-zinc-700 text-center">دائن</th>
+                       </tr>
+                    </thead>
+                    <tbody className="divide-y dark:divide-zinc-800 font-bold">
+                       {entries.filter(e => e.voucherNumber === selectedVoucher).map(e => (
+                          <tr key={e.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                             <td className="p-3 border-l dark:border-zinc-800 text-primary">{e.partyName || e.cashAccount || '-'}</td>
+                             <td className="p-3 border-l dark:border-zinc-800">{e.statement}</td>
+                             <td className="p-3 border-l dark:border-zinc-800 text-center text-emerald-600 font-mono">{e.receivedSYP > 0 ? e.receivedSYP.toLocaleString() : '-'}</td>
+                             <td className="p-3 border-l dark:border-zinc-800 text-center text-rose-600 font-mono">{e.paidSYP > 0 ? e.paidSYP.toLocaleString() : '-'}</td>
+                          </tr>
+                       ))}
+                    </tbody>
+                 </table>
+              </div>
+              <div className="p-6 bg-zinc-50 dark:bg-zinc-950 border-t dark:border-zinc-800 flex gap-2">
+                 <button onClick={() => setSelectedVoucher(null)} className="flex-1 py-4 bg-zinc-900 text-white rounded-2xl font-black text-sm shadow-xl hover:bg-black transition-all">إغلاق</button>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };
